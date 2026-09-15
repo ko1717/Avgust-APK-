@@ -12,8 +12,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
-VERSION_NAME="${2:-1.4.0}"
-VERSION_CODE="${3:-12}"
+VERSION_NAME="${2:-1.4.1}"
+VERSION_CODE="${3:-13}"
 BASE_VERSION_NAME="1.1.0-rc.5"
 
 OUT_DIR="$ROOT/dist"

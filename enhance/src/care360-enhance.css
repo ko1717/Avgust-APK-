@@ -463,12 +463,63 @@ html.dark .form-body img {
   font-size: 12px;
 }
 
+.metric-summary,
+.query-summary,
+.evolution-summary,
+.home-stats {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.metric-summary > div,
+.query-summary > div,
+.evolution-summary article,
+.home-stats > div {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.metric-summary b,
+.query-summary b,
+.evolution-summary b,
+.metric-summary .trend {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: none;
+  white-space: normal;
+  line-height: 1.2;
+}
+
 @media (max-width: 700px) {
   .commitment-cards,
   .evolution-summary,
   .metric-summary,
   .home-stats {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  .metric-summary b,
+  .query-summary b,
+  .evolution-summary b,
+  .home-stats > div b,
+  .home-stats > div strong {
+    font-size: 17px;
+    letter-spacing: -0.3px;
+  }
+
+  .metric-summary > div,
+  .query-summary > div {
+    padding: 12px 10px;
+  }
+
+  .query-summary {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 
   .query-hero,
@@ -501,9 +552,19 @@ html.dark .form-body img {
   }
 
   .query-farm-heading,
-  .dossier-heading {
+  .dossier-heading,
+  .query-heading-actions {
     flex-direction: column;
     align-items: stretch;
+    max-width: 100%;
+  }
+
+  .query-heading-actions .primary,
+  .query-farm-heading .primary {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    justify-content: center;
   }
 }
 
@@ -599,7 +660,7 @@ html.dark .form-body img {
     z-index: 54;
     width: 100%;
     min-height: 56px;
-    padding: 5px 6px;
+    padding: 5px max(6px, env(safe-area-inset-right, 0px)) 5px max(6px, env(safe-area-inset-left, 0px));
     gap: 3px;
     justify-content: space-between;
     overflow-x: hidden;

@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `dist/AVGUST-CARE-360-1.4.0-Android.apk` | Única versión para instalar. |
+| `dist/AVGUST-CARE-360-1.4.1-Android.apk` | Única versión para instalar. |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
 | `tests/` | Prueba de extremo a extremo del contenido web. |
@@ -27,10 +27,10 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.0
+## Versión 1.4.1
 
 Esta es la **única versión** de distribución. El APK está en
-`dist/AVGUST-CARE-360-1.4.0-Android.apk`.
+`dist/AVGUST-CARE-360-1.4.1-Android.apk`.
 
 ### Presentación de bienvenida
 
@@ -56,7 +56,8 @@ botones o deslizando el dedo, y reabrir con el botón **Guía**.
 - En el teléfono se puede **deslizar a izquierda y derecha** para pasar de una
   función a otra; dentro de una visita o sobre una foto ese gesto no se usa.
 - Las fotografías, las pestañas internas (Seguimiento) y las tarjetas de
-  métricas caben en la pantalla: no ensanchan ni recortan el contenido.
+  **Consulta** (estado, comportamiento, fechas) caben en la pantalla: el texto
+  no se sale ni se parte a mitad de la fecha.
 - **Tabletas, ventanas medianas y teléfono en horizontal** usan las etiquetas
   cortas para que tampoco quede ningún módulo oculto.
 - **Pasos de la visita siempre visibles.** La barra `01 · 02 · 03 · 04 · 05` queda
@@ -109,14 +110,14 @@ rearma el APK, lo alinea y lo firma (esquemas v1, v2 y v3). El resultado queda e
 ### Sobre la firma
 
 El paquete original venía firmado con la clave de depuración del equipo donde se
-compiló, que no está disponible aquí. El APK 1.4.0 se firma con la clave de
+compiló, que no está disponible aquí. El APK 1.4.1 se firma con la clave de
 `tools/signing/`.
 
-- **Si ya tiene una 1.2.x, 1.3.0 o 1.4.0 firmada con esta misma clave:** puede
-  instalar 1.4.0 encima.
+- **Si ya tiene una 1.2.x, 1.3.0 o 1.4.x firmada con esta misma clave:** puede
+  instalar 1.4.1 encima.
 - **Si tiene 1.1.0-rc.5:** hay que desinstalarla primero. Cree un respaldo
   completo desde *Inicio → Crear respaldo completo*, desinstale, instale
-  `dist/AVGUST-CARE-360-1.4.0-Android.apk` y restaure el respaldo.
+  `dist/AVGUST-CARE-360-1.4.1-Android.apk` y restaure el respaldo.
 
 Para publicar con otra clave:
 

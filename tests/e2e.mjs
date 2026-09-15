@@ -57,7 +57,7 @@ check('La presentación tiene 7 secciones', slideTitles.filter(Boolean).length =
 const creditText = await p.evaluate(() => document.querySelector('.c360-intro-body').innerText);
 check('Aparece Kevin Villamizar como desarrollador', /Kevin Villamizar/.test(creditText));
 check('Aparece la ayuda de Wilson Castro', /creado con la ayuda de Wilson Castro/i.test(creditText));
-check('La versión mostrada es la del APK', /1\.4\.0|preview|de desarrollo/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
+check('La versión mostrada es la del APK', /1\.4\.1|preview|de desarrollo/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
 
 // swipe back
 await p.evaluate(() => {
