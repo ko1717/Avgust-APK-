@@ -164,6 +164,11 @@ FINAL="$OUT_DIR/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
 find "$OUT_DIR" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
 find "$OUT_DIR" -maxdepth 1 -name '*.idsig' -delete
 
+# Copia visible en la raíz del repositorio (donde se descarga).
+cp "$FINAL" "$ROOT/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
+find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
+find "$ROOT" -maxdepth 1 -name '*.idsig' -delete
+
 echo
 echo "==> APK generado: $FINAL"
 ls -lh "$FINAL" | awk '{print "    tamaño: " $5}'

@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `dist/AVGUST-CARE-360-1.4.1-Android.apk` | Única versión para instalar. |
+| `AVGUST-CARE-360-1.4.1-Android.apk` | **Descarga esta.** Única versión para instalar. |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
 | `tests/` | Prueba de extremo a extremo del contenido web. |
@@ -29,8 +29,9 @@ riesgo de romper ninguna función existente.
 
 ## Versión 1.4.1
 
-Esta es la **única versión** de distribución. El APK está en
-`dist/AVGUST-CARE-360-1.4.1-Android.apk`.
+Esta es la **única versión** de distribución. Descárgala aquí:
+
+**[AVGUST-CARE-360-1.4.1-Android.apk](./AVGUST-CARE-360-1.4.1-Android.apk)**
 
 ### Presentación de bienvenida
 
@@ -117,7 +118,7 @@ compiló, que no está disponible aquí. El APK 1.4.1 se firma con la clave de
   instalar 1.4.1 encima.
 - **Si tiene 1.1.0-rc.5:** hay que desinstalarla primero. Cree un respaldo
   completo desde *Inicio → Crear respaldo completo*, desinstale, instale
-  `dist/AVGUST-CARE-360-1.4.1-Android.apk` y restaure el respaldo.
+  `AVGUST-CARE-360-1.4.1-Android.apk` y restaure el respaldo.
 
 Para publicar con otra clave:
 
