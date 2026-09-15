@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.3-sin-marca-Android.apk` | **Sin marca Avgust.** Sin logos ni el nombre Avgust. |
+| `CARE-360-1.4.4-sin-marca-Android.apk` | **Sin marca Avgust.** Sin logos ni el nombre Avgust. Instalable en Samsung. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -28,15 +28,18 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.3 sin marca Avgust
+## Versión 1.4.4 sin marca Avgust
 
 Esta versión **no incluye logos de Avgust ni el nombre Avgust** en la interfaz,
 la guía, el icono web ni los informes. El programa se presenta como **CARE 360**.
 
-**[CARE-360-1.4.3-sin-marca-Android.apk](./CARE-360-1.4.3-sin-marca-Android.apk)**
+**[CARE-360-1.4.4-sin-marca-Android.apk](./CARE-360-1.4.4-sin-marca-Android.apk)**
 
-Se instala encima de la 1.4.2 (misma firma). La 1.4.2 con marca Avgust sigue
-disponible aquí: **[AVGUST-CARE-360-1.4.2-Android.apk](./AVGUST-CARE-360-1.4.2-Android.apk)**.
+Se instala encima de la 1.4.2 o la 1.4.3 (misma firma). La 1.4.3 no instalaba en
+Samsung porque `resources.arsc` iba comprimido; esta lo corrige.
+
+La 1.4.2 con marca Avgust sigue disponible aquí:
+**[AVGUST-CARE-360-1.4.2-Android.apk](./AVGUST-CARE-360-1.4.2-Android.apk)**.
 
 ## Versión 1.4.2 (con marca Avgust)
 
@@ -120,7 +123,7 @@ Para generar la APK **sin marca Avgust**:
 
 ```bash
 C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
-  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.3 15
+  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.4 16
 ```
 
 El guion extrae del paquete base sólo lo que va a cambiar, añade la capa de

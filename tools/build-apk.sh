@@ -13,9 +13,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
 DEBRAND="${C360_DEBRAND:-0}"
-if [[ "$DEBRAND" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.3}"
-  VERSION_CODE="${3:-15}"
+if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
+  VERSION_NAME="${2:-1.4.4}"
+  VERSION_CODE="${3:-16}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -167,9 +167,10 @@ chmod u+w "$STAGED"
 # La firma anterior deja de ser válida en cuanto cambia el contenido.
 zip -q -d "$STAGED" 'META-INF/*.RSA' 'META-INF/*.SF' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' >/dev/null 2>&1 || true
 if [[ "$DEBRAND" == "1" ]]; then
+  # resources.arsc tiene que ir SIN comprimir: Samsung (y el instalador de
+  # Android) mapea ese archivo en memoria y rechaza el paquete si va deflate.
   zip -q -X "$STAGED" \
     AndroidManifest.xml \
-    resources.arsc \
     assets/capacitor.config.json \
     assets/public/index.html \
     assets/public/sw.js \
@@ -178,6 +179,7 @@ if [[ "$DEBRAND" == "1" ]]; then
     assets/public/manifest.webmanifest \
     assets/public/assets/* \
     assets/public/enhance/*
+  zip -q -X -0 "$STAGED" resources.arsc
 else
   zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/*
 fi
@@ -216,6 +218,19 @@ fi
   --out "$FINAL" "$ALIGNED"
 
 "$APKSIGNER" verify --print-certs "$FINAL" | head -n 6
+
+python3 - "$FINAL" <<'PY'
+import sys
+import zipfile
+
+path = sys.argv[1]
+info = zipfile.ZipFile(path).getinfo("resources.arsc")
+if info.compress_type != zipfile.ZIP_STORED:
+    raise SystemExit(
+        "resources.arsc quedó comprimido (%d); Samsung no podrá instalar el APK" % info.compress_type
+    )
+print("resources.arsc sin comprimir (%d bytes)" % info.file_size)
+PY
 
 find "$OUT_DIR" -maxdepth 1 -name '*.idsig' -delete
 if [[ "$DEBRAND" == "1" ]]; then
