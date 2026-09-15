@@ -1,0 +1,377 @@
+/*
+ * AVGUST CARE 360 — presentacion de bienvenida y guia del programa.
+ */
+
+.c360-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgb(0 181 226 / 22%) 0%, rgb(0 181 226 / 0%) 55%),
+    radial-gradient(120% 90% at 100% 100%, rgb(141 198 63 / 18%) 0%, rgb(141 198 63 / 0%) 55%),
+    rgb(9 24 30 / 94%);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.26s ease;
+  overscroll-behavior: contain;
+}
+
+.c360-intro[data-open="1"] {
+  opacity: 1;
+}
+
+.c360-intro-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--c360-surface, #fff);
+  color: var(--c360-ink, #1c2b32);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 45%);
+  transform: translateY(14px) scale(0.985);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.c360-intro[data-open="1"] .c360-intro-card {
+  transform: translateY(0) scale(1);
+}
+
+/* ---------------- cabecera ---------------- */
+
+.c360-intro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--c360-line, #dbe4e8);
+}
+
+.c360-intro-head img {
+  width: 128px;
+  height: auto;
+}
+
+.c360-intro-skip {
+  flex: none;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c360-ink-soft, #58696d);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.c360-intro-skip:hover {
+  background: rgb(0 181 226 / 12%);
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-intro-progress {
+  height: 4px;
+  background: rgb(0 127 163 / 14%);
+}
+
+.c360-intro-progress > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #007fa3, #00b5e2);
+  border-radius: 0 999px 999px 0;
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ---------------- diapositivas ---------------- */
+
+.c360-intro-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 22px 22px 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Centra el contenido corto sin recortar el de las diapositivas largas. */
+.c360-slide {
+  margin-block: auto;
+  animation: c360-slide-in 0.32s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes c360-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--c360-slide-from, 18px));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.c360-slide-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #007fa3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+}
+
+html.dark .c360-slide-eyebrow {
+  color: #4fd3f5;
+}
+
+.c360-slide h2 {
+  margin: 0 0 10px;
+  font-size: 27px;
+  line-height: 1.15;
+  letter-spacing: -0.8px;
+  font-weight: 800;
+}
+
+.c360-slide > p {
+  margin: 0 0 16px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.c360-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.c360-list li {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: rgb(0 181 226 / 5%);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+html.dark .c360-list li {
+  background: rgb(0 181 226 / 8%);
+}
+
+.c360-list li b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.c360-list li > div > span {
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(140deg, #007fa3, #00b5e2);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.c360-badge svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------------- creditos ---------------- */
+
+.c360-credits {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.c360-credit {
+  padding: 16px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 16px;
+  background: linear-gradient(140deg, rgb(0 127 163 / 10%), rgb(141 198 63 / 10%));
+  text-align: center;
+}
+
+.c360-credit small {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+
+.c360-credit strong {
+  display: block;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.c360-credit p {
+  margin: 6px 0 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.c360-version {
+  margin-top: 4px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---------------- controles ---------------- */
+
+.c360-intro-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px max(14px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--c360-line, #dbe4e8);
+  background: var(--c360-surface, #fff);
+}
+
+.c360-dots {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.c360-dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(0 127 163 / 26%);
+  cursor: pointer;
+  transition: width 0.22s ease, background-color 0.22s ease;
+}
+
+.c360-dots button[aria-current="true"] {
+  width: 24px;
+  background: #007fa3;
+}
+
+.c360-nav-btn {
+  flex: none;
+  min-height: 46px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+}
+
+.c360-nav-btn:active {
+  transform: scale(0.98);
+}
+
+.c360-nav-btn[data-kind="back"] {
+  border-color: var(--c360-line, #dbe4e8);
+  background: transparent;
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-nav-btn[data-kind="back"][hidden] {
+  display: none;
+}
+
+.c360-nav-btn[data-kind="next"] {
+  background: linear-gradient(135deg, #007fa3, #00a9d4);
+  color: #fff;
+  box-shadow: 0 6px 18px rgb(0 127 163 / 32%);
+}
+
+.c360-intro-again {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px 12px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 13px;
+}
+
+.c360-intro-again input {
+  width: 18px;
+  height: 18px;
+  accent-color: #007fa3;
+}
+
+@media (max-width: 480px) {
+  .c360-intro {
+    padding: 0;
+  }
+
+  .c360-intro-card {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .c360-slide h2 {
+    font-size: 23px;
+  }
+
+  .c360-intro-body {
+    padding: 18px 16px 6px;
+  }
+
+  .c360-intro-head {
+    padding: max(12px, env(safe-area-inset-top, 0px)) 16px 10px;
+  }
+
+  .c360-intro-foot {
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .c360-nav-btn {
+    padding: 11px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c360-slide {
+    animation: none;
+  }
+}

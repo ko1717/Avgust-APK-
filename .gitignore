@@ -1,0 +1,4 @@
+# Artefactos locales de compilación
+/build/
+/tmp/
+*.idsig

@@ -1,0 +1,954 @@
+/*
+ * AVGUST CARE 360 — capa de interfaz y experiencia de usuario.
+ * Se carga despues de la hoja de estilos de la aplicacion, por lo que las
+ * reglas de igual especificidad definidas aqui tienen prioridad.
+ */
+
+:root {
+  --c360-brand: #007fa3;
+  --c360-brand-strong: #00647f;
+  --c360-accent: #00b5e2;
+  --c360-ink: #1c2b32;
+  --c360-ink-soft: #58696d;
+  --c360-line: #dbe4e8;
+  --c360-surface: #fff;
+  --c360-canvas: #f4f7f8;
+  --c360-ok: #2f8f5b;
+  --c360-warn: #c77700;
+  --c360-danger: #c0392b;
+  --c360-focus: #f2a900;
+  --c360-radius: 16px;
+  --c360-shadow-1: 0 1px 2px rgb(28 43 50 / 6%), 0 6px 18px rgb(28 43 50 / 6%);
+  --c360-shadow-2: 0 10px 34px rgb(28 43 50 / 14%);
+  --c360-nav-h: 68px;
+  --c360-topbar-h: 66px;
+  --c360-safe-b: env(safe-area-inset-bottom, 0px);
+  --c360-safe-t: env(safe-area-inset-top, 0px);
+}
+
+html.dark {
+  --c360-ink: #e8f2ef;
+  --c360-ink-soft: #a8bdba;
+  --c360-line: #3a5552;
+  --c360-surface: #16262a;
+  --c360-canvas: #0e1b1f;
+  --c360-shadow-1: 0 1px 2px rgb(0 0 0 / 35%), 0 6px 18px rgb(0 0 0 / 28%);
+  --c360-shadow-2: 0 10px 34px rgb(0 0 0 / 45%);
+}
+
+/* ------------------------------------------------------------------ *
+ * 1. Base
+ * ------------------------------------------------------------------ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--c360-canvas);
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: rgb(0 181 226 / 18%);
+}
+
+/* La aplicacion se usa con guantes y bajo sol: el foco debe verse siempre. */
+:where(button, a, input, select, textarea, [role="tab"], [role="button"], summary):focus-visible {
+  outline: 3px solid var(--c360-focus);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+::selection {
+  background: rgb(0 181 226 / 30%);
+}
+
+/* ------------------------------------------------------------------ *
+ * 2. Barra superior
+ * ------------------------------------------------------------------ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 55;
+  gap: 12px;
+  padding-top: var(--c360-safe-t);
+  background: var(--c360-surface);
+  border-bottom: 1px solid var(--c360-line);
+  box-shadow: 0 1px 0 rgb(28 43 50 / 4%);
+}
+
+html.dark .topbar {
+  border-bottom-color: var(--c360-line);
+}
+
+.platform-state {
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. Navegacion de modulos
+ * ------------------------------------------------------------------ */
+
+.module-nav[data-slot="tabs-list"] {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  background: #fff;
+  border-bottom: 1px solid var(--c360-line);
+  box-shadow: 0 1px 0 rgb(28 43 50 / 4%);
+}
+
+.module-nav[data-slot="tabs-list"]::-webkit-scrollbar {
+  display: none;
+}
+
+.module-nav [data-slot="tabs-trigger"] {
+  color: #4a5f64 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.12s ease, box-shadow 0.16s ease;
+}
+
+.module-nav [data-slot="tabs-trigger"]:hover {
+  background: rgb(0 127 163 / 8%) !important;
+  color: var(--c360-brand) !important;
+}
+
+.module-nav [data-slot="tabs-trigger"]:active {
+  transform: scale(0.96);
+}
+
+.module-nav [data-slot="tabs-trigger"][data-active] {
+  color: #fff !important;
+  background: var(--c360-brand) !important;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgb(0 127 163 / 28%) !important;
+}
+
+.module-nav [data-slot="tabs-trigger"]:focus-visible {
+  outline: 3px solid var(--c360-focus);
+  outline-offset: -3px;
+}
+
+html.dark .module-nav[data-slot="tabs-list"] {
+  background: #16262a;
+  border-bottom-color: var(--c360-line);
+  box-shadow: none;
+}
+
+html.dark .module-nav [data-slot="tabs-trigger"] {
+  color: #c5d7d4 !important;
+}
+
+html.dark .module-nav [data-slot="tabs-trigger"]:hover {
+  background: rgb(0 181 226 / 12%) !important;
+  color: #e8f2ef !important;
+}
+
+html.dark .module-nav [data-slot="tabs-trigger"][data-active] {
+  color: #08222a !important;
+  background: var(--c360-accent) !important;
+  box-shadow: 0 4px 12px rgb(0 181 226 / 22%) !important;
+}
+
+.workspace.c360-pane-in {
+  animation: c360-pane 0.18s ease;
+}
+
+@keyframes c360-pane {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. Encabezados y superficies
+ * ------------------------------------------------------------------ */
+
+.module-heading h1 {
+  letter-spacing: -0.6px;
+}
+
+.module-heading p {
+  color: var(--c360-ink-soft);
+  max-width: 62ch;
+}
+
+.editor,
+.visits-list,
+.followup-panel,
+.metrics-panel,
+.farm-query,
+.farm-dossier,
+.desktop-tools,
+.summary,
+.function-card,
+.photo-card,
+.action-editor,
+.home-stats > div {
+  border-radius: var(--c360-radius);
+  box-shadow: var(--c360-shadow-1);
+}
+
+.function-card {
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.function-card:hover,
+.function-card:focus-within {
+  transform: translateY(-2px);
+  box-shadow: var(--c360-shadow-2);
+}
+
+.function-card:active {
+  transform: translateY(0) scale(0.995);
+}
+
+.home-stats > div {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-stats > div strong,
+.home-stats > div b {
+  letter-spacing: -0.6px;
+}
+
+.function-card > svg {
+  transition: transform 0.18s ease;
+}
+
+.function-card:hover > svg,
+.function-card:focus-within > svg {
+  transform: translateY(-1px);
+}
+
+.home-stats > div:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--c360-shadow-2);
+}
+
+/* ------------------------------------------------------------------ *
+ * 5. Controles
+ * ------------------------------------------------------------------ */
+
+.primary,
+.secondary,
+.theme-toggle {
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.primary:active,
+.secondary:active,
+.theme-toggle:active {
+  transform: scale(0.98);
+}
+
+.primary {
+  box-shadow: 0 2px 10px rgb(0 127 163 / 22%);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+select,
+textarea {
+  border-radius: 12px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--c360-brand);
+  box-shadow: 0 0 0 3px rgb(0 181 226 / 25%);
+  outline: none;
+}
+
+label {
+  font-weight: 600;
+}
+
+/* Respuestas Si / No / No aplica: objetivo tactil comodo y estado claro. */
+.answer-options label {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.answer-options label:active {
+  transform: scale(0.98);
+}
+
+.answer-options input:checked + span,
+.answer-options label:has(input:checked) {
+  border-color: var(--c360-brand);
+  box-shadow: inset 0 0 0 1px var(--c360-brand);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ *
+ * 6. Mensajes de estado
+ * ------------------------------------------------------------------ */
+
+.notice,
+.error,
+.success {
+  border-radius: 12px;
+}
+
+.saved-status {
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ *
+ * 6b. Fotografias: no pueden ensanchar ni correr la pantalla
+ * ------------------------------------------------------------------ */
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
+.workspace,
+.editor,
+.form-body,
+.followup-panel,
+.metrics-panel,
+.farm-query,
+.farm-dossier,
+.visits-list,
+.photo-grid,
+.photo-card,
+.fields,
+.chapter-grid,
+.actions,
+.editor-heading,
+.module-heading,
+.query-hero,
+.dossier-hero,
+.query-grid,
+.visit-row {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.workspace img,
+.workspace video,
+.workspace canvas,
+.workspace table {
+  max-width: 100%;
+}
+
+.actions,
+.editor-heading,
+.module-heading .actions,
+.photo-actions,
+.query-farm-heading,
+.query-heading-actions,
+.dossier-heading,
+.dossier-heading-actions,
+.report-version-actions,
+.visit-row {
+  flex-wrap: wrap;
+}
+
+.primary,
+.secondary {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.photo-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 901px) {
+  .photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.photo-card {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.photo-card img,
+.photo-card video,
+.form-body img {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 240px;
+  object-fit: contain;
+  background: #f1f4f3;
+  border-radius: 10px;
+}
+
+html.dark .photo-card img,
+html.dark .photo-card video,
+html.dark .form-body img {
+  background: #122226;
+}
+
+.photo-card label,
+.photo-card select,
+.photo-card input:not([type="file"]),
+.photo-card textarea,
+.form-body select,
+.form-body input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.form-body textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.photo-actions {
+  position: relative;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.photo-actions input,
+.photo-actions input[type="file"] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.photo-card select,
+.form-body select {
+  width: 100%;
+}
+
+.module-subtabs[data-slot="tabs-list"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-content: stretch;
+  overflow-x: hidden;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.module-subtabs [data-slot="tabs-trigger"] {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+  padding: 8px 6px;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .commitment-cards,
+  .evolution-summary,
+  .metric-summary,
+  .home-stats {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  .query-hero,
+  .dossier-hero,
+  .query-grid,
+  .farm-metric-evolution > header {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .farm-metric-evolution {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 16px;
+  }
+
+  .farm-metric-evolution > header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .evolution-selector {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .commitment-filters,
+  .metrics-filters {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .query-farm-heading,
+  .dossier-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 7. Telefono: barra de modulos arriba, con los siete visibles
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 700px) {
+  :root {
+    --c360-topbar-h: 62px;
+    --c360-nav-h: 56px;
+  }
+
+  .topbar {
+    height: auto;
+    min-height: var(--c360-topbar-h);
+    padding: 6px 14px;
+    padding-top: calc(6px + var(--c360-safe-t));
+    border-bottom: 0;
+    box-shadow: none;
+  }
+
+  .brand {
+    gap: 10px;
+    font-size: 16px;
+  }
+
+  .brand img {
+    width: 118px;
+  }
+
+  .brand > span {
+    padding-left: 10px;
+    font-size: 13px;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .module-nav[data-slot="tabs-list"] {
+    position: sticky;
+    top: var(--c360-topbar-h);
+    z-index: 54;
+    width: 100%;
+    min-height: 56px;
+    padding: 5px 6px;
+    gap: 3px;
+    justify-content: space-between;
+    overflow-x: hidden;
+    border-radius: 0;
+  }
+
+  .module-nav [data-slot="tabs-trigger"] {
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+    min-height: 52px;
+    padding: 6px 1px;
+    gap: 3px;
+    border-radius: 14px;
+    font-size: 9.5px;
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    white-space: normal;
+    text-align: center;
+    hyphens: auto;
+  }
+
+  .module-nav svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .nav-full {
+    display: none;
+  }
+
+  .nav-short {
+    display: block;
+    max-width: 100%;
+  }
+
+  .workspace {
+    padding: 18px 14px calc(24px + var(--c360-save-h, 0px) + var(--c360-safe-b));
+  }
+
+  .mobile-save {
+    left: 0;
+    right: 0;
+    bottom: var(--c360-safe-b);
+    width: auto;
+    max-width: 100%;
+    overflow: hidden;
+    z-index: 56;
+    box-sizing: border-box;
+  }
+
+  html.c360-keyboard .c360-to-top {
+    display: none;
+  }
+
+  .module-heading h1 {
+    font-size: 25px;
+    margin: 4px 0 8px;
+  }
+
+  /* Pasos de la visita: siempre visibles al desplazarse.
+     `clip` recorta igual que `hidden` pero no crea un contenedor de
+     desplazamiento, que es lo que impedia fijar la barra de pasos. */
+  .editor {
+    overflow: clip;
+  }
+
+  .steps[data-slot="tabs-list"] {
+    position: sticky;
+    top: calc(var(--c360-topbar-h) + var(--c360-nav-h));
+    z-index: 40;
+    background: var(--c360-surface);
+    padding: 6px 4px;
+    margin-inline: -4px;
+    border-radius: 12px;
+    box-shadow: 0 6px 14px rgb(28 43 50 / 8%);
+  }
+
+  html.dark .steps[data-slot="tabs-list"] {
+    background: var(--c360-surface);
+  }
+
+  .steps [data-slot="tabs-trigger"] {
+    min-height: 44px;
+    min-width: 0;
+    flex: 1 1 0;
+    font-size: 12px;
+  }
+
+  /* Objetivos tactiles minimos en campo. */
+  .primary,
+  .secondary,
+  .theme-toggle,
+  .photo-actions label {
+    min-height: 46px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .answer-options label {
+    min-height: 46px;
+  }
+
+  .module-heading .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .module-heading .actions .primary,
+  .module-heading .actions .secondary {
+    flex: 1 1 140px;
+  }
+}
+
+@media (min-width: 390px) and (max-width: 700px) {
+  .module-nav [data-slot="tabs-trigger"] {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .module-nav [data-slot="tabs-trigger"] {
+    font-size: 8.8px;
+  }
+
+  .brand img {
+    width: 100px;
+  }
+}
+
+/* Tabletas y ventanas medianas: los siete modulos deben caber sin desplazar
+   la barra, por eso se usan las etiquetas cortas. */
+@media (min-width: 701px) and (max-width: 1120px) {
+  .module-nav[data-slot="tabs-list"] {
+    gap: 5px;
+    padding: 7px 14px;
+    overflow-x: hidden;
+  }
+
+  .module-nav [data-slot="tabs-trigger"] {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 9px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .nav-full {
+    display: none;
+  }
+
+  .nav-short {
+    display: block;
+  }
+}
+
+/* Telefono en horizontal: barra compacta arriba para no comerse el alto. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .module-nav[data-slot="tabs-list"] {
+    position: sticky;
+    top: var(--c360-topbar-h, 0px);
+    min-height: 50px;
+    padding: 5px 10px;
+    gap: 4px;
+    overflow-x: hidden;
+  }
+
+  .module-nav [data-slot="tabs-trigger"] {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 40px;
+    flex-direction: row;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .nav-full {
+    display: none;
+  }
+
+  .nav-short {
+    display: block;
+  }
+
+  .workspace {
+    padding-bottom: 32px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 8. Boton volver arriba
+ * ------------------------------------------------------------------ */
+
+.c360-to-top {
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--c360-save-h, 0px) + 16px + var(--c360-safe-b));
+  z-index: 58;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--c360-line);
+  border-radius: 50%;
+  background: var(--c360-surface);
+  color: var(--c360-brand);
+  box-shadow: var(--c360-shadow-2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+
+.c360-to-top[data-visible="1"] {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@media (min-width: 701px) {
+  .c360-to-top {
+    right: 26px;
+    bottom: 26px;
+  }
+}
+
+@media print {
+  .c360-to-top,
+  .c360-help-btn,
+  .c360-net-badge,
+  .c360-intro,
+  .c360-crash {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 9. Boton de guia en la barra superior
+ * ------------------------------------------------------------------ */
+
+.c360-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  min-width: 44px;
+  padding: 8px 12px;
+  border: 1px solid #c8d8d5;
+  border-radius: 22px;
+  background: var(--c360-surface);
+  color: var(--c360-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.c360-help-btn:hover {
+  background: #edf8fc;
+}
+
+.c360-help-btn:active {
+  transform: scale(0.97);
+}
+
+html.dark .c360-help-btn {
+  background: #122226;
+  border-color: #3d5c58;
+  color: #e8f2ef;
+}
+
+html.dark .c360-help-btn:hover {
+  background: #1d3539;
+}
+
+@media (max-width: 700px) {
+  .c360-help-btn {
+    padding: 8px;
+  }
+
+  .c360-help-btn span {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 10. Estado de conexion y avisos propios
+ * ------------------------------------------------------------------ */
+
+.c360-net-badge {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--c360-safe-t) + 8px);
+  z-index: 9200;
+  transform: translate(-50%, -140%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 28px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--c360-ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--c360-shadow-2);
+  transition: transform 0.28s ease;
+}
+
+.c360-net-badge[data-visible="1"] {
+  transform: translate(-50%, 0);
+}
+
+.c360-net-badge[data-tone="ok"] {
+  background: var(--c360-ok);
+}
+
+/* ------------------------------------------------------------------ *
+ * 11. Pantalla de recuperacion ante un error inesperado
+ * ------------------------------------------------------------------ */
+
+.c360-crash {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(14 27 31 / 92%);
+  backdrop-filter: blur(4px);
+}
+
+.c360-crash-card {
+  width: min(440px, 100%);
+  padding: 26px;
+  border-radius: 18px;
+  background: var(--c360-surface);
+  color: var(--c360-ink);
+  box-shadow: var(--c360-shadow-2);
+  text-align: left;
+}
+
+.c360-crash-card h2 {
+  margin: 0 0 10px;
+  font-size: 21px;
+  letter-spacing: -0.4px;
+}
+
+.c360-crash-card p {
+  margin: 0 0 14px;
+  color: var(--c360-ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.c360-crash-card pre {
+  max-height: 120px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--c360-canvas);
+  color: var(--c360-ink-soft);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.c360-crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------------ *
+ * 12. Movimiento reducido
+ * ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
