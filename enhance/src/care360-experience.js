@@ -662,8 +662,16 @@
     document.addEventListener(
       "click",
       function (event) {
+        if (event.target.closest(".c360-step-extra")) return;
         var tab = event.target.closest('.steps [data-slot="tabs-trigger"]');
         if (!tab) return;
+        var tabs = nativeVisitTabs();
+        var index = tabs.indexOf(tab);
+        if (index === 1) {
+          openingMeasures = false;
+          setVisitPhase("chequeo");
+          return;
+        }
         window.setTimeout(function () {
           if (!openingMeasures) syncPhaseFromNative();
         }, 50);
