@@ -14,7 +14,8 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `AVGUST-CARE-360-1.4.2-Android.apk` | **Descarga esta.** Única versión para instalar. |
+| `CARE-360-1.4.3-sin-marca-Android.apk` | **Sin marca Avgust.** Sin logos ni el nombre Avgust. |
+| `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
 | `tests/` | Prueba de extremo a extremo del contenido web. |
@@ -27,9 +28,19 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.2
+## Versión 1.4.3 sin marca Avgust
 
-Esta es la **única versión** de distribución. Descárgala aquí:
+Esta versión **no incluye logos de Avgust ni el nombre Avgust** en la interfaz,
+la guía, el icono web ni los informes. El programa se presenta como **CARE 360**.
+
+**[CARE-360-1.4.3-sin-marca-Android.apk](./CARE-360-1.4.3-sin-marca-Android.apk)**
+
+Se instala encima de la 1.4.2 (misma firma). La 1.4.2 con marca Avgust sigue
+disponible aquí: **[AVGUST-CARE-360-1.4.2-Android.apk](./AVGUST-CARE-360-1.4.2-Android.apk)**.
+
+## Versión 1.4.2 (con marca Avgust)
+
+Sigue disponible para quien necesite la interfaz con marca:
 
 **[AVGUST-CARE-360-1.4.2-Android.apk](./AVGUST-CARE-360-1.4.2-Android.apk)**
 
@@ -105,6 +116,13 @@ tools/build-apk.sh
 
 Parámetros opcionales: `tools/build-apk.sh <apk-base> <version-name> <version-code>`.
 
+Para generar la APK **sin marca Avgust**:
+
+```bash
+C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
+  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.3 15
+```
+
 El guion extrae del paquete base sólo lo que va a cambiar, añade la capa de
 mejoras, ajusta `versionName` y `versionCode` dentro del manifiesto binario,
 rearma el APK, lo alinea y lo firma (esquemas v1, v2 y v3). El resultado queda en
@@ -137,6 +155,7 @@ tools/build-apk.sh
 
 ```bash
 tools/dev-preview.sh          # sirve la aplicación en http://localhost:8080
+C360_DEBRAND=1 tools/dev-preview.sh   # igual, sin marca Avgust
 ```
 
 Prepara una copia del contenido web del APK con la capa de mejoras aplicada. Es

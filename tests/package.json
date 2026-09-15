@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Pruebas de extremo a extremo del contenido web de AVGUST CARE 360",
   "scripts": {
-    "test": "node e2e.mjs"
+    "test": "node e2e.mjs",
+    "test:debrand": "node debrand.mjs"
   },
   "devDependencies": {
     "puppeteer": "^23.0.0"

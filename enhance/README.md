@@ -1,6 +1,6 @@
 # Capa de interfaz y experiencia
 
-Estos cuatro archivos se copian dentro del APK en `assets/public/enhance/` y se
+Estos archivos se copian dentro del APK en `assets/public/enhance/` y se
 enlazan desde `index.html` después del paquete de la aplicación. Se cargan
 siempre al final, de modo que las reglas de igual especificidad definidas aquí
 ganan a las del paquete compilado, y todo el JavaScript es aditivo: no se
@@ -12,6 +12,7 @@ modifica ni una línea del código original.
 | `care360-presentation.css` | Estilos de la presentación de bienvenida. |
 | `care360-presentation.js` | Contenido y comportamiento de la presentación, el botón **Guía** de la barra superior y la API `window.Care360Intro`. |
 | `care360-experience.js` | Botón físico de atrás, teclado en pantalla, aviso de cambios sin guardar, estado de conexión, recuperación ante errores y medidas de las barras fijas. |
+| `care360-debrand.css` / `care360-debrand.js` | Solo en la APK sin marca: ocultan logos y sustituyen el nombre Avgust en pantalla. |
 
 ## Variables publicadas en tiempo de ejecución
 

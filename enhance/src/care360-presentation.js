@@ -11,6 +11,14 @@
   var SEEN_KEY = "care360:presentacion:vista";
   var SEEN_VALUE = "1";
 
+  function debranded() {
+    return window.__C360_DEBRAND === true;
+  }
+
+  function appName() {
+    return debranded() ? "CARE 360" : "AVGUST CARE 360";
+  }
+
   function store(key, value) {
     try {
       if (value === undefined) return window.localStorage.getItem(key);
@@ -62,8 +70,8 @@
 
   var SLIDES = [
     {
-      eyebrow: "Avgust Crop Protection",
-      title: "Bienvenido a AVGUST CARE 360",
+      eyebrow: debranded() ? "Acompañamiento en campo" : "Avgust Crop Protection",
+      title: "Bienvenido a " + appName(),
       lead:
         "La herramienta de acompañamiento en campo para el programa de aseguramiento del proceso MIPE en fincas de flores.",
       html:
@@ -100,7 +108,9 @@
         item(
           ICONS.file,
           "Emite el informe técnico",
-          "Genera el documento en Word o PDF con la imagen de AVGUST y lo prepara para enviarlo por correo."
+          debranded()
+            ? "Genera el documento en Word o PDF y lo prepara para enviarlo por correo."
+            : "Genera el documento en Word o PDF con la imagen de AVGUST y lo prepara para enviarlo por correo."
         ) +
         item(
           ICONS.check,
@@ -119,7 +129,9 @@
         item(
           "01",
           "Datos",
-          "Finca, fecha, representante, responsable AVGUST y los capítulos que vas a evaluar."
+          debranded()
+            ? "Finca, fecha, representante, responsable técnico y los capítulos que vas a evaluar."
+            : "Finca, fecha, representante, responsable AVGUST y los capítulos que vas a evaluar."
         ) +
         item(
           "02",
@@ -203,11 +215,15 @@
       html:
         '<div class="c360-credits">' +
         '<div class="c360-credit"><small>Desarrollado por</small><strong>Kevin Villamizar</strong>' +
-        "<p>Diseño, desarrollo y puesta en marcha de AVGUST CARE 360.</p></div>" +
+        "<p>Diseño, desarrollo y puesta en marcha de " +
+        appName() +
+        ".</p></div>" +
         '<div class="c360-credit"><small>Con la ayuda de</small><strong>Wilson Castro</strong>' +
         "<p>Este programa fue creado con la ayuda de Wilson Castro.</p></div>" +
         "</div>" +
-        '<p class="c360-version">AVGUST CARE 360 · versión ' +
+        '<p class="c360-version">' +
+        appName() +
+        " · versión " +
         (VERSION.indexOf("__C360") === 0 ? "de desarrollo" : VERSION) +
         "<br>Si quieres volver a esta guía, usa el botón “Guía” de la barra superior.</p>",
     },
@@ -224,11 +240,13 @@
     overlay.className = "c360-intro";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
-    overlay.setAttribute("aria-label", "Presentación de AVGUST CARE 360");
+    overlay.setAttribute("aria-label", "Presentación de " + appName());
     overlay.innerHTML =
       '<div class="c360-intro-card">' +
       '<div class="c360-intro-head">' +
-      '<img src="/avgust-logo.svg" alt="Avgust Crop Protection">' +
+      (debranded()
+        ? '<strong class="c360-intro-mark">CARE 360</strong>'
+        : '<img src="/avgust-logo.svg" alt="Avgust Crop Protection">') +
       '<button type="button" class="c360-intro-skip" data-act="skip">Omitir</button>' +
       "</div>" +
       '<div class="c360-intro-progress"><i></i></div>' +

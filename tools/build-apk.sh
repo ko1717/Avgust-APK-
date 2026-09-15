@@ -12,8 +12,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
-VERSION_NAME="${2:-1.4.2}"
-VERSION_CODE="${3:-14}"
+DEBRAND="${C360_DEBRAND:-0}"
+if [[ "$DEBRAND" == "1" ]]; then
+  VERSION_NAME="${2:-1.4.3}"
+  VERSION_CODE="${3:-15}"
+else
+  VERSION_NAME="${2:-1.4.2}"
+  VERSION_CODE="${3:-14}"
+fi
 BASE_VERSION_NAME="1.1.0-rc.5"
 
 OUT_DIR="$ROOT/dist"
@@ -41,12 +47,23 @@ APKSIGNER="$(find_tool apksigner)"
 
 echo "==> APK base:  $BASE_APK"
 echo "==> Versión:   $VERSION_NAME (código $VERSION_CODE)"
+if [[ "$DEBRAND" == "1" ]]; then
+  echo "==> Marca:      sin Avgust (logos y nombre visibles)"
+fi
 
 # --------------------------------------------------------------------------
 # 1. Extraer del paquete base solo lo que se va a modificar
 # --------------------------------------------------------------------------
 cd "$WORK"
-unzip -q "$BASE_APK" "assets/public/index.html" "assets/public/sw.js" "AndroidManifest.xml"
+if [[ "$DEBRAND" == "1" ]]; then
+  unzip -q "$BASE_APK" \
+    "assets/public/*" \
+    "assets/capacitor.config.json" \
+    "resources.arsc" \
+    "AndroidManifest.xml"
+else
+  unzip -q "$BASE_APK" "assets/public/index.html" "assets/public/sw.js" "AndroidManifest.xml"
+fi
 
 # --------------------------------------------------------------------------
 # 2. Copiar la capa de mejoras y sellar la versión
@@ -56,6 +73,10 @@ cp "$ROOT/enhance/src/care360-enhance.css" assets/public/enhance/
 cp "$ROOT/enhance/src/care360-presentation.css" assets/public/enhance/
 cp "$ROOT/enhance/src/care360-presentation.js" assets/public/enhance/
 cp "$ROOT/enhance/src/care360-experience.js" assets/public/enhance/
+if [[ "$DEBRAND" == "1" ]]; then
+  cp "$ROOT/enhance/src/care360-debrand.css" assets/public/enhance/
+  cp "$ROOT/enhance/src/care360-debrand.js" assets/public/enhance/
+fi
 sed -i "s/__C360_VERSION__/$VERSION_NAME/g" assets/public/enhance/care360-presentation.js
 
 # --------------------------------------------------------------------------
@@ -81,6 +102,12 @@ body = (
     '<script defer src="/enhance/care360-experience.js?v=%s"></script>'
     '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version)
 )
+if __import__("os").environ.get("C360_DEBRAND") == "1":
+    head += '<link rel="stylesheet" href="/enhance/care360-debrand.css?v=%s">' % version
+    body = (
+        '<script defer src="/enhance/care360-debrand.js?v=%s"></script>' % version
+        + body
+    )
 
 html = html.replace("</head>", head + "</head>", 1)
 html = html.replace("</body>", body + "</body>", 1)
@@ -97,22 +124,28 @@ PY
 # --------------------------------------------------------------------------
 # 4. Renovar la caché del service worker para que la versión nueva se aplique
 # --------------------------------------------------------------------------
-python3 - "$VERSION_NAME" <<'PY'
+python3 - "$VERSION_NAME" "${DEBRAND}" <<'PY'
 import re
 import sys
 
 version = sys.argv[1]
+debrand = sys.argv[2] == "1"
 path = "assets/public/sw.js"
 source = open(path, encoding="utf-8").read()
+prefix = "care360-shell" if debrand else "avgust-care-shell"
 source = re.sub(
     r"const CACHE='[^']+'",
-    "const CACHE='avgust-care-shell-%s'" % version,
+    "const CACHE='%s-%s'" % (prefix, version),
     source,
     count=1,
 )
 open(path, "w", encoding="utf-8").write(source)
 print("service worker apuntando a la caché de la versión %s" % version)
 PY
+
+if [[ "$DEBRAND" == "1" ]]; then
+  python3 "$ROOT/tools/debrand_web.py" "$WORK"
+fi
 
 # --------------------------------------------------------------------------
 # 5. Actualizar versionName y versionCode del manifiesto binario
@@ -133,7 +166,21 @@ chmod u+w "$STAGED"
 
 # La firma anterior deja de ser válida en cuanto cambia el contenido.
 zip -q -d "$STAGED" 'META-INF/*.RSA' 'META-INF/*.SF' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' >/dev/null 2>&1 || true
-zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/*
+if [[ "$DEBRAND" == "1" ]]; then
+  zip -q -X "$STAGED" \
+    AndroidManifest.xml \
+    resources.arsc \
+    assets/capacitor.config.json \
+    assets/public/index.html \
+    assets/public/sw.js \
+    assets/public/avgust-logo.svg \
+    assets/public/favicon.svg \
+    assets/public/manifest.webmanifest \
+    assets/public/assets/* \
+    assets/public/enhance/*
+else
+  zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/*
+fi
 
 ALIGNED="$WORK/aligned.apk"
 "$ZIPALIGN" -f -p 4 "$STAGED" "$ALIGNED"
@@ -157,7 +204,11 @@ if [[ ! -f "$KEYSTORE" ]]; then
     >/dev/null
 fi
 
-FINAL="$OUT_DIR/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
+if [[ "$DEBRAND" == "1" ]]; then
+  FINAL="$OUT_DIR/CARE-360-$VERSION_NAME-sin-marca-Android.apk"
+else
+  FINAL="$OUT_DIR/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
+fi
 "$APKSIGNER" sign \
   --ks "$KEYSTORE" --ks-key-alias "$ALIAS" \
   --ks-pass "pass:$STOREPASS" --key-pass "pass:$STOREPASS" \
@@ -166,13 +217,16 @@ FINAL="$OUT_DIR/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
 
 "$APKSIGNER" verify --print-certs "$FINAL" | head -n 6
 
-# Una sola versión en dist/: se retiran los APK intermedios.
-find "$OUT_DIR" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
 find "$OUT_DIR" -maxdepth 1 -name '*.idsig' -delete
-
-# Copia visible en la raíz del repositorio (donde se descarga).
-cp "$FINAL" "$ROOT/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
-find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
+if [[ "$DEBRAND" == "1" ]]; then
+  find "$OUT_DIR" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' ! -name "CARE-360-$VERSION_NAME-sin-marca-Android.apk" -delete
+  cp "$FINAL" "$ROOT/CARE-360-$VERSION_NAME-sin-marca-Android.apk"
+  find "$ROOT" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' ! -name "CARE-360-$VERSION_NAME-sin-marca-Android.apk" -delete
+else
+  find "$OUT_DIR" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
+  cp "$FINAL" "$ROOT/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
+  find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
+fi
 find "$ROOT" -maxdepth 1 -name '*.idsig' -delete
 
 echo

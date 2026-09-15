@@ -59,6 +59,12 @@
   height: auto;
 }
 
+.c360-intro-mark {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .c360-intro-skip {
   flex: none;
   min-height: 38px;

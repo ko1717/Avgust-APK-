@@ -23,10 +23,11 @@ mkdir -p "$OUT/enhance"
 cp "$ROOT"/enhance/src/* "$OUT/enhance/"
 sed -i "s/__C360_VERSION__/preview/g" "$OUT/enhance/care360-presentation.js"
 
-python3 - "$OUT" <<'PY'
+python3 - "$OUT" "${C360_DEBRAND:-0}" <<'PY'
 import sys
 
 root = sys.argv[1]
+debrand = sys.argv[2] == "1"
 path = root + "/index.html"
 html = open(path, encoding="utf-8").read()
 head = (
@@ -38,6 +39,12 @@ body = (
     '<script defer src="/enhance/care360-experience.js"></script>'
     '<script defer src="/enhance/care360-presentation.js"></script>'
 )
+if debrand:
+    head += '<link rel="stylesheet" href="/enhance/care360-debrand.css">'
+    body = (
+        '<script defer src="/enhance/care360-debrand.js"></script>'
+        + body
+    )
 html = html.replace("</head>", head + "</head>", 1).replace("</body>", body + "</body>", 1)
 if "interactive-widget=" not in html:
     html = html.replace(
@@ -47,6 +54,10 @@ if "interactive-widget=" not in html:
     )
 open(path, "w", encoding="utf-8").write(html)
 PY
+
+if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
+  python3 "$ROOT/tools/debrand_web.py" "$OUT"
+fi
 
 echo "Vista previa lista en $OUT"
 echo "Sirviendo en http://localhost:$PORT"
