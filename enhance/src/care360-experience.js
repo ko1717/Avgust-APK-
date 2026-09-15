@@ -680,38 +680,165 @@
     );
   }
 
-  function setupKeyboard() {
-    var root = document.documentElement;
+  function keyboardCoverPx() {
+    var inner = window.innerHeight || 0;
+    if (window.visualViewport) {
+      var gap =
+        inner - window.visualViewport.height - (window.visualViewport.offsetTop || 0);
+      if (gap > 96) return Math.round(gap);
+    }
+    /* En el WebView de Android el teclado suele tapar sin encoger visualViewport. */
+    var guess = Math.round(inner * 0.45);
+    if (guess < 220) guess = Math.min(280, Math.round(inner * 0.5));
+    if (guess > inner * 0.52) guess = Math.round(inner * 0.52);
+    return guess;
+  }
 
-    function setOpen(open) {
-      root.classList.toggle("c360-keyboard", !!open);
-      syncChromeSizes();
+  function keyboardPaddingPx() {
+    if (window.visualViewport) {
+      var gap = window.innerHeight - window.visualViewport.height;
+      if (gap > 96) return 0;
+    }
+    return keyboardCoverPx();
+  }
+
+  function setKeyboardOpen(open, target) {
+    var root = document.documentElement;
+    var height = open ? keyboardPaddingPx() : 0;
+    var queryTyping = !!(open && target && target.closest && target.closest(".farm-query"));
+    root.classList.toggle("c360-keyboard", !!open);
+    root.classList.toggle("c360-query-typing", queryTyping);
+    root.style.setProperty("--c360-keyboard-h", height + "px");
+    syncChromeSizes();
+  }
+
+  function chromeBottom() {
+    var bottom = 8;
+    var topbar = q(".topbar");
+    var nav = q(".module-nav");
+    if (topbar) bottom = Math.max(bottom, topbar.getBoundingClientRect().bottom);
+    if (nav) bottom = Math.max(bottom, nav.getBoundingClientRect().bottom);
+    return Math.round(bottom);
+  }
+
+  function nearestScroller(el) {
+    var node = el && el.parentElement;
+    while (node && node !== document.documentElement) {
+      if (node.scrollHeight > node.clientHeight + 4) {
+        var overflow = window.getComputedStyle(node).overflowY;
+        if (
+          overflow === "auto" ||
+          overflow === "scroll" ||
+          overflow === "overlay" ||
+          overflow === "hidden" ||
+          node === document.body
+        ) {
+          return node;
+        }
+      }
+      node = node.parentElement;
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function revealTypingTarget(el) {
+    if (!el || !isTypingTarget(el)) return;
+    setKeyboardOpen(true, el);
+    window.requestAnimationFrame(function () {
+      if (document.activeElement !== el) return;
+      var cover = keyboardCoverPx();
+      var topLimit = chromeBottom() + 10;
+      var bottomLimit = window.innerHeight - cover - 16;
+      if (window.visualViewport && window.innerHeight - window.visualViewport.height > 96) {
+        bottomLimit =
+          (window.visualViewport.offsetTop || 0) + window.visualViewport.height - 16;
+      }
+      if (bottomLimit - topLimit < 72) bottomLimit = topLimit + 96;
+
+      var rect = el.getBoundingClientRect();
+      if (rect.top >= topLimit && rect.bottom <= bottomLimit) return;
+
+      var desiredTop = topLimit + 8;
+      var delta = rect.top - desiredTop;
+      var scroller = nearestScroller(el);
+      try {
+        scroller.scrollTop += delta;
+      } catch (err) {
+        /* algunos nodos no aceptan scrollTop */
+      }
+
+      rect = el.getBoundingClientRect();
+      if (rect.top >= topLimit && rect.bottom <= bottomLimit) return;
+
+      if (document.scrollingElement && document.scrollingElement !== scroller) {
+        document.scrollingElement.scrollTop += rect.top - desiredTop;
+      }
+
+      rect = el.getBoundingClientRect();
+      if (rect.top >= topLimit && rect.bottom <= bottomLimit) return;
+      try {
+        el.scrollIntoView({ block: "start", inline: "nearest", behavior: "auto" });
+      } catch (err2) {
+        el.scrollIntoView();
+      }
+      rect = el.getBoundingClientRect();
+      var extra = rect.top - desiredTop;
+      if (Math.abs(extra) > 4) {
+        var follow = nearestScroller(el);
+        try {
+          follow.scrollTop += extra;
+        } catch (err3) {
+          window.scrollBy(0, extra);
+        }
+      }
+    });
+  }
+
+  function setupKeyboard() {
+    var timers = [];
+
+    function clearRevealTimers() {
+      timers.forEach(function (id) {
+        window.clearTimeout(id);
+      });
+      timers = [];
+    }
+
+    function scheduleReveal(el) {
+      clearRevealTimers();
+      [40, 160, 320, 520, 860].forEach(function (ms) {
+        timers.push(
+          window.setTimeout(function () {
+            if (document.activeElement !== el) return;
+            revealTypingTarget(el);
+          }, ms)
+        );
+      });
     }
 
     document.addEventListener("focusin", function (event) {
       if (!isTypingTarget(event.target)) return;
-      setOpen(true);
-      window.setTimeout(function () {
-        if (document.activeElement !== event.target) return;
-        var rect = event.target.getBoundingClientRect();
-        var limit = (window.visualViewport ? window.visualViewport.height : window.innerHeight) - 90;
-        if (rect.bottom > limit || rect.top < 70) {
-          event.target.scrollIntoView({ block: "center", behavior: "smooth" });
-        }
-      }, 320);
+      setKeyboardOpen(true, event.target);
+      scheduleReveal(event.target);
     });
 
     document.addEventListener("focusout", function () {
       window.setTimeout(function () {
-        if (!isTypingTarget(document.activeElement)) setOpen(false);
-      }, 120);
+        if (isTypingTarget(document.activeElement)) return;
+        clearRevealTimers();
+        setKeyboardOpen(false, null);
+      }, 160);
     });
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", function () {
-        var shrunk = window.visualViewport.height < window.innerHeight * 0.78;
-        if (!shrunk) setOpen(false);
-        else if (isTypingTarget(document.activeElement)) setOpen(true);
+        var active = document.activeElement;
+        if (!isTypingTarget(active)) {
+          if (keyboardPaddingPx() === 0 && keyboardCoverPx() < 96) setKeyboardOpen(false, null);
+          return;
+        }
+        setKeyboardOpen(true, active);
+        revealTypingTarget(active);
       });
     }
   }

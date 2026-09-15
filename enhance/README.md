@@ -18,10 +18,11 @@ modifica ni una línea del código original.
 `care360-experience.js` mide las barras fijas y las publica en `:root` para que
 el CSS pueda apoyarse en valores reales en lugar de constantes:
 
-- `--c360-nav-h`: alto de la barra de módulos cuando está fija (0 en escritorio
-  o con el teclado abierto).
+- `--c360-nav-h`: alto de la barra de módulos cuando está fija (0 en escritorio).
 - `--c360-topbar-h`: alto de la barra superior.
 - `--c360-save-h`: alto de la barra de guardado de la visita, si está visible.
+- `--c360-keyboard-h`: espacio reservado al pie cuando el teclado tapa la
+  pantalla (0 si el WebView ya se encogió solo).
 
 ## API pública
 

@@ -24,6 +24,7 @@
   --c360-topbar-h: 66px;
   --c360-safe-b: env(safe-area-inset-bottom, 0px);
   --c360-safe-t: env(safe-area-inset-top, 0px);
+  --c360-keyboard-h: 0px;
 }
 
 html.dark {
@@ -717,6 +718,10 @@ html.dark .form-body img {
     display: none;
   }
 
+  html.c360-keyboard .mobile-save {
+    display: none !important;
+  }
+
   .module-heading h1 {
     font-size: 25px;
     margin: 4px 0 8px;
@@ -862,6 +867,57 @@ html.dark .form-body img {
   .workspace {
     padding-bottom: 32px;
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * 7b. Teclado en pantalla: el campo no puede quedar detrás del IME
+ * ------------------------------------------------------------------ */
+
+html.c360-keyboard .workspace {
+  padding-bottom: calc(
+    28px + var(--c360-save-h, 0px) + var(--c360-keyboard-h, 0px) + var(--c360-safe-b)
+  ) !important;
+}
+
+html.c360-keyboard .farm-query,
+html.c360-keyboard .farm-dossier,
+html.c360-keyboard .editor,
+html.c360-keyboard .followup-panel,
+html.c360-keyboard .metrics-panel {
+  overflow: visible;
+}
+
+html.c360-keyboard input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+html.c360-keyboard textarea,
+html.c360-keyboard select {
+  scroll-margin-top: calc(var(--c360-topbar-h) + var(--c360-nav-h) + 12px);
+  scroll-margin-bottom: calc(var(--c360-keyboard-h, 0px) + 20px);
+}
+
+html.c360-keyboard .query-search {
+  position: sticky;
+  top: calc(var(--c360-topbar-h) + var(--c360-nav-h) + 6px);
+  z-index: 36;
+  background: var(--c360-surface);
+  padding: 4px 0 8px;
+}
+
+html.c360-query-typing .module-heading {
+  display: none;
+}
+
+html.c360-query-typing .query-hero > :not(.query-search) {
+  display: none;
+}
+
+html.c360-query-typing .query-hero {
+  padding: 12px 16px;
+  grid-template-columns: 1fr;
+}
+
+html.c360-keyboard .c360-to-top,
+html.c360-query-typing .c360-to-top {
+  display: none;
 }
 
 /* ------------------------------------------------------------------ *

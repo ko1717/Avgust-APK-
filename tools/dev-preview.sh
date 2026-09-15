@@ -39,6 +39,12 @@ body = (
     '<script defer src="/enhance/care360-presentation.js"></script>'
 )
 html = html.replace("</head>", head + "</head>", 1).replace("</body>", body + "</body>", 1)
+if "interactive-widget=" not in html:
+    html = html.replace(
+        "viewport-fit=cover",
+        "viewport-fit=cover, interactive-widget=resizes-content",
+        1,
+    )
 open(path, "w", encoding="utf-8").write(html)
 PY
 

@@ -12,8 +12,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
-VERSION_NAME="${2:-1.4.1}"
-VERSION_CODE="${3:-13}"
+VERSION_NAME="${2:-1.4.2}"
+VERSION_CODE="${3:-14}"
 BASE_VERSION_NAME="1.1.0-rc.5"
 
 OUT_DIR="$ROOT/dist"
@@ -84,6 +84,12 @@ body = (
 
 html = html.replace("</head>", head + "</head>", 1)
 html = html.replace("</body>", body + "</body>", 1)
+if "interactive-widget=" not in html:
+    html = html.replace(
+        "viewport-fit=cover",
+        "viewport-fit=cover, interactive-widget=resizes-content",
+        1,
+    )
 open(path, "w", encoding="utf-8").write(html)
 print("index.html actualizado")
 PY

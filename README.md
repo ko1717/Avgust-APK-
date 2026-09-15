@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `AVGUST-CARE-360-1.4.1-Android.apk` | **Descarga esta.** Única versión para instalar. |
+| `AVGUST-CARE-360-1.4.2-Android.apk` | **Descarga esta.** Única versión para instalar. |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
 | `tests/` | Prueba de extremo a extremo del contenido web. |
@@ -27,11 +27,11 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.1
+## Versión 1.4.2
 
 Esta es la **única versión** de distribución. Descárgala aquí:
 
-**[AVGUST-CARE-360-1.4.1-Android.apk](./AVGUST-CARE-360-1.4.1-Android.apk)**
+**[AVGUST-CARE-360-1.4.2-Android.apk](./AVGUST-CARE-360-1.4.2-Android.apk)**
 
 ### Presentación de bienvenida
 
@@ -76,7 +76,9 @@ botones o deslizando el dedo, y reabrir con el botón **Guía**.
   recorre la visita (`05 → 04 → 03 → 02 → 01`), cierra el editor, deshace las
   pestañas internas, vuelve a *Inicio* y sólo sale tras una segunda pulsación,
   avisando si hay cambios sin guardar.
-- **Teclado en pantalla.** El campo que se está escribiendo queda centrado y a la vista.
+- **Teclado en pantalla.** El campo que se está escribiendo queda por encima del
+  teclado. En **Consulta**, el buscador de finca no se tapa: se compacta el
+  encabezado y la página deja espacio para desplazarlo.
 - **Aviso de cambios sin guardar** al cambiar de módulo con una visita a medias.
 - **La barra de guardado de la visita** queda al pie de la pantalla, sin tapar la navegación de arriba.
 - **Recuperación ante un error inesperado.** Si la aplicación dejara de
@@ -111,14 +113,14 @@ rearma el APK, lo alinea y lo firma (esquemas v1, v2 y v3). El resultado queda e
 ### Sobre la firma
 
 El paquete original venía firmado con la clave de depuración del equipo donde se
-compiló, que no está disponible aquí. El APK 1.4.1 se firma con la clave de
+compiló, que no está disponible aquí. El APK 1.4.2 se firma con la clave de
 `tools/signing/`.
 
 - **Si ya tiene una 1.2.x, 1.3.0 o 1.4.x firmada con esta misma clave:** puede
-  instalar 1.4.1 encima.
+  instalar 1.4.2 encima.
 - **Si tiene 1.1.0-rc.5:** hay que desinstalarla primero. Cree un respaldo
   completo desde *Inicio → Crear respaldo completo*, desinstale, instale
-  `AVGUST-CARE-360-1.4.1-Android.apk` y restaure el respaldo.
+  `AVGUST-CARE-360-1.4.2-Android.apk` y restaure el respaldo.
 
 Para publicar con otra clave:
 

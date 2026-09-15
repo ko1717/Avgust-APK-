@@ -57,7 +57,7 @@ check('La presentación tiene 7 secciones', slideTitles.filter(Boolean).length =
 const creditText = await p.evaluate(() => document.querySelector('.c360-intro-body').innerText);
 check('Aparece Kevin Villamizar como desarrollador', /Kevin Villamizar/.test(creditText));
 check('Aparece la ayuda de Wilson Castro', /creado con la ayuda de Wilson Castro/i.test(creditText));
-check('La versión mostrada es la del APK', /1\.4\.1|preview|de desarrollo/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
+check('La versión mostrada es la del APK', /1\.4\.2|preview|de desarrollo/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
 
 // swipe back
 await p.evaluate(() => {
@@ -92,6 +92,35 @@ for (let i = 0; i < modules.length; i++) {
   if (txt.trim().length < 40) allOk = false;
 }
 check('Los 7 módulos muestran contenido', allOk, moduleTexts.join(' || ').slice(0, 300));
+
+await p.evaluate(() => document.querySelectorAll('.module-nav [role=tab]')[2].click());
+await wait(900);
+const kb = await p.evaluate(() => {
+  const input = document.querySelector('.query-search input, .farm-query input[type="search"], .farm-query input:not([type])');
+  if (!input) return { found: false };
+  input.scrollIntoView({ block: 'center' });
+  input.focus();
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const rect = input.getBoundingClientRect();
+      const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--c360-keyboard-h')) || 0;
+      const cover = Math.max(h, window.innerHeight * 0.4);
+      resolve({
+        found: true,
+        hasClass: document.documentElement.classList.contains('c360-keyboard'),
+        queryTyping: document.documentElement.classList.contains('c360-query-typing'),
+        keyboardH: h,
+        top: Math.round(rect.top),
+        bottom: Math.round(rect.bottom),
+        inner: window.innerHeight,
+        aboveBand: rect.bottom <= window.innerHeight - cover + 12,
+      });
+    }, 700);
+  });
+});
+check('Consulta: el buscador queda por encima del teclado', !!(kb.found && kb.hasClass && kb.queryTyping && kb.aboveBand), JSON.stringify(kb));
+await p.evaluate(() => document.activeElement && document.activeElement.blur());
+await wait(300);
 
 // 4. full visit
 await p.evaluate(() => document.querySelectorAll('.module-nav [role=tab]')[4].click());
