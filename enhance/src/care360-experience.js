@@ -194,19 +194,7 @@
     /* Overlay de informe, solicitud o expediente abierto encima del módulo. */
     if (clickButtonByLabel(/^cerrar$/i, true)) return true;
 
-    var steps = qa('.steps [data-slot="tabs-trigger"]');
-    var editor = q(".editor");
-    if (steps.length && isVisible(editor)) {
-      var stepIndex = -1;
-      for (var s = 0; s < steps.length; s++) {
-        if (steps[s].hasAttribute("data-active")) stepIndex = s;
-      }
-      if (stepIndex > 0) {
-        steps[stepIndex - 1].click();
-        return true;
-      }
-      if (clickButtonByLabel(/ver visitas guardadas/i)) return true;
-    }
+    if (goVisitBack()) return true;
 
     if (unwindInnerTabs()) return true;
 
@@ -526,8 +514,163 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * teclado en pantalla
+   * visita: mediciones en su propio paso
    * ------------------------------------------------------------------ */
+
+  var openingMeasures = false;
+
+  function nativeVisitTabs() {
+    return qa('.steps [data-slot="tabs-trigger"]');
+  }
+
+  function visitPhase() {
+    var editor = q(".editor");
+    return (editor && editor.getAttribute("data-c360-visit")) || "";
+  }
+
+  function setVisitPhase(phase) {
+    var editor = q(".editor");
+    if (editor) editor.setAttribute("data-c360-visit", phase);
+    document.documentElement.setAttribute("data-c360-visit", phase);
+    var extra = q(".c360-step-extra");
+    if (extra) {
+      if (phase === "mediciones") extra.setAttribute("data-active", "");
+      else extra.removeAttribute("data-active");
+    }
+  }
+
+  function goToVisitPhase(phase) {
+    var tabs = nativeVisitTabs();
+    if (!tabs.length) return false;
+    if (phase === "mediciones") {
+      openingMeasures = true;
+      if (tabs[1] && !tabs[1].hasAttribute("data-active")) tabs[1].click();
+      setVisitPhase("mediciones");
+      window.setTimeout(function () {
+        setVisitPhase("mediciones");
+        openingMeasures = false;
+      }, 80);
+      return true;
+    }
+    var index = { datos: 0, chequeo: 1, fotos: 2, informe: 3 }[phase];
+    if (index === undefined || !tabs[index]) return false;
+    tabs[index].click();
+    setVisitPhase(phase);
+    return true;
+  }
+
+  function goVisitBack() {
+    var editor = q(".editor");
+    if (!isVisible(editor) || !q(".steps")) return false;
+    var phase = visitPhase();
+    if (phase === "informe") return goToVisitPhase("fotos");
+    if (phase === "fotos") return goToVisitPhase("chequeo");
+    if (phase === "chequeo") return goToVisitPhase("mediciones");
+    if (phase === "mediciones") return goToVisitPhase("datos");
+    if (phase === "datos") return clickButtonByLabel(/ver visitas guardadas/i);
+    var tabs = nativeVisitTabs();
+    for (var i = tabs.length - 1; i >= 0; i--) {
+      if (tabs[i].hasAttribute("data-active")) {
+        if (i > 0) {
+          tabs[i - 1].click();
+          return true;
+        }
+        return clickButtonByLabel(/ver visitas guardadas/i);
+      }
+    }
+    return false;
+  }
+
+  function relabelNativeSteps() {
+    var tabs = nativeVisitTabs();
+    var labels = ["01 Datos", "03 Evaluación", "04 Fotos", "05 Informe"];
+    for (var i = 0; i < tabs.length && i < labels.length; i++) {
+      if ((tabs[i].textContent || "").trim() !== labels[i]) {
+        tabs[i].textContent = labels[i];
+      }
+    }
+  }
+
+  function ensureMeasureTab() {
+    var list = q(".steps");
+    if (!list) return;
+    if (q(".c360-step-extra", list)) return;
+    var tabs = qa('[data-slot="tabs-trigger"]', list);
+    if (tabs.length < 2) return;
+    var extra = document.createElement("button");
+    extra.type = "button";
+    extra.className = "c360-step-extra";
+    extra.setAttribute("data-c360-step", "mediciones");
+    extra.textContent = "02 Mediciones";
+    extra.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      goToVisitPhase("mediciones");
+    });
+    list.insertBefore(extra, tabs[1]);
+  }
+
+  function markMeasureBlocks() {
+    qa(".form-body h3").forEach(function (heading) {
+      if (!/mediciones de campo/i.test(heading.textContent || "")) return;
+      heading.classList.add("c360-measure-heading");
+      var fields = heading.nextElementSibling;
+      if (fields && /\bfields\b/.test(fields.className || "")) {
+        fields.classList.add("c360-measure-fields");
+      }
+    });
+  }
+
+  function ensureMeasureContinue() {
+    var fields = q(".c360-measure-fields");
+    if (!fields || q(".c360-to-eval")) return;
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "primary c360-to-eval";
+    button.textContent = "Ir a evaluación";
+    button.addEventListener("click", function () {
+      goToVisitPhase("chequeo");
+    });
+    fields.insertAdjacentElement("afterend", button);
+  }
+
+  function syncPhaseFromNative() {
+    if (openingMeasures) return;
+    var tabs = nativeVisitTabs();
+    var names = ["datos", "chequeo", "fotos", "informe"];
+    for (var i = 0; i < tabs.length; i++) {
+      if (!tabs[i].hasAttribute("data-active")) continue;
+      if (names[i] === "chequeo" && visitPhase() === "mediciones") return;
+      setVisitPhase(names[i] || "datos");
+      return;
+    }
+  }
+
+  function enhanceVisitSteps() {
+    if (!q(".editor") || !q(".steps")) {
+      document.documentElement.removeAttribute("data-c360-visit");
+      return;
+    }
+    relabelNativeSteps();
+    ensureMeasureTab();
+    markMeasureBlocks();
+    ensureMeasureContinue();
+    if (!openingMeasures) syncPhaseFromNative();
+  }
+
+  function setupVisitSteps() {
+    document.addEventListener(
+      "click",
+      function (event) {
+        var tab = event.target.closest('.steps [data-slot="tabs-trigger"]');
+        if (!tab) return;
+        window.setTimeout(function () {
+          if (!openingMeasures) syncPhaseFromNative();
+        }, 50);
+      },
+      true
+    );
+  }
 
   function setupKeyboard() {
     var root = document.documentElement;
@@ -577,6 +720,7 @@
     setupScrollHelpers();
     setupKeyboard();
     setupModuleSwipe();
+    setupVisitSteps();
 
     var pendingSync = false;
     var observer = new MutationObserver(function () {
@@ -585,9 +729,15 @@
       window.requestAnimationFrame(function () {
         pendingSync = false;
         syncChromeSizes();
+        enhanceVisitSteps();
       });
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-active"],
+    });
 
     window.addEventListener("resize", syncChromeSizes, { passive: true });
     window.addEventListener("orientationchange", function () {
@@ -598,7 +748,8 @@
     (function poll() {
       keepActiveTabVisible();
       watchChromeSizes();
-      if (Date.now() - started < 8000) window.setTimeout(poll, 400);
+      enhanceVisitSteps();
+      if (Date.now() - started < 8000 || q(".editor")) window.setTimeout(poll, 500);
     })();
   }
 

@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `dist/AVGUST-CARE-360-1.3.0-Android.apk` | Única versión para instalar. |
+| `dist/AVGUST-CARE-360-1.4.0-Android.apk` | Única versión para instalar. |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
 | `tests/` | Prueba de extremo a extremo del contenido web. |
@@ -27,10 +27,10 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.3.0
+## Versión 1.4.0
 
 Esta es la **única versión** de distribución. El APK está en
-`dist/AVGUST-CARE-360-1.3.0-Android.apk`.
+`dist/AVGUST-CARE-360-1.4.0-Android.apk`.
 
 ### Presentación de bienvenida
 
@@ -39,7 +39,7 @@ explica, en menos de un minuto:
 
 1. Qué es AVGUST CARE 360 y que funciona sin conexión.
 2. Para qué está hecho: evaluación MIPE, hallazgos, informe y compromisos.
-3. Cómo se registra una visita: `01 Datos`, `02 Evaluación`, `03 Fotos`, `04 Informe`.
+3. Cómo se registra una visita: `01 Datos`, `02 Mediciones`, `03 Evaluación`, `04 Fotos`, `05 Informe`.
 4. Qué hace cada uno de los siete módulos.
 5. El ciclo de vida del informe: borrador, en revisión, aprobado y publicado.
 6. Dónde viven los datos y cómo crear y restaurar un respaldo.
@@ -59,8 +59,10 @@ botones o deslizando el dedo, y reabrir con el botón **Guía**.
   métricas caben en la pantalla: no ensanchan ni recortan el contenido.
 - **Tabletas, ventanas medianas y teléfono en horizontal** usan las etiquetas
   cortas para que tampoco quede ningún módulo oculto.
-- **Pasos de la visita siempre visibles.** La barra `01 · 02 · 03 · 04` queda
-  fija bajo la cabecera mientras se llena el formulario.
+- **Pasos de la visita siempre visibles.** La barra `01 · 02 · 03 · 04 · 05` queda
+  fija bajo la cabecera mientras se llena el formulario. Las mediciones de campo
+  (pH, dureza, presión, volumen, tiempo y equipo) van en el paso **02**, apartadas
+  de la evaluación MIPE.
 - **Objetivos táctiles de 46 px** en botones, campos y respuestas Sí / No /
   No aplica, pensados para trabajar con guantes.
 - **Foco visible** en todos los controles, sombras y radios consistentes,
@@ -69,7 +71,7 @@ botones o deslizando el dedo, y reabrir con el botón **Guía**.
 ### Experiencia de uso
 
 - **Botón físico de atrás.** Cierra la presentación o el diálogo abierto,
-  recorre la visita (`04 → 03 → 02 → 01`), cierra el editor, deshace las
+  recorre la visita (`05 → 04 → 03 → 02 → 01`), cierra el editor, deshace las
   pestañas internas, vuelve a *Inicio* y sólo sale tras una segunda pulsación,
   avisando si hay cambios sin guardar.
 - **Teclado en pantalla.** El campo que se está escribiendo queda centrado y a la vista.
@@ -107,14 +109,14 @@ rearma el APK, lo alinea y lo firma (esquemas v1, v2 y v3). El resultado queda e
 ### Sobre la firma
 
 El paquete original venía firmado con la clave de depuración del equipo donde se
-compiló, que no está disponible aquí. El APK 1.3.0 se firma con la clave de
+compiló, que no está disponible aquí. El APK 1.4.0 se firma con la clave de
 `tools/signing/`.
 
-- **Si ya tiene una 1.2.x o 1.3.0 firmada con esta misma clave:** puede instalar
-  1.3.0 encima.
+- **Si ya tiene una 1.2.x, 1.3.0 o 1.4.0 firmada con esta misma clave:** puede
+  instalar 1.4.0 encima.
 - **Si tiene 1.1.0-rc.5:** hay que desinstalarla primero. Cree un respaldo
   completo desde *Inicio → Crear respaldo completo*, desinstale, instale
-  `dist/AVGUST-CARE-360-1.3.0-Android.apk` y restaure el respaldo.
+  `dist/AVGUST-CARE-360-1.4.0-Android.apk` y restaure el respaldo.
 
 Para publicar con otra clave:
 

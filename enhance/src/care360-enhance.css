@@ -508,8 +508,57 @@ html.dark .form-body img {
 }
 
 /* ------------------------------------------------------------------ *
- * 7. Telefono: barra de modulos arriba, con los siete visibles
+ * 6c. Visita: mediciones en su propio paso
  * ------------------------------------------------------------------ */
+
+.steps .c360-step-extra {
+  appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 16px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.steps .c360-step-extra[data-active] {
+  border-bottom: 3px solid var(--c360-brand);
+  color: var(--c360-brand) !important;
+  font-weight: 800;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.editor[data-c360-visit="mediciones"] .steps [data-slot="tabs-trigger"][data-active] {
+  border-bottom-color: transparent;
+  color: inherit !important;
+  font-weight: inherit;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.editor[data-c360-visit="mediciones"] .form-body > :not(.c360-measure-heading):not(.c360-measure-fields):not(.c360-to-eval) {
+  display: none !important;
+}
+
+.editor[data-c360-visit="chequeo"] .c360-measure-heading,
+.editor[data-c360-visit="chequeo"] .c360-measure-fields,
+.editor[data-c360-visit="chequeo"] .c360-to-eval {
+  display: none !important;
+}
+
+.c360-to-eval {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.editor[data-c360-visit="mediciones"] .c360-measure-heading {
+  margin-top: 0;
+}
 
 @media (max-width: 700px) {
   :root {
@@ -634,11 +683,16 @@ html.dark .form-body img {
     background: var(--c360-surface);
   }
 
-  .steps [data-slot="tabs-trigger"] {
+  .steps [data-slot="tabs-trigger"],
+  .steps .c360-step-extra {
     min-height: 44px;
     min-width: 0;
     flex: 1 1 0;
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.1;
+    white-space: normal;
+    text-align: center;
+    padding: 8px 2px;
   }
 
   /* Objetivos tactiles minimos en campo. */

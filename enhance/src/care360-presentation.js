@@ -111,9 +111,9 @@
     },
     {
       eyebrow: "Cómo funciona",
-      title: "Una visita en cuatro pasos",
+      title: "Una visita en cinco pasos",
       lead:
-        'Al tocar "Nueva visita" el programa te guía por cuatro pestañas. Puedes guardar el avance en cualquier momento y continuar después.',
+        'Al tocar "Nueva visita" el programa te guía por cinco pestañas. Puedes guardar el avance en cualquier momento y continuar después.',
       html:
         '<ul class="c360-list">' +
         item(
@@ -123,16 +123,21 @@
         ) +
         item(
           "02",
-          "Evaluación",
-          'Responde Sí, No o No aplica en cada criterio. Cada "No" pide su hallazgo y su recomendación, y puedes registrar las mediciones de campo.'
+          "Mediciones",
+          "pH, dureza, presión, volumen y tiempo por cama, y el equipo de aplicación."
         ) +
         item(
           "03",
+          "Evaluación",
+          'Responde Sí, No o No aplica en cada criterio. Cada "No" pide su hallazgo y su recomendación.'
+        ) +
+        item(
+          "04",
           "Fotos",
           "Adjunta hasta 60 fotografías. Sirven como evidencia del hallazgo y del cierre."
         ) +
         item(
-          "04",
+          "05",
           "Informe",
           "Revisa el documento, márcalo como revisado y descárgalo en Word o PDF."
         ) +

@@ -57,7 +57,7 @@ check('La presentación tiene 7 secciones', slideTitles.filter(Boolean).length =
 const creditText = await p.evaluate(() => document.querySelector('.c360-intro-body').innerText);
 check('Aparece Kevin Villamizar como desarrollador', /Kevin Villamizar/.test(creditText));
 check('Aparece la ayuda de Wilson Castro', /creado con la ayuda de Wilson Castro/i.test(creditText));
-check('La versión mostrada es la del APK', /1\.3\.0|preview|de desarrollo/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
+check('La versión mostrada es la del APK', /1\.4\.0|preview|de desarrollo/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
 
 // swipe back
 await p.evaluate(() => {
@@ -114,9 +114,19 @@ await p.evaluate(() => {
 await wait(900);
 check('El indicador avisa de cambios sin guardar', await p.evaluate(() => /sin guardar/i.test(document.querySelector('.saved-status')?.textContent || '')));
 
-// answer a criterion in step 02
-await clickText('02 Evaluación');
+await clickText('02 Mediciones');
+await wait(900);
+check('El paso de mediciones muestra pH y presión', await p.evaluate(() => {
+  return [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
+}));
+
+// answer a criterion in step 03
+await clickText('03 Evaluación');
 await wait(1200);
+check('La evaluación ya no mezcla las mediciones', await p.evaluate(() => {
+  const heading = [...document.querySelectorAll('.form-body h3')].find((el) => /Mediciones de campo/i.test(el.textContent));
+  return !heading || heading.getClientRects().length === 0;
+}));
 const answered = await p.evaluate(() => {
   const labels = [...document.querySelectorAll('.answer-options label')];
   const yes = labels.filter(l => /^Sí$/i.test(l.textContent.trim()));
@@ -127,7 +137,7 @@ check('Se pueden responder los criterios de evaluación', answered > 0, answered
 await wait(900);
 
 // report preview
-await clickText('04 Informe');
+await clickText('05 Informe');
 await wait(1800);
 const report = await p.evaluate(() => document.querySelector('.report-paper')?.innerText || '');
 check('La vista previa del informe se genera', /Informe técnico de visita/i.test(report), report.slice(0, 80).replace(/\n/g, ' '));
