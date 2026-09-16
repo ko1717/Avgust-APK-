@@ -26,14 +26,14 @@ OLD_WORD = (
     "l.length&&(s(`Mediciones de campo`),c(l))"
 )
 NEW_WORD = (
-    "{let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
     "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]],"
     "[`Anexo · Bomba e implemento`,[`implement`]],"
     "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]],"
     "[`Equipo de aplicación (lanza o aguilón)`,[`equipment`]]];"
     "xf.some(([,n])=>n.some(t=>e.measurements[t]))&&(s(`Mediciones de campo`),"
     "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
-    "r.length&&(s(t,Iv.HEADING_2),c(r))}))}"
+    "r.length&&(s(t,Iv.HEADING_2),c(r))}))"
 )
 
 PATCHES = (
