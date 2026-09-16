@@ -644,6 +644,20 @@ html.dark .form-body img {
   margin-bottom: 0;
 }
 
+.c360-measure-proxy {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--c360-line);
+  border-radius: 12px;
+  background: var(--c360-surface);
+  color: var(--c360-ink);
+  font: inherit;
+  box-sizing: border-box;
+}
+
 .c360-to-eval,
 .steps .c360-step-extra {
   display: none !important;

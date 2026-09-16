@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.12-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones en el capítulo de evaluación, mezcla final, cultivo, borrado y diccionario geo. |
+| `CARE-360-1.4.13-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones editables en capítulos, mezcla final, cultivo, borrado y diccionario geo. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -27,6 +27,15 @@ aplicación, sin tocar el código compilado. Así se añade comportamiento nuevo
 riesgo de romper ninguna función existente.
 
 ---
+
+## Versión 1.4.13 sin marca Avgust
+
+Corrige la escritura en **calidad del agua** y **mezcla final** (y el resto de
+mediciones del capítulo): los campos ya se pueden editar con normalidad.
+
+**[CARE-360-1.4.13-sin-marca-Android.apk](./CARE-360-1.4.13-sin-marca-Android.apk)**
+
+Se instala encima de la 1.4.2 a la 1.4.12 (misma firma).
 
 ## Versión 1.4.12 sin marca Avgust
 

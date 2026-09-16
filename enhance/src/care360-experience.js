@@ -653,14 +653,29 @@
     return null;
   }
 
-  function parkMeasureLabels(fields) {
-    if (!fields) return;
-    qa(".c360-chapter-measure").forEach(function (box) {
-      qa("label", box).forEach(function (label) {
-        fields.appendChild(label);
-      });
-      box.remove();
+  function measureLabelTitle(label) {
+    return String((label.childNodes[0] && label.childNodes[0].textContent) || label.textContent || "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function findSourceMeasureLabel(fields, title) {
+    return qa("label", fields).find(function (label) {
+      return measureLabelTitle(label) === title;
     });
+  }
+
+  function syncProxyToSource(proxyInput, sourceInput) {
+    if (!proxyInput || !sourceInput) return;
+    if (String(sourceInput.value || "") === String(proxyInput.value || "")) return;
+    setNativeValue(sourceInput, proxyInput.value);
+  }
+
+  function syncSourceToProxy(proxyInput, sourceInput) {
+    if (!proxyInput || !sourceInput) return;
+    if (document.activeElement === proxyInput) return;
+    if (String(proxyInput.value || "") === String(sourceInput.value || "")) return;
+    proxyInput.value = sourceInput.value || "";
   }
 
   function currentEvalChapter() {
@@ -684,27 +699,62 @@
     });
   }
 
+  function typingInMeasureProxy() {
+    var active = document.activeElement;
+    return !!(active && active.closest && active.closest(".c360-chapter-measure"));
+  }
+
   function placeMeasuresInChapters() {
+    if (typingInMeasureProxy()) return;
     var source = findMeasureSource();
     if (!source) return;
-    parkMeasureLabels(source.fields);
 
     var chapter = currentEvalChapter();
+    var existing = qa(".c360-chapter-measure");
+    if (
+      chapter &&
+      existing.length &&
+      existing.every(function (box) {
+        return Number(box.getAttribute("data-chapter")) === chapter;
+      })
+    ) {
+      existing.forEach(function (box) {
+        qa(".c360-measure-proxy", box).forEach(function (proxy) {
+          var title = proxy.getAttribute("data-measure-title") || "";
+          var sourceLabel = findSourceMeasureLabel(source.fields, title);
+          var sourceInput = sourceLabel && sourceLabel.querySelector("input");
+          syncSourceToProxy(proxy, sourceInput);
+        });
+      });
+      return;
+    }
+
+    existing.forEach(function (box) {
+      box.remove();
+    });
     if (!chapter) return;
 
     var labels = qa("label", source.fields);
     MEASURE_PLACEMENTS.forEach(function (spec) {
       if (spec.chapter !== chapter) return;
       var matched = labels.filter(function (label) {
-        var title =
-          (label.childNodes[0] && label.childNodes[0].textContent) || label.textContent || "";
-        return spec.test.test(title.trim());
+        return spec.test.test(measureLabelTitle(label));
       });
       if (!matched.length) return;
+
+      if (spec.id === "equipo") {
+        matched.sort(function (a, b) {
+          var aEquipo = /Equipo de aplicación/i.test(measureLabelTitle(a));
+          var bEquipo = /Equipo de aplicación/i.test(measureLabelTitle(b));
+          if (aEquipo === bEquipo) return 0;
+          return aEquipo ? -1 : 1;
+        });
+      }
 
       var box = document.createElement("section");
       box.className = "c360-chapter-measure";
       box.setAttribute("data-group", spec.id);
+      box.setAttribute("data-chapter", String(spec.chapter));
       box.innerHTML =
         '<header class="c360-measure-group-head">' +
         '<span class="c360-measure-badge">Crit. ' +
@@ -715,16 +765,28 @@
         (spec.hint ? "<p>" + spec.hint + "</p>" : "") +
         "</div></header>";
 
-      if (spec.id === "equipo") {
-        matched.sort(function (a, b) {
-          var aEquipo = /Equipo de aplicación/i.test(a.textContent || "");
-          var bEquipo = /Equipo de aplicación/i.test(b.textContent || "");
-          if (aEquipo === bEquipo) return 0;
-          return aEquipo ? -1 : 1;
-        });
-      }
-      matched.forEach(function (label) {
-        box.appendChild(label);
+      matched.forEach(function (sourceLabel) {
+        var title = measureLabelTitle(sourceLabel);
+        var sourceInput = sourceLabel.querySelector("input");
+        var proxyLabel = document.createElement("label");
+        proxyLabel.appendChild(document.createTextNode(title));
+        var proxy = document.createElement("input");
+        proxy.className = "c360-measure-proxy";
+        proxy.type = (sourceInput && sourceInput.type) || "text";
+        proxy.maxLength = (sourceInput && sourceInput.maxLength > 0 && sourceInput.maxLength) || 200;
+        proxy.setAttribute("data-measure-title", title);
+        proxy.value = (sourceInput && sourceInput.value) || "";
+        function writeThrough() {
+          var live = findMeasureSource();
+          if (!live) return;
+          var liveLabel = findSourceMeasureLabel(live.fields, title);
+          var liveInput = liveLabel && liveLabel.querySelector("input");
+          syncProxyToSource(proxy, liveInput);
+        }
+        proxy.addEventListener("input", writeThrough);
+        proxy.addEventListener("change", writeThrough);
+        proxyLabel.appendChild(proxy);
+        box.appendChild(proxyLabel);
       });
 
       var question = findQuestion(spec.afterCode);
@@ -834,6 +896,7 @@
       document.documentElement.removeAttribute("data-c360-visit");
       return;
     }
+    if (typingInMeasureProxy()) return;
     relabelNativeSteps();
     placeMeasuresInChapters();
     organizeReportMeasurements();
