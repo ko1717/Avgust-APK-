@@ -1325,6 +1325,7 @@
   }
 
   function rowKind(row) {
+    if (!row) return "";
     var open = qa("button", row).find(function (button) {
       return /abrir solicitud|consultar solicitud/i.test(button.textContent || "");
     });
@@ -1368,14 +1369,16 @@
 
   function refreshAfterDelete() {
     invalidateDeleteCache();
-    if (clickButtonByLabel(/^actualizar$/i)) return;
+    if (clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) return;
     if (clickButtonByLabel(/^cerrar$/i, true)) {
       window.setTimeout(function () {
-        if (!clickButtonByLabel(/^actualizar$/i)) window.location.reload();
+        if (!clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) window.location.reload();
       }, 200);
       return;
     }
-    window.location.reload();
+    window.setTimeout(function () {
+      window.location.reload();
+    }, 120);
   }
 
   function deleteByUrl(url, label) {

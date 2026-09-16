@@ -39,9 +39,7 @@ OLD_CLEAR = (
     "clearDraft(){return this.db.prepare(`DELETE FROM drafts WHERE id = ?`)"
     ".run(`current`),this.save(),{ok:!0}}"
 )
-NEW_CLEAR = (
-    "clearDraft(){return this.db.prepare(`DELETE FROM drafts WHERE id = ?`)"
-    ".run(`current`),this.save(),{ok:!0}}"
+DELETE_METHODS = (
     "deleteVisit(e){let t=typeof e==`string`?e:g(e,`id`,36);"
     "let n=this.db.prepare(`SELECT * FROM visits WHERE id = ?`).get(t);"
     "if(!n)throw Error(`404:Visita no encontrada.`);"
@@ -67,6 +65,7 @@ NEW_CLEAR = (
     "return this.db.prepare(`DELETE FROM service_requests WHERE id = ?`).run(t),"
     "this.save(),{ok:!0,id:t}}"
 )
+NEW_CLEAR = OLD_CLEAR + DELETE_METHODS
 
 OLD_DELETE_ROUTE = "if(i===`DELETE`&&r===`/api/draft`)return M(e.clearDraft());"
 NEW_DELETE_ROUTE = (
@@ -77,6 +76,19 @@ NEW_DELETE_ROUTE = (
     "if(r.startsWith(`/api/requests/`))return M(e.deleteRequest(r.slice(14).split(`?`)[0]));"
     "}"
 )
+
+
+def already_has(name: str, source: str) -> bool:
+    if name == "crear finca con nombre de responsable":
+        return "managerName" in source and OLD_CREATE not in source
+    if name == "renombrar responsable local":
+        return "renameLocal" in source
+    if name == "borrar visitas informes y solicitudes":
+        return "deleteVisit(" in source and "deleteReport(" in source and "deleteRequest(" in source
+    if name == "rutas DELETE de visitas informes y solicitudes":
+        return "e.deleteVisit(" in source and "e.deleteReport(" in source and "e.deleteRequest(" in source
+    return False
+
 
 PATCHES = (
     ("crear finca con nombre de responsable", OLD_CREATE, NEW_CREATE),
@@ -90,16 +102,29 @@ def patch_file(path: Path) -> list[str]:
     source = path.read_text(encoding="utf-8")
     applied = []
     for name, old, new in PATCHES:
+        if already_has(name, source):
+            continue
         if old not in source:
-            # Ya aplicado (el ancla antigua ya no existe y el resultado sí).
-            if new in source or (name.startswith("borrar") and "deleteVisit(" in source):
-                continue
             continue
         source = source.replace(old, new, 1)
         applied.append(name)
     if applied:
         path.write_text(source, encoding="utf-8")
     return applied
+
+
+def runtime_paths(root: Path) -> list[Path]:
+    found = []
+    seen = set()
+    for path in list(root.rglob("device-runtime*.js")) + list(root.glob("assets/device-runtime*.js")):
+        if not path.is_file():
+            continue
+        key = str(path.resolve())
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append(path)
+    return found
 
 
 def main() -> int:
@@ -109,33 +134,20 @@ def main() -> int:
     root = Path(args.root)
     changed = []
     missing = {name for name, _, _ in PATCHES}
-    for path in list(root.rglob("device-runtime*.js")) + list(root.glob("assets/device-runtime*.js")):
-        if not path.is_file():
-            continue
-        text = path.read_text(encoding="utf-8")
-        already = set()
-        if "deleteVisit(" in text and "deleteReport(" in text and "deleteRequest(" in text:
-            already.update(
-                {
-                    "borrar visitas informes y solicitudes",
-                    "rutas DELETE de visitas informes y solicitudes",
-                }
-            )
-        if "renameLocal" in text:
-            already.add("renombrar responsable local")
-        if "managerName" in text:
-            already.add("crear finca con nombre de responsable")
+    for path in runtime_paths(root):
         applied = patch_file(path)
-        if applied or already:
-            changed.append((str(path), applied or sorted(already)))
-            missing.difference_update(applied)
-            missing.difference_update(already)
+        present = {name for name, _, _ in PATCHES if already_has(name, path.read_text(encoding="utf-8"))}
+        if applied:
+            changed.append((str(path), "aplicado", applied))
+        elif present:
+            changed.append((str(path), "ya estaba", sorted(present)))
+        missing.difference_update(present)
     if missing:
         print("No se encontraron estos parches de runtime: " + ", ".join(sorted(missing)))
         return 1
     print("Runtime actualizado en:")
-    for path, applied in changed:
-        print("  ", path, "→", ", ".join(applied))
+    for path, state, names in changed:
+        print("  ", path, f"→ {state}:", ", ".join(names))
     return 0
 
 
