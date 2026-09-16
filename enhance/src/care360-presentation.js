@@ -136,7 +136,7 @@
         item(
           "02",
           "Mediciones",
-          "Agua (cap. 4.6), presión (cap. 5.1), implementos de aplicación (lanza o aguilón) y volumen y tiempo por cama (cap. 5.6)."
+          "Agua (cap. 4.6), presión (cap. 5.1), equipo e implementos de aplicación, y volumen y tiempo por cama (cap. 5.6)."
         ) +
         item(
           "03",

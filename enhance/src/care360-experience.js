@@ -651,11 +651,11 @@
       test: /Presión/i,
     },
     {
-      id: "implementos",
+      id: "equipo",
       badge: "Anexo",
-      title: "Implementos de aplicación",
-      hint: "Lanza, aguilón o bomba",
-      test: /Implementos de aplicación|Bomba \/ implemento|Equipo \(lanza|Equipo de aplicación|lanza o aguilón|^Bomba\b/i,
+      title: "Equipo de aplicación",
+      hint: "",
+      test: /Equipo de aplicación|Implementos de aplicación|Bomba \/ implemento|Equipo \(lanza|lanza o aguilón|^Bomba\b/i,
     },
     {
       id: "cama",
@@ -678,10 +678,7 @@
     var labels = qa("label", fields).filter(function (label) {
       return !label.closest(".c360-measure-group");
     });
-    if (!labels.length) {
-      qa(".c360-equip-host", fields).forEach(enhanceEquipmentPicks);
-      return;
-    }
+    if (!labels.length) return;
 
     MEASURE_GROUPS.forEach(function (group) {
       var matched = labels.filter(function (label) {
@@ -699,26 +696,22 @@
           group.badge +
           "</span><div><h4>" +
           group.title +
-          "</h4><p>" +
-          group.hint +
-          "</p></div></header>";
+          "</h4>" +
+          (group.hint ? "<p>" + group.hint + "</p>" : "") +
+          "</div></header>";
         fields.appendChild(box);
       }
-      if (group.id === "implementos") {
+      if (group.id === "equipo") {
         matched.sort(function (a, b) {
-          var aChip = /Implementos|Equipo|lanza/i.test(a.textContent || "");
-          var bChip = /Implementos|Equipo|lanza/i.test(b.textContent || "");
-          if (aChip === bChip) return 0;
-          return aChip ? -1 : 1;
+          var aEquipo = /Equipo de aplicación/i.test(a.textContent || "");
+          var bEquipo = /Equipo de aplicación/i.test(b.textContent || "");
+          if (aEquipo === bEquipo) return 0;
+          return aEquipo ? -1 : 1;
         });
       }
       matched.forEach(function (label) {
         box.appendChild(label);
       });
-    });
-
-    qa("label", fields).forEach(function (label) {
-      if (/lanza|Equipo|Implementos/i.test(label.textContent || "")) enhanceEquipmentPicks(label);
     });
   }
 
@@ -804,38 +797,6 @@
       node.setAttribute("data-c360-hidden-measures", "");
       node.insertAdjacentElement("afterend", wrap);
     });
-  }
-
-  function enhanceEquipmentPicks(label) {
-    if (label.querySelector(".c360-equip-picks")) return;
-    var input = label.querySelector("input");
-    if (!input) return;
-    label.classList.add("c360-equip-host");
-    var caption = label.firstChild;
-    if (caption && caption.nodeType === 3) caption.textContent = "";
-    input.setAttribute("placeholder", "Lanza o aguilón");
-    input.setAttribute("aria-label", "Implementos de aplicación");
-    var picks = document.createElement("div");
-    picks.className = "c360-equip-picks";
-    ["Lanza", "Aguilón"].forEach(function (name) {
-      var button = document.createElement("button");
-      button.type = "button";
-      button.className = "c360-equip-pick";
-      button.textContent = name;
-      button.addEventListener("click", function (event) {
-        event.preventDefault();
-        setNativeValue(input, name);
-        qa(".c360-equip-pick", picks).forEach(function (node) {
-          if (node.textContent === name) node.setAttribute("data-active", "");
-          else node.removeAttribute("data-active");
-        });
-      });
-      if ((input.value || "").toLowerCase() === name.toLowerCase()) {
-        button.setAttribute("data-active", "");
-      }
-      picks.appendChild(button);
-    });
-    label.appendChild(picks);
   }
 
   function ensureMeasureContinue() {

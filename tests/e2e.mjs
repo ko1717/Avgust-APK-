@@ -161,26 +161,26 @@ await p.evaluate(() => {
   byLabel(/Dureza/i, '45');
   byLabel(/Conductividad/i, '0.35');
   byLabel(/Presión/i, '80');
-  byLabel(/^Bomba(\s|\/|$)/i, 'Bomba 3 pistones');
+  byLabel(/^Equipo de aplicación/i, 'Lanza');
+  byLabel(/^Implementos de aplicación/i, 'Estacionaria');
   byLabel(/Volumen por cama/i, '12');
   byLabel(/Tiempo por cama/i, '25');
-});
-await p.evaluate(() => {
-  const btn = [...document.querySelectorAll('.c360-equip-pick')].find((el) => el.textContent.trim() === 'Lanza');
-  if (btn) btn.click();
 });
 await wait(400);
 check('Las mediciones se agrupan por capítulo MIPE', await p.evaluate(() => {
   const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
   const visiblePh = [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
   const conductivity = [...document.querySelectorAll('label')].some((el) => /Conductividad/i.test(el.textContent || '') && el.getClientRects().length > 0);
-  const implementos = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Implementos de aplicación/i.test(el.textContent || ''));
+  const equipo = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Equipo de aplicación/i.test(el.textContent || '') && /Implementos de aplicación/i.test(el.textContent || ''));
   const cama = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Volumen y tiempo por cama/i.test(el.textContent || ''));
-  const beforeCama = !!(implementos && cama && implementos.getBoundingClientRect().top < cama.getBoundingClientRect().top);
+  const beforeCama = !!(equipo && cama && equipo.getBoundingClientRect().top < cama.getBoundingClientRect().top);
   return visiblePh && conductivity && beforeCama && badges.includes('Cap. 4 · 4.6') && badges.includes('Cap. 5 · 5.1') && badges.includes('Cap. 5 · 5.6');
 }));
-check('Los implementos de aplicación ofrecen lanza o aguilón', await p.evaluate(() => {
-  return [...document.querySelectorAll('.c360-equip-pick')].map((el) => el.textContent.trim()).join(' ') === 'Lanza Aguilón';
+check('Equipo e implementos se escriben a mano', await p.evaluate(() => {
+  const noChips = !document.querySelector('.c360-equip-pick');
+  const equipo = [...document.querySelectorAll('label')].find((el) => /^Equipo de aplicación/i.test((el.firstChild && el.firstChild.textContent) || '') && el.querySelector('input'));
+  const impl = [...document.querySelectorAll('label')].find((el) => /Implementos de aplicación/i.test(el.textContent || '') && el.querySelector('input'));
+  return noChips && !!equipo && !!impl && getComputedStyle(equipo.querySelector('input')).opacity !== '0';
 }));
 
 // answer a criterion in step 03
@@ -207,7 +207,8 @@ check('La vista previa del informe se genera', /Informe técnico de visita/i.tes
 check('El informe agrupa las mediciones por capítulo MIPE',
   /Cap\. 4 · 4\.6/.test(report) && /Calidad del agua/.test(report) && /Conductividad/.test(report) && /0\.35/.test(report)
   && /Cap\. 5 · 5\.1/.test(report) && /80/.test(report)
-  && /Implementos de aplicación/.test(report) && /Bomba 3 pistones/.test(report)
+  && /Equipo de aplicación/.test(report) && /Implementos de aplicación/.test(report)
+  && /Estacionaria/.test(report)
   && /Cap\. 5 · 5\.6/.test(report) && /12/.test(report)
   && /Lanza/.test(report),
   report.match(/Mediciones de campo[\s\S]{0,700}/)?.[0]?.replace(/\n/g, ' | ')
@@ -284,7 +285,9 @@ for (const name of fs.readdirSync(OUT)) {
 }
 check('El Word lleva las mediciones por capítulo MIPE',
   /Cap\. 4 · 4\.6/.test(wordText) && /Conductividad/.test(wordText) && /0\.35/.test(wordText)
-  && /Cap\. 5 · 5\.1/.test(wordText) && /Implementos de aplicación/.test(wordText) && /Cap\. 5 · 5\.6/.test(wordText)
+  && /Cap\. 5 · 5\.1/.test(wordText) && /Equipo de aplicación/.test(wordText)
+  && /Implementos de aplicación/.test(wordText) && /Estacionaria/.test(wordText)
+  && /Cap\. 5 · 5\.6/.test(wordText)
   && /Lanza/.test(wordText),
   wordText.slice(Math.max(0, wordText.indexOf('Mediciones de campo')), Math.max(0, wordText.indexOf('Mediciones de campo')) + 420)
 );
