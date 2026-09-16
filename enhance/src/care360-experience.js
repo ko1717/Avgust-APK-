@@ -721,6 +721,90 @@
     });
   }
 
+  function organizeReportMeasurements() {
+    qa(".report-paper h2").forEach(function (heading) {
+      if (!/Mediciones de campo/i.test(heading.textContent || "")) return;
+      var node = heading.nextElementSibling;
+      if (!node || node.tagName !== "TABLE") return;
+      if (node.nextElementSibling && node.nextElementSibling.classList.contains("c360-report-measures")) {
+        return;
+      }
+      var rows = qa("tr", node)
+        .map(function (tr) {
+          var th = q("th", tr);
+          var td = q("td", tr);
+          if (!th || !td) return null;
+          return { label: (th.textContent || "").trim(), value: (td.textContent || "").trim() };
+        })
+        .filter(Boolean);
+      if (!rows.length) return;
+      var used = [];
+      var wrap = document.createElement("div");
+      wrap.className = "c360-report-measures";
+      MEASURE_GROUPS.forEach(function (group) {
+        var items = rows.filter(function (row) {
+          return group.test.test(row.label);
+        });
+        if (!items.length) return;
+        items.forEach(function (row) {
+          used.push(row);
+        });
+        var section = document.createElement("section");
+        var title = document.createElement("h3");
+        var badge = document.createElement("span");
+        badge.className = "c360-measure-badge";
+        badge.textContent = group.badge;
+        var name = document.createElement("span");
+        name.textContent = group.title;
+        title.appendChild(badge);
+        title.appendChild(name);
+        var table = document.createElement("table");
+        var tbody = document.createElement("tbody");
+        items.forEach(function (row) {
+          var tr = document.createElement("tr");
+          var th = document.createElement("th");
+          var td = document.createElement("td");
+          th.textContent = row.label;
+          td.textContent = row.value;
+          tr.appendChild(th);
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        section.appendChild(title);
+        section.appendChild(table);
+        wrap.appendChild(section);
+      });
+      var leftover = rows.filter(function (row) {
+        return used.indexOf(row) < 0;
+      });
+      if (leftover.length) {
+        var extraSection = document.createElement("section");
+        var extraTitle = document.createElement("h3");
+        extraTitle.textContent = "Otras mediciones";
+        var extraTable = document.createElement("table");
+        var extraBody = document.createElement("tbody");
+        leftover.forEach(function (row) {
+          var tr = document.createElement("tr");
+          var th = document.createElement("th");
+          var td = document.createElement("td");
+          th.textContent = row.label;
+          td.textContent = row.value;
+          tr.appendChild(th);
+          tr.appendChild(td);
+          extraBody.appendChild(tr);
+        });
+        extraTable.appendChild(extraBody);
+        extraSection.appendChild(extraTitle);
+        extraSection.appendChild(extraTable);
+        wrap.appendChild(extraSection);
+      }
+      if (!wrap.children.length) return;
+      node.setAttribute("data-c360-hidden-measures", "");
+      node.insertAdjacentElement("afterend", wrap);
+    });
+  }
+
   function enhanceEquipmentPicks(label) {
     if (label.querySelector(".c360-equip-picks")) return;
     var input = label.querySelector("input");
@@ -783,6 +867,7 @@
     ensureMeasureTab();
     markMeasureBlocks();
     ensureMeasureContinue();
+    organizeReportMeasurements();
     if (!openingMeasures) syncPhaseFromNative();
   }
 
@@ -993,6 +1078,7 @@
         pendingSync = false;
         syncChromeSizes();
         enhanceVisitSteps();
+        organizeReportMeasurements();
       });
     });
     observer.observe(document.body, {
@@ -1012,6 +1098,7 @@
       keepActiveTabVisible();
       watchChromeSizes();
       enhanceVisitSteps();
+      organizeReportMeasurements();
       if (Date.now() - started < 8000 || q(".editor")) window.setTimeout(poll, 500);
     })();
   }

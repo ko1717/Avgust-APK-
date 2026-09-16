@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Amplía las mediciones de campo según el protocolo MIPE.
 
-Añade conductividad y bomba/implemento, y aclara que el equipo es lanza o
-aguilón. Los datos se guardan en el mismo objeto `measurements` del informe.
+Añade conductividad y bomba/implemento, aclara que el equipo es lanza o
+aguilón, y agrupa esos datos por capítulo en el informe Word.
 """
 
 from __future__ import annotations
@@ -10,24 +10,49 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-OLD = (
+OLD_KF = (
     "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,pressure:`Presión (PSI)`,"
     "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`,equipment:`Equipo de aplicación`}"
 )
-NEW = (
+NEW_KF = (
     "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,conductivity:`Conductividad`,"
     "pressure:`Presión (PSI)`,implement:`Bomba / implemento`,"
     "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`,"
     "equipment:`Equipo (lanza o aguilón)`}"
 )
 
+OLD_WORD = (
+    "let l=Object.entries(kf).filter(([t])=>e.measurements[t]).map(([t,n])=>[n,e.measurements[t]]);"
+    "l.length&&(s(`Mediciones de campo`),c(l))"
+)
+NEW_WORD = (
+    "{let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]],"
+    "[`Anexo · Bomba e implemento`,[`implement`]],"
+    "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]],"
+    "[`Equipo de aplicación (lanza o aguilón)`,[`equipment`]]];"
+    "xf.some(([,n])=>n.some(t=>e.measurements[t]))&&(s(`Mediciones de campo`),"
+    "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+    "r.length&&(s(t,Iv.HEADING_2),c(r))}))}"
+)
 
-def patch_file(path: Path) -> bool:
+PATCHES = (
+    ("mapa de mediciones", OLD_KF, NEW_KF),
+    ("informe Word", OLD_WORD, NEW_WORD),
+)
+
+
+def patch_file(path: Path) -> list[str]:
     source = path.read_text(encoding="utf-8")
-    if OLD not in source:
-        return False
-    path.write_text(source.replace(OLD, NEW, 1), encoding="utf-8")
-    return True
+    applied = []
+    for name, old, new in PATCHES:
+        if old not in source:
+            continue
+        source = source.replace(old, new, 1)
+        applied.append(name)
+    if applied:
+        path.write_text(source, encoding="utf-8")
+    return applied
 
 
 def main() -> int:
@@ -36,15 +61,20 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(args.root)
     changed = []
+    missing = {name for name, _, _ in PATCHES}
     for path in list(root.rglob("index-*.js")) + list(root.glob("assets/*.js")):
-        if path.is_file() and patch_file(path):
-            changed.append(str(path))
-    if not changed:
-        print("No se encontró el mapa de mediciones para ampliarlo")
+        if not path.is_file():
+            continue
+        applied = patch_file(path)
+        if applied:
+            changed.append((str(path), applied))
+            missing.difference_update(applied)
+    if missing:
+        print("No se encontraron estos parches: " + ", ".join(sorted(missing)))
         return 1
-    print("Mediciones ampliadas en:")
-    for path in changed:
-        print("  ", path)
+    print("Mediciones e informe actualizados en:")
+    for path, applied in changed:
+        print("  ", path, "→", ", ".join(applied))
     return 0
 
 

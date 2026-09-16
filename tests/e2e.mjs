@@ -145,6 +145,30 @@ check('El indicador avisa de cambios sin guardar', await p.evaluate(() => /sin g
 
 await clickText('02 Mediciones');
 await wait(900);
+await p.evaluate(() => {
+  const set = (el, v) => {
+    const proto = HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const byLabel = (re, v) => {
+    const label = [...document.querySelectorAll('label')].find((el) => re.test(el.textContent || '') && el.querySelector('input'));
+    if (label) set(label.querySelector('input'), v);
+  };
+  byLabel(/pH del agua/i, '6.1');
+  byLabel(/Dureza/i, '45');
+  byLabel(/Conductividad/i, '0.35');
+  byLabel(/Presión/i, '80');
+  byLabel(/Bomba \/ implemento|implemento/i, 'Bomba 3 pistones');
+  byLabel(/Volumen por cama/i, '12');
+  byLabel(/Tiempo por cama/i, '25');
+});
+await p.evaluate(() => {
+  const btn = [...document.querySelectorAll('.c360-equip-pick')].find((el) => el.textContent.trim() === 'Lanza');
+  if (btn) btn.click();
+});
+await wait(400);
 check('Las mediciones se agrupan por capítulo MIPE', await p.evaluate(() => {
   const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
   const visiblePh = [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
@@ -176,6 +200,14 @@ await clickText('05 Informe');
 await wait(1800);
 const report = await p.evaluate(() => document.querySelector('.report-paper')?.innerText || '');
 check('La vista previa del informe se genera', /Informe técnico de visita/i.test(report), report.slice(0, 80).replace(/\n/g, ' '));
+check('El informe agrupa las mediciones por capítulo MIPE',
+  /Cap\. 4 · 4\.6/.test(report) && /Calidad del agua/.test(report) && /Conductividad/.test(report) && /0\.35/.test(report)
+  && /Cap\. 5 · 5\.1/.test(report) && /80/.test(report)
+  && /Anexo/.test(report) && /Bomba 3 pistones/.test(report)
+  && /Cap\. 5 · 5\.6/.test(report) && /12/.test(report)
+  && /Lanza/.test(report),
+  report.match(/Mediciones de campo[\s\S]{0,700}/)?.[0]?.replace(/\n/g, ' | ')
+);
 
 // save
 check('Se guarda la visita', await clickText('Guardar visita'));
@@ -227,6 +259,25 @@ if (opened) {
   await wait(6000);
 }
 check('Se descarga el informe en Word', downloads.some(d => /\.docx$/i.test(d)), downloads.join(', '));
+const docxFiles = fs.readdirSync(OUT).filter((name) => /\.docx$/i.test(name));
+let wordText = '';
+if (docxFiles.length) {
+  try {
+    const { execSync } = await import('child_process');
+    wordText = execSync(`unzip -p ${JSON.stringify(path.join(OUT, docxFiles[0]))} word/document.xml`, { encoding: 'utf8' })
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ');
+  } catch (err) {
+    wordText = String(err);
+  }
+}
+check('El Word lleva las mediciones por capítulo MIPE',
+  /Cap\. 4 · 4\.6/.test(wordText) && /Conductividad/.test(wordText) && /0\.35/.test(wordText)
+  && /Cap\. 5 · 5\.1/.test(wordText) && /Anexo/.test(wordText) && /Cap\. 5 · 5\.6/.test(wordText)
+  && /Lanza/.test(wordText),
+  wordText.slice(Math.max(0, wordText.indexOf('Mediciones de campo')), Math.max(0, wordText.indexOf('Mediciones de campo')) + 420)
+);
 
 check('Sin errores de JavaScript', errors.length === 0, errors.slice(0, 5).join(' | '));
 

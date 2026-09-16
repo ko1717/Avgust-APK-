@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.5-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones agrupadas por capítulo MIPE. Instalable en Samsung. |
+| `CARE-360-1.4.6-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones agrupadas por capítulo MIPE también en el informe. Instalable en Samsung. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -28,11 +28,11 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.5 sin marca Avgust
+## Versión 1.4.6 sin marca Avgust
 
 Esta versión **no incluye logos de Avgust ni el nombre Avgust**. El programa se
 presenta como **CARE 360**. Las mediciones de campo van organizadas por el
-protocolo MIPE:
+protocolo MIPE **en el formulario y en el informe** (vista previa, Word y PDF):
 
 - **Cap. 4 · 4.6** calidad del agua: pH, dureza y conductividad.
 - **Cap. 5 · 5.1** presión de salida de la bomba.
@@ -40,9 +40,9 @@ protocolo MIPE:
 - **Cap. 5 · 5.6** volumen y tiempo por cama.
 - **Equipo** lanza o aguilón.
 
-**[CARE-360-1.4.5-sin-marca-Android.apk](./CARE-360-1.4.5-sin-marca-Android.apk)**
+**[CARE-360-1.4.6-sin-marca-Android.apk](./CARE-360-1.4.6-sin-marca-Android.apk)**
 
-Se instala encima de la 1.4.2 o la 1.4.4 (misma firma).
+Se instala encima de la 1.4.2, la 1.4.4 o la 1.4.5 (misma firma).
 
 ## Versión 1.4.2 (con marca Avgust)
 
@@ -127,7 +127,7 @@ Para generar la APK **sin marca Avgust**:
 
 ```bash
 C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
-  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.5 17
+  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.6 18
 ```
 
 El guion extrae del paquete base sólo lo que va a cambiar, añade la capa de
