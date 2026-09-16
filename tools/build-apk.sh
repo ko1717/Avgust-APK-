@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.4}"
-  VERSION_CODE="${3:-16}"
+  VERSION_NAME="${2:-1.4.5}"
+  VERSION_CODE="${3:-17}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -62,7 +62,11 @@ if [[ "$DEBRAND" == "1" ]]; then
     "resources.arsc" \
     "AndroidManifest.xml"
 else
-  unzip -q "$BASE_APK" "assets/public/index.html" "assets/public/sw.js" "AndroidManifest.xml"
+  unzip -q "$BASE_APK" \
+    "assets/public/index.html" \
+    "assets/public/sw.js" \
+    "assets/public/assets/index-*.js" \
+    "AndroidManifest.xml"
 fi
 
 # --------------------------------------------------------------------------
@@ -146,6 +150,7 @@ PY
 if [[ "$DEBRAND" == "1" ]]; then
   python3 "$ROOT/tools/debrand_web.py" "$WORK"
 fi
+python3 "$ROOT/tools/patch_measurements.py" "$WORK"
 
 # --------------------------------------------------------------------------
 # 5. Actualizar versionName y versionCode del manifiesto binario
@@ -181,7 +186,7 @@ if [[ "$DEBRAND" == "1" ]]; then
     assets/public/enhance/*
   zip -q -X -0 "$STAGED" resources.arsc
 else
-  zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/*
+  zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/* assets/public/assets/index-*.js
 fi
 
 ALIGNED="$WORK/aligned.apk"

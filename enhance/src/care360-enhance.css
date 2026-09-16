@@ -603,11 +603,12 @@ html.dark .form-body img {
   box-shadow: none !important;
 }
 
-.editor[data-c360-visit="mediciones"] .form-body > :not(.c360-measure-heading):not(.c360-measure-fields):not(.c360-to-eval) {
+.editor[data-c360-visit="mediciones"] .form-body > :not(.c360-measure-heading):not(.c360-measure-lead):not(.c360-measure-fields):not(.c360-to-eval) {
   display: none !important;
 }
 
 .editor[data-c360-visit="chequeo"] .c360-measure-heading,
+.editor[data-c360-visit="chequeo"] .c360-measure-lead,
 .editor[data-c360-visit="chequeo"] .c360-measure-fields,
 .editor[data-c360-visit="chequeo"] .c360-to-eval {
   display: none !important;
@@ -620,6 +621,97 @@ html.dark .form-body img {
 
 .editor[data-c360-visit="mediciones"] .c360-measure-heading {
   margin-top: 0;
+}
+
+.c360-measure-lead {
+  margin: 0 0 16px;
+  color: var(--c360-ink-soft);
+  font-size: 14px;
+  max-width: 46ch;
+}
+
+.c360-measure-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.c360-measure-group {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--c360-line);
+  border-radius: 14px;
+  background: var(--c360-surface);
+}
+
+.c360-measure-group-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.c360-measure-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgb(0 127 163 / 12%);
+  color: var(--c360-brand);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.c360-measure-group-head h4 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+}
+
+.c360-measure-group-head p {
+  margin: 0;
+  color: var(--c360-ink-soft);
+  font-size: 12.5px;
+}
+
+.c360-measure-group label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.c360-measure-group label:last-child {
+  margin-bottom: 0;
+}
+
+.c360-equip-picks {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.c360-equip-pick {
+  appearance: none;
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--c360-line);
+  border-radius: 12px;
+  background: var(--c360-canvas);
+  color: var(--c360-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.c360-equip-pick[data-active] {
+  border-color: var(--c360-brand);
+  background: rgb(0 127 163 / 12%);
+  color: var(--c360-brand);
+  box-shadow: inset 0 0 0 1px var(--c360-brand);
 }
 
 @media (max-width: 700px) {

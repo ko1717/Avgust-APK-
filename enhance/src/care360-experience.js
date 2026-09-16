@@ -23,6 +23,16 @@
     return Array.prototype.slice.call((root || document).querySelectorAll(selector));
   }
 
+  function setNativeValue(el, value) {
+    if (!el) return;
+    var proto = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    var desc = Object.getOwnPropertyDescriptor(proto, "value");
+    if (desc && desc.set) desc.set.call(el, value);
+    else el.value = value;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   function moduleTabs() {
     return qa('.module-nav [data-slot="tabs-trigger"]');
   }
@@ -615,10 +625,128 @@
       if (!/mediciones de campo/i.test(heading.textContent || "")) return;
       heading.classList.add("c360-measure-heading");
       var fields = heading.nextElementSibling;
+      if (fields && fields.classList.contains("c360-measure-lead")) {
+        fields = fields.nextElementSibling;
+      }
       if (fields && /\bfields\b/.test(fields.className || "")) {
         fields.classList.add("c360-measure-fields");
+        organizeMeasureFields(heading, fields);
       }
     });
+  }
+
+  var MEASURE_GROUPS = [
+    {
+      id: "agua",
+      badge: "Cap. 4 · 4.6",
+      title: "Calidad del agua",
+      hint: "Dureza menor a 70 ppm · pH entre 5.5 y 6.5",
+      test: /pH del agua|Dureza|Conductividad/i,
+    },
+    {
+      id: "presion",
+      badge: "Cap. 5 · 5.1",
+      title: "Presión de la bomba",
+      hint: "Presión de salida al momento de aplicar",
+      test: /Presión/i,
+    },
+    {
+      id: "anexo",
+      badge: "Anexo",
+      title: "Bomba e implemento",
+      hint: "Implemento de aplicación",
+      test: /Bomba \/ implemento|implemento/i,
+    },
+    {
+      id: "cama",
+      badge: "Cap. 5 · 5.6",
+      title: "Volumen y tiempo por cama",
+      hint: "Lo que se indica a la cuadrilla antes de aplicar",
+      test: /Volumen por cama|Tiempo por cama/i,
+    },
+    {
+      id: "equipo",
+      badge: "Equipo",
+      title: "Equipo de aplicación",
+      hint: "Lanza o aguilón",
+      test: /Equipo \(lanza|Equipo de aplicación|lanza o aguilón/i,
+    },
+  ];
+
+  function organizeMeasureFields(heading, fields) {
+    if (!q(".c360-measure-lead", heading.parentElement)) {
+      var lead = document.createElement("p");
+      lead.className = "c360-measure-lead";
+      lead.textContent =
+        "Cada dato queda en el capítulo MIPE que le corresponde, para llenarlo en campo sin mezclar criterios.";
+      heading.insertAdjacentElement("afterend", lead);
+    }
+
+    var labels = qa("label", fields).filter(function (label) {
+      return !label.closest(".c360-measure-group");
+    });
+    if (!labels.length) {
+      qa(".c360-equip-host", fields).forEach(enhanceEquipmentPicks);
+      return;
+    }
+
+    MEASURE_GROUPS.forEach(function (group) {
+      var matched = labels.filter(function (label) {
+        return group.test.test(label.textContent || "");
+      });
+      if (!matched.length) return;
+      var box = q('.c360-measure-group[data-group="' + group.id + '"]', fields);
+      if (!box) {
+        box = document.createElement("section");
+        box.className = "c360-measure-group";
+        box.setAttribute("data-group", group.id);
+        box.innerHTML =
+          '<header class="c360-measure-group-head">' +
+          '<span class="c360-measure-badge">' +
+          group.badge +
+          "</span><div><h4>" +
+          group.title +
+          "</h4><p>" +
+          group.hint +
+          "</p></div></header>";
+        fields.appendChild(box);
+      }
+      matched.forEach(function (label) {
+        box.appendChild(label);
+      });
+    });
+
+    qa("label", fields).forEach(function (label) {
+      if (/lanza|Equipo/i.test(label.textContent || "")) enhanceEquipmentPicks(label);
+    });
+  }
+
+  function enhanceEquipmentPicks(label) {
+    if (label.querySelector(".c360-equip-picks")) return;
+    var input = label.querySelector("input");
+    if (!input) return;
+    input.setAttribute("placeholder", "Lanza o aguilón");
+    var picks = document.createElement("div");
+    picks.className = "c360-equip-picks";
+    ["Lanza", "Aguilón"].forEach(function (name) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "c360-equip-pick";
+      button.textContent = name;
+      button.addEventListener("click", function (event) {
+        event.preventDefault();
+        setNativeValue(input, name);
+        qa(".c360-equip-pick", picks).forEach(function (node) {
+          if (node.textContent === name) node.setAttribute("data-active", "");
+          else node.removeAttribute("data-active");
+        });
+      });
+      if ((input.value || "").toLowerCase() === name.toLowerCase()) {
+        button.setAttribute("data-active", "");
+      }
+      picks.appendChild(button);
+    });
+    label.appendChild(picks);
   }
 
   function ensureMeasureContinue() {

@@ -136,7 +136,7 @@
         item(
           "02",
           "Mediciones",
-          "pH, dureza, presión, volumen y tiempo por cama, y el equipo de aplicación."
+          "Agua (cap. 4.6), presión (cap. 5.1), volumen y tiempo por cama (cap. 5.6), y el equipo: lanza o aguilón."
         ) +
         item(
           "03",

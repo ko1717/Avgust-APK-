@@ -145,8 +145,14 @@ check('El indicador avisa de cambios sin guardar', await p.evaluate(() => /sin g
 
 await clickText('02 Mediciones');
 await wait(900);
-check('El paso de mediciones muestra pH y presión', await p.evaluate(() => {
-  return [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
+check('Las mediciones se agrupan por capítulo MIPE', await p.evaluate(() => {
+  const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
+  const visiblePh = [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
+  const conductivity = [...document.querySelectorAll('label')].some((el) => /Conductividad/i.test(el.textContent || '') && el.getClientRects().length > 0);
+  return visiblePh && conductivity && badges.includes('Cap. 4 · 4.6') && badges.includes('Cap. 5 · 5.1') && badges.includes('Cap. 5 · 5.6');
+}));
+check('El equipo de aplicación ofrece lanza o aguilón', await p.evaluate(() => {
+  return [...document.querySelectorAll('.c360-equip-pick')].map((el) => el.textContent.trim()).join(' ') === 'Lanza Aguilón';
 }));
 
 // answer a criterion in step 03

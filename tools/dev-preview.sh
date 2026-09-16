@@ -58,6 +58,7 @@ PY
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
   python3 "$ROOT/tools/debrand_web.py" "$OUT"
 fi
+python3 "$ROOT/tools/patch_measurements.py" "$OUT"
 
 echo "Vista previa lista en $OUT"
 echo "Sirviendo en http://localhost:$PORT"
