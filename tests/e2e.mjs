@@ -17,6 +17,7 @@ import path from 'path';
 const UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
 const URL = process.env.CARE360_URL || 'http://localhost:8080/index.html';
 const OUT = process.env.CARE360_TEST_OUT || fs.mkdtempSync(path.join(os.tmpdir(), 'care360-e2e-'));
+fs.mkdirSync(OUT, { recursive: true });
 const results = [];
 function check(name, ok, extra) {
   results.push({ name, ok, extra });
@@ -208,6 +209,12 @@ check('El informe agrupa las mediciones por capítulo MIPE',
   && /Lanza/.test(report),
   report.match(/Mediciones de campo[\s\S]{0,700}/)?.[0]?.replace(/\n/g, ' | ')
 );
+await p.evaluate(() => {
+  const heading = [...document.querySelectorAll('.report-paper h2')].find((el) => /Mediciones de campo/i.test(el.textContent || ''));
+  if (heading) heading.scrollIntoView({ block: 'start' });
+});
+await wait(400);
+await p.screenshot({ path: path.join(OUT, 'informe_mediciones.png') });
 
 // save
 check('Se guarda la visita', await clickText('Guardar visita'));
@@ -259,17 +266,17 @@ if (opened) {
   await wait(6000);
 }
 check('Se descarga el informe en Word', downloads.some(d => /\.docx$/i.test(d)), downloads.join(', '));
-const docxFiles = fs.readdirSync(OUT).filter((name) => /\.docx$/i.test(name));
 let wordText = '';
-if (docxFiles.length) {
+for (const name of fs.readdirSync(OUT)) {
+  const file = path.join(OUT, name);
   try {
-    const { execSync } = await import('child_process');
-    wordText = execSync(`unzip -p ${JSON.stringify(path.join(OUT, docxFiles[0]))} word/document.xml`, { encoding: 'utf8' })
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ');
-  } catch (err) {
-    wordText = String(err);
+    const { execFileSync } = await import('child_process');
+    const xml = execFileSync('unzip', ['-p', file, 'word/document.xml'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    if (!/Mediciones de campo/.test(xml)) continue;
+    wordText = xml.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+    break;
+  } catch {
+    /* no es un Word */
   }
 }
 check('El Word lleva las mediciones por capítulo MIPE',
