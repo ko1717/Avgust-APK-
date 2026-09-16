@@ -1194,7 +1194,7 @@
 
     window.fetch = async function (input, init) {
       var url = typeof input === "string" ? input : (input && input.url) || "";
-      var method = ((init && init.method) || "GET").toUpperCase();
+      var method = ((init && init.method) || (input && input.method) || "GET").toUpperCase();
       if (method === "POST" && /\/api\/team(?:\?|$)/.test(url) && init && typeof init.body === "string") {
         try {
           var teamBody = JSON.parse(init.body);
@@ -1231,13 +1231,304 @@
           /* seguir con el cuerpo original */
         }
       }
-      return original(input, init);
+      var response = await original(input, init);
+      try {
+        var path = new URL(url, location.origin).pathname;
+        if (method === "GET") {
+          var visitMatch = /^\/api\/visits\/([a-f0-9-]{36})$/i.exec(path);
+          if (visitMatch) rememberVisitId(visitMatch[1]);
+          if (path === "/api/visits" || path === "/api/requests" || path.indexOf("/api/reports") === 0) {
+            invalidateDeleteCache();
+          }
+        }
+        if (method === "POST" && /\/api\/(visits|requests|reports)(?:\/|$)/.test(path)) {
+          invalidateDeleteCache();
+        }
+        if (method === "DELETE" && /\/api\/(visits|requests|reports)\//.test(path)) {
+          invalidateDeleteCache();
+          if (/\/api\/visits\//.test(path)) window.__C360_CURRENT_VISIT = "";
+        }
+      } catch (err) {
+        /* no interrumpir la respuesta */
+      }
+      return response;
     };
   }
 
   function enhanceTeamForms() {
     enhanceFarmRegister();
     enhanceRequestPeople();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * borrar visitas, informes y solicitudes
+   * ------------------------------------------------------------------ */
+
+  var deleteCache = { visits: null, requests: null, reports: {}, at: 0 };
+  var UUID_RE = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+
+  function normalizeText(value) {
+    return String(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function apiJson(url, init) {
+    return fetch(url, init).then(function (res) {
+      return res.json().then(function (body) {
+        if (!res.ok) throw new Error((body && body.error) || "No se pudo completar la operación.");
+        return body;
+      });
+    });
+  }
+
+  function invalidateDeleteCache() {
+    deleteCache = { visits: null, requests: null, reports: {}, at: 0 };
+  }
+
+  function loadVisits() {
+    if (deleteCache.visits) return Promise.resolve(deleteCache.visits);
+    return apiJson("/api/visits").then(function (list) {
+      deleteCache.visits = Array.isArray(list) ? list : [];
+      return deleteCache.visits;
+    });
+  }
+
+  function loadRequests() {
+    if (deleteCache.requests) return Promise.resolve(deleteCache.requests);
+    return apiJson("/api/requests").then(function (list) {
+      deleteCache.requests = Array.isArray(list) ? list : [];
+      return deleteCache.requests;
+    });
+  }
+
+  function loadReports(visitId) {
+    if (!visitId) return Promise.resolve([]);
+    if (deleteCache.reports[visitId]) return Promise.resolve(deleteCache.reports[visitId]);
+    return apiJson("/api/reports?visitId=" + encodeURIComponent(visitId)).then(function (body) {
+      var versions = (body && body.versions) || [];
+      deleteCache.reports[visitId] = versions;
+      return versions;
+    });
+  }
+
+  function rememberVisitId(id) {
+    if (id && UUID_RE.test(id)) window.__C360_CURRENT_VISIT = id;
+  }
+
+  function currentVisitId() {
+    if (window.__C360_CURRENT_VISIT && UUID_RE.test(window.__C360_CURRENT_VISIT)) {
+      return window.__C360_CURRENT_VISIT;
+    }
+    return "";
+  }
+
+  function rowKind(row) {
+    var open = qa("button", row).find(function (button) {
+      return /abrir solicitud|consultar solicitud/i.test(button.textContent || "");
+    });
+    if (open) return "request";
+    open = qa("button", row).find(function (button) {
+      return /^abrir$/i.test((button.textContent || "").trim());
+    });
+    if (open) return "visit";
+    return "";
+  }
+
+  function matchVisit(row, visits) {
+    var farm = normalizeText(q("strong", row) && q("strong", row).textContent);
+    var small = normalizeText(q("small", row) && q("small", row).textContent);
+    var hits = (visits || []).filter(function (visit) {
+      if (normalizeText(visit.farm) !== farm) return false;
+      var date = normalizeText(visit.date);
+      var responsible = normalizeText(visit.responsible);
+      if (date && small.indexOf(date) === -1) return false;
+      if (responsible && small.indexOf(responsible) === -1) return false;
+      return true;
+    });
+    return hits.length === 1 ? hits[0] : hits[0] || null;
+  }
+
+  function matchRequest(row, requests) {
+    var title = normalizeText(q("strong", row) && q("strong", row).textContent);
+    var reason = normalizeText(q("p", row) && q("p", row).textContent);
+    var hits = (requests || []).filter(function (item) {
+      var date = normalizeText(item.date);
+      if (date && title.indexOf(date) === -1) return false;
+      if (reason && normalizeText(item.reason) !== reason) return false;
+      return true;
+    });
+    return hits.length === 1 ? hits[0] : hits[0] || null;
+  }
+
+  function confirmDelete(message) {
+    return window.confirm(message);
+  }
+
+  function refreshAfterDelete() {
+    invalidateDeleteCache();
+    if (clickButtonByLabel(/^actualizar$/i)) return;
+    if (clickButtonByLabel(/^cerrar$/i, true)) {
+      window.setTimeout(function () {
+        if (!clickButtonByLabel(/^actualizar$/i)) window.location.reload();
+      }, 200);
+      return;
+    }
+    window.location.reload();
+  }
+
+  function deleteByUrl(url, label) {
+    return apiJson(url, { method: "DELETE" }).then(function () {
+      toast(label + " eliminado.", "ok");
+      refreshAfterDelete();
+    });
+  }
+
+  function attachDeleteButton(host, options) {
+    if (!host || q(".c360-delete-btn", host)) return;
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "c360-delete-btn";
+    button.textContent = options.label || "Borrar";
+    button.setAttribute("aria-label", options.aria || "Borrar");
+    button.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (button.disabled) return;
+      if (!confirmDelete(options.confirm)) return;
+      button.disabled = true;
+      Promise.resolve()
+        .then(options.resolve)
+        .then(function (target) {
+          if (!target || !target.url) throw new Error("No se encontró el registro a borrar.");
+          return deleteByUrl(target.url, target.name || "Registro");
+        })
+        .catch(function (err) {
+          button.disabled = false;
+          toast((err && err.message) || "No se pudo borrar.", "info", 3600);
+        });
+    });
+    host.appendChild(button);
+  }
+
+  function enhanceVisitRequestDelete() {
+    qa(".visit-row").forEach(function (row) {
+      var kind = rowKind(row);
+      if (!kind) return;
+      attachDeleteButton(row, {
+        label: "Borrar",
+        aria: kind === "visit" ? "Borrar visita" : "Borrar solicitud",
+        confirm:
+          kind === "visit"
+            ? "¿Borrar esta visita y sus informes asociados? Esta acción no se puede deshacer."
+            : "¿Borrar esta solicitud? Esta acción no se puede deshacer.",
+        resolve: function () {
+          if (kind === "visit") {
+            return loadVisits().then(function (visits) {
+              var hit = matchVisit(row, visits);
+              if (!hit || !hit.id) throw new Error("No se identificó la visita.");
+              return { url: "/api/visits/" + hit.id, name: "Visita" };
+            });
+          }
+          return loadRequests().then(function (requests) {
+            var hit = matchRequest(row, requests);
+            if (!hit || !hit.id) throw new Error("No se identificó la solicitud.");
+            return { url: "/api/requests/" + hit.id, name: "Solicitud" };
+          });
+        },
+      });
+    });
+  }
+
+  function enhanceReportDelete() {
+    var list = q(".report-version-list");
+    if (!list) return;
+    var visitId = currentVisitId();
+    qa("article", list).forEach(function (article) {
+      attachDeleteButton(article, {
+        label: "Borrar",
+        aria: "Borrar versión de informe",
+        confirm: "¿Borrar esta versión del informe? Esta acción no se puede deshacer.",
+        resolve: function () {
+          var strong = q("strong", article);
+          var versionMatch = strong && /Versión\s+(\d+)/i.exec(strong.textContent || "");
+          var versionNumber = versionMatch ? Number(versionMatch[1]) : NaN;
+          function findVersion(versions) {
+            var hit = (versions || []).find(function (item) {
+              return Number(item.versionNumber) === versionNumber;
+            });
+            if (!hit && versions && versions.length === 1) hit = versions[0];
+            if (!hit || !hit.id) throw new Error("No se identificó la versión del informe.");
+            return { url: "/api/reports/" + hit.id, name: "Informe" };
+          }
+          if (visitId) return loadReports(visitId).then(findVersion);
+          return loadVisits().then(async function (visits) {
+            var candidates = (visits || []).slice(0, 20);
+            for (var i = 0; i < candidates.length; i++) {
+              var versions = await loadReports(candidates[i].id);
+              var hit = (versions || []).find(function (item) {
+                return Number(item.versionNumber) === versionNumber;
+              });
+              if (hit) {
+                rememberVisitId(candidates[i].id);
+                return findVersion(versions);
+              }
+            }
+            throw new Error("No se identificó la versión del informe.");
+          });
+        },
+      });
+    });
+  }
+
+  function enhanceEditorDelete() {
+    var requestEditor = qa(".action-editor").find(function (node) {
+      var heading = q("h3", node);
+      return heading && /Editar solicitud/i.test(heading.textContent || "");
+    });
+    if (requestEditor) {
+      var actions = q(".actions", requestEditor) || requestEditor;
+      attachDeleteButton(actions, {
+        label: "Borrar solicitud",
+        aria: "Borrar solicitud",
+        confirm: "¿Borrar esta solicitud? Esta acción no se puede deshacer.",
+        resolve: function () {
+          return loadRequests().then(function (requests) {
+            var reasonInput = q("textarea", requestEditor);
+            var reason = normalizeText(reasonInput && reasonInput.value);
+            var dateInput = qa("input[type='date']", requestEditor)[0];
+            var date = normalizeText(dateInput && dateInput.value);
+            var hit = (requests || []).find(function (item) {
+              if (date && normalizeText(item.date) !== date) return false;
+              if (reason && normalizeText(item.reason) !== reason) return false;
+              return true;
+            });
+            if (!hit || !hit.id) throw new Error("Guarda la solicitud antes de borrarla, o ábrela desde la lista.");
+            return { url: "/api/requests/" + hit.id, name: "Solicitud" };
+          });
+        },
+      });
+    }
+
+    var visitEditor = q(".editor");
+    if (visitEditor && currentVisitId()) {
+      var saveBar = q(".mobile-save, .editor-heading .actions, .actions", visitEditor) || visitEditor;
+      attachDeleteButton(saveBar, {
+        label: "Borrar visita",
+        aria: "Borrar visita",
+        confirm: "¿Borrar esta visita y sus informes asociados? Esta acción no se puede deshacer.",
+        resolve: function () {
+          return { url: "/api/visits/" + currentVisitId(), name: "Visita" };
+        },
+      });
+    }
+  }
+
+  function enhanceDeleteActions() {
+    enhanceVisitRequestDelete();
+    enhanceReportDelete();
+    enhanceEditorDelete();
   }
 
   /* ------------------------------------------------------------------ *
@@ -1265,6 +1556,7 @@
         enhanceVisitSteps();
         organizeReportMeasurements();
         enhanceTeamForms();
+        enhanceDeleteActions();
       });
     });
     observer.observe(document.body, {
@@ -1286,7 +1578,8 @@
       enhanceVisitSteps();
       organizeReportMeasurements();
       enhanceTeamForms();
-      if (Date.now() - started < 8000 || q(".editor") || q("details") || q(".action-editor")) {
+      enhanceDeleteActions();
+      if (Date.now() - started < 8000 || q(".editor") || q("details") || q(".action-editor") || q(".visit-row")) {
         window.setTimeout(poll, 500);
       }
     })();

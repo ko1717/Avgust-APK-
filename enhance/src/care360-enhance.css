@@ -727,6 +727,48 @@ label[data-c360-zone-host] {
   margin-top: 8px;
 }
 
+.c360-delete-btn {
+  appearance: none;
+  border: 1px solid rgb(192 57 43 / 35%);
+  background: rgb(192 57 43 / 8%);
+  color: var(--c360-danger);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1.1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.c360-delete-btn:hover,
+.c360-delete-btn:focus-visible {
+  background: rgb(192 57 43 / 14%);
+}
+
+.c360-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.visit-row .c360-delete-btn,
+.report-version-list article .c360-delete-btn {
+  margin-left: auto;
+}
+
+.action-editor .c360-delete-btn,
+.editor .c360-delete-btn,
+.mobile-save .c360-delete-btn {
+  margin-top: 8px;
+}
+
+html.dark .c360-delete-btn {
+  border-color: rgb(255 120 110 / 40%);
+  background: rgb(192 57 43 / 18%);
+  color: #ffb4ab;
+}
+
 .report-paper table[data-c360-hidden-measures] {
   display: none !important;
 }
