@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.11-sin-marca-Android.apk` | **Sin marca Avgust.** Tipo de cultivo en el informe, borrado, responsable a mano y diccionario geo. |
+| `CARE-360-1.4.12-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones en el capítulo de evaluación, mezcla final, cultivo, borrado y diccionario geo. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -27,6 +27,16 @@ aplicación, sin tocar el código compilado. Así se añade comportamiento nuevo
 riesgo de romper ninguna función existente.
 
 ---
+
+## Versión 1.4.12 sin marca Avgust
+
+Las **mediciones** ya no van en un paso aparte: aparecen **dentro del capítulo
+de evaluación** que les corresponde (4.6 agua, **4.10 mezcla final**, 5.1
+presión, 5.3 equipo, 5.6 volumen/tiempo). También en el informe.
+
+**[CARE-360-1.4.12-sin-marca-Android.apk](./CARE-360-1.4.12-sin-marca-Android.apk)**
+
+Se instala encima de la 1.4.2 a la 1.4.11 (misma firma).
 
 ## Versión 1.4.11 sin marca Avgust
 

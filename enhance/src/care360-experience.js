@@ -524,10 +524,8 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * visita: mediciones en su propio paso
+   * visita: mediciones dentro del capítulo de evaluación
    * ------------------------------------------------------------------ */
-
-  var openingMeasures = false;
 
   function nativeVisitTabs() {
     return qa('.steps [data-slot="tabs-trigger"]');
@@ -542,26 +540,11 @@
     var editor = q(".editor");
     if (editor) editor.setAttribute("data-c360-visit", phase);
     document.documentElement.setAttribute("data-c360-visit", phase);
-    var extra = q(".c360-step-extra");
-    if (extra) {
-      if (phase === "mediciones") extra.setAttribute("data-active", "");
-      else extra.removeAttribute("data-active");
-    }
   }
 
   function goToVisitPhase(phase) {
     var tabs = nativeVisitTabs();
     if (!tabs.length) return false;
-    if (phase === "mediciones") {
-      openingMeasures = true;
-      if (tabs[1] && !tabs[1].hasAttribute("data-active")) tabs[1].click();
-      setVisitPhase("mediciones");
-      window.setTimeout(function () {
-        setVisitPhase("mediciones");
-        openingMeasures = false;
-      }, 80);
-      return true;
-    }
     var index = { datos: 0, chequeo: 1, fotos: 2, informe: 3 }[phase];
     if (index === undefined || !tabs[index]) return false;
     tabs[index].click();
@@ -575,8 +558,7 @@
     var phase = visitPhase();
     if (phase === "informe") return goToVisitPhase("fotos");
     if (phase === "fotos") return goToVisitPhase("chequeo");
-    if (phase === "chequeo") return goToVisitPhase("mediciones");
-    if (phase === "mediciones") return goToVisitPhase("datos");
+    if (phase === "chequeo") return goToVisitPhase("datos");
     if (phase === "datos") return clickButtonByLabel(/ver visitas guardadas/i);
     var tabs = nativeVisitTabs();
     for (var i = tabs.length - 1; i >= 0; i--) {
@@ -593,115 +575,147 @@
 
   function relabelNativeSteps() {
     var tabs = nativeVisitTabs();
-    var labels = ["01 Datos", "03 Evaluación", "04 Fotos", "05 Informe"];
+    var labels = ["01 Datos", "02 Evaluación", "03 Fotos", "04 Informe"];
     for (var i = 0; i < tabs.length && i < labels.length; i++) {
       if ((tabs[i].textContent || "").trim() !== labels[i]) {
         tabs[i].textContent = labels[i];
       }
     }
-  }
-
-  function ensureMeasureTab() {
-    var list = q(".steps");
-    if (!list) return;
-    if (q(".c360-step-extra", list)) return;
-    var tabs = qa('[data-slot="tabs-trigger"]', list);
-    if (tabs.length < 2) return;
-    var extra = document.createElement("button");
-    extra.type = "button";
-    extra.className = "c360-step-extra";
-    extra.setAttribute("data-c360-step", "mediciones");
-    extra.textContent = "02 Mediciones";
-    extra.addEventListener("click", function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      goToVisitPhase("mediciones");
-    });
-    list.insertBefore(extra, tabs[1]);
-  }
-
-  function markMeasureBlocks() {
-    qa(".form-body h3").forEach(function (heading) {
-      if (!/mediciones de campo/i.test(heading.textContent || "")) return;
-      heading.classList.add("c360-measure-heading");
-      var fields = heading.nextElementSibling;
-      if (fields && fields.classList.contains("c360-measure-lead")) {
-        fields = fields.nextElementSibling;
-      }
-      if (fields && /\bfields\b/.test(fields.className || "")) {
-        fields.classList.add("c360-measure-fields");
-        organizeMeasureFields(heading, fields);
-      }
+    qa(".c360-step-extra").forEach(function (node) {
+      node.remove();
     });
   }
 
-  var MEASURE_GROUPS = [
+  var MEASURE_PLACEMENTS = [
     {
+      chapter: 4,
+      afterCode: "4.6",
       id: "agua",
-      badge: "Cap. 4 · 4.6",
+      badge: "4.6",
       title: "Calidad del agua",
       hint: "Dureza menor a 70 ppm · pH entre 5.5 y 6.5",
-      test: /pH del agua|Dureza|Conductividad/i,
+      test: /^(pH del agua|Dureza \(ppm\)|Conductividad)/i,
     },
     {
+      chapter: 4,
+      afterCode: "4.10",
+      id: "mezcla",
+      badge: "4.10",
+      title: "Mezcla final",
+      hint: "Dureza y pH de la mezcla final, para corregir si hace falta",
+      test: /^(pH mezcla final|Dureza mezcla final)/i,
+    },
+    {
+      chapter: 5,
+      afterCode: "5.1",
       id: "presion",
-      badge: "Cap. 5 · 5.1",
+      badge: "5.1",
       title: "Presión de la bomba",
       hint: "Presión de salida al momento de aplicar",
-      test: /Presión/i,
+      test: /^Presión/i,
     },
     {
+      chapter: 5,
+      afterCode: "5.3",
       id: "equipo",
-      badge: "Anexo",
+      badge: "5.3",
       title: "Equipo de aplicación",
       hint: "",
-      test: /Equipo de aplicación|Implementos de aplicación|Bomba \/ implemento|Equipo \(lanza|lanza o aguilón|^Bomba\b/i,
+      test: /^(Equipo de aplicación|Implementos de aplicación)/i,
     },
     {
+      chapter: 5,
+      afterCode: "5.6",
       id: "cama",
-      badge: "Cap. 5 · 5.6",
+      badge: "5.6",
       title: "Volumen y tiempo por cama",
       hint: "Lo que se indica a la cuadrilla antes de aplicar",
-      test: /Volumen por cama|Tiempo por cama/i,
+      test: /^(Volumen por cama|Tiempo por cama)/i,
     },
   ];
 
-  function organizeMeasureFields(heading, fields) {
-    if (!q(".c360-measure-lead", heading.parentElement)) {
-      var lead = document.createElement("p");
-      lead.className = "c360-measure-lead";
-      lead.textContent =
-        "Cada dato queda en el capítulo MIPE que le corresponde, para llenarlo en campo sin mezclar criterios.";
-      heading.insertAdjacentElement("afterend", lead);
-    }
-
-    var labels = qa("label", fields).filter(function (label) {
-      return !label.closest(".c360-measure-group");
+  function findMeasureSource() {
+    var heading = qa(".form-body h3").find(function (node) {
+      return /mediciones de campo/i.test(node.textContent || "");
     });
-    if (!labels.length) return;
+    if (!heading) return null;
+    heading.classList.add("c360-measure-heading");
+    heading.setAttribute("data-c360-measure-source", "");
+    var fields = heading.nextElementSibling;
+    if (fields && fields.classList.contains("c360-measure-lead")) {
+      fields = fields.nextElementSibling;
+    }
+    if (fields && /\bfields\b/.test(fields.className || "")) {
+      fields.classList.add("c360-measure-fields");
+      fields.setAttribute("data-c360-measure-source", "");
+      return { heading: heading, fields: fields };
+    }
+    return null;
+  }
 
-    MEASURE_GROUPS.forEach(function (group) {
+  function parkMeasureLabels(fields) {
+    if (!fields) return;
+    qa(".c360-chapter-measure").forEach(function (box) {
+      qa("label", box).forEach(function (label) {
+        fields.appendChild(label);
+      });
+      box.remove();
+    });
+  }
+
+  function currentEvalChapter() {
+    var heading = q(".form-body .chapter-heading");
+    var text = (heading && heading.textContent) || "";
+    if (/Preparación de mezclas/i.test(text)) return 4;
+    if (/Aplicación de PPC/i.test(text)) return 5;
+    if (/Almacén/i.test(text)) return 1;
+    if (/Medición y dosificación/i.test(text)) return 2;
+    if (/Transporte interno/i.test(text)) return 3;
+    var select = q('.form-body [data-slot="select-value"], .form-body button[role="combobox"]');
+    var selected = (select && select.textContent) || "";
+    var match = /^(\d+)\./.exec(selected.trim());
+    return match ? Number(match[1]) : 0;
+  }
+
+  function findQuestion(code) {
+    return qa(".form-body .question").find(function (node) {
+      var badge = q(".question-code", node);
+      return badge && (badge.textContent || "").trim() === code;
+    });
+  }
+
+  function placeMeasuresInChapters() {
+    var source = findMeasureSource();
+    if (!source) return;
+    parkMeasureLabels(source.fields);
+
+    var chapter = currentEvalChapter();
+    if (!chapter) return;
+
+    var labels = qa("label", source.fields);
+    MEASURE_PLACEMENTS.forEach(function (spec) {
+      if (spec.chapter !== chapter) return;
       var matched = labels.filter(function (label) {
-        return group.test.test(label.textContent || "");
+        var title =
+          (label.childNodes[0] && label.childNodes[0].textContent) || label.textContent || "";
+        return spec.test.test(title.trim());
       });
       if (!matched.length) return;
-      var box = q('.c360-measure-group[data-group="' + group.id + '"]', fields);
-      if (!box) {
-        box = document.createElement("section");
-        box.className = "c360-measure-group";
-        box.setAttribute("data-group", group.id);
-        box.innerHTML =
-          '<header class="c360-measure-group-head">' +
-          '<span class="c360-measure-badge">' +
-          group.badge +
-          "</span><div><h4>" +
-          group.title +
-          "</h4>" +
-          (group.hint ? "<p>" + group.hint + "</p>" : "") +
-          "</div></header>";
-        fields.appendChild(box);
-      }
-      if (group.id === "equipo") {
+
+      var box = document.createElement("section");
+      box.className = "c360-chapter-measure";
+      box.setAttribute("data-group", spec.id);
+      box.innerHTML =
+        '<header class="c360-measure-group-head">' +
+        '<span class="c360-measure-badge">Crit. ' +
+        spec.badge +
+        "</span><div><h4>" +
+        spec.title +
+        "</h4>" +
+        (spec.hint ? "<p>" + spec.hint + "</p>" : "") +
+        "</div></header>";
+
+      if (spec.id === "equipo") {
         matched.sort(function (a, b) {
           var aEquipo = /Equipo de aplicación/i.test(a.textContent || "");
           var bEquipo = /Equipo de aplicación/i.test(b.textContent || "");
@@ -712,12 +726,19 @@
       matched.forEach(function (label) {
         box.appendChild(label);
       });
+
+      var question = findQuestion(spec.afterCode);
+      if (question) question.insertAdjacentElement("afterend", box);
+      else {
+        var heading = q(".form-body .chapter-heading");
+        if (heading) heading.insertAdjacentElement("afterend", box);
+      }
     });
   }
 
   function organizeReportMeasurements() {
     qa(".report-paper h2").forEach(function (heading) {
-      if (!/Mediciones de campo/i.test(heading.textContent || "")) return;
+      if (!/Mediciones de campo|Mediciones por capítulo/i.test(heading.textContent || "")) return;
       var node = heading.nextElementSibling;
       if (!node || node.tagName !== "TABLE") return;
       if (node.nextElementSibling && node.nextElementSibling.classList.contains("c360-report-measures")) {
@@ -735,25 +756,23 @@
       var used = [];
       var wrap = document.createElement("div");
       wrap.className = "c360-report-measures";
-      MEASURE_GROUPS.forEach(function (group) {
+      MEASURE_PLACEMENTS.forEach(function (group) {
         var items = rows.filter(function (row) {
-          return group.test.test(row.label);
+          return group.test.test(row.label) && used.indexOf(row.label) === -1;
         });
         if (!items.length) return;
         items.forEach(function (row) {
-          used.push(row);
+          used.push(row.label);
         });
         var section = document.createElement("section");
         var title = document.createElement("h3");
         var badge = document.createElement("span");
         badge.className = "c360-measure-badge";
-        badge.textContent = group.badge;
-        var name = document.createElement("span");
-        name.textContent = group.title;
+        badge.textContent = "Cap. " + group.chapter + " · " + group.badge;
         title.appendChild(badge);
-        title.appendChild(name);
+        title.appendChild(document.createTextNode(" " + group.title));
         var table = document.createElement("table");
-        var tbody = document.createElement("tbody");
+        var body = document.createElement("tbody");
         items.forEach(function (row) {
           var tr = document.createElement("tr");
           var th = document.createElement("th");
@@ -762,15 +781,15 @@
           td.textContent = row.value;
           tr.appendChild(th);
           tr.appendChild(td);
-          tbody.appendChild(tr);
+          body.appendChild(tr);
         });
-        table.appendChild(tbody);
+        table.appendChild(body);
         section.appendChild(title);
         section.appendChild(table);
         wrap.appendChild(section);
       });
       var leftover = rows.filter(function (row) {
-        return used.indexOf(row) < 0;
+        return used.indexOf(row.label) === -1;
       });
       if (leftover.length) {
         var extraSection = document.createElement("section");
@@ -794,31 +813,17 @@
         wrap.appendChild(extraSection);
       }
       if (!wrap.children.length) return;
+      heading.textContent = "Mediciones por capítulo";
       node.setAttribute("data-c360-hidden-measures", "");
       node.insertAdjacentElement("afterend", wrap);
     });
   }
 
-  function ensureMeasureContinue() {
-    var fields = q(".c360-measure-fields");
-    if (!fields || q(".c360-to-eval")) return;
-    var button = document.createElement("button");
-    button.type = "button";
-    button.className = "primary c360-to-eval";
-    button.textContent = "Ir a evaluación";
-    button.addEventListener("click", function () {
-      goToVisitPhase("chequeo");
-    });
-    fields.insertAdjacentElement("afterend", button);
-  }
-
   function syncPhaseFromNative() {
-    if (openingMeasures) return;
     var tabs = nativeVisitTabs();
     var names = ["datos", "chequeo", "fotos", "informe"];
     for (var i = 0; i < tabs.length; i++) {
       if (!tabs[i].hasAttribute("data-active")) continue;
-      if (names[i] === "chequeo" && visitPhase() === "mediciones") return;
       setVisitPhase(names[i] || "datos");
       return;
     }
@@ -830,30 +835,27 @@
       return;
     }
     relabelNativeSteps();
-    ensureMeasureTab();
-    markMeasureBlocks();
-    ensureMeasureContinue();
+    placeMeasuresInChapters();
     organizeReportMeasurements();
-    if (!openingMeasures) syncPhaseFromNative();
+    syncPhaseFromNative();
   }
 
   function setupVisitSteps() {
     document.addEventListener(
       "click",
       function (event) {
-        if (event.target.closest(".c360-step-extra")) return;
         var tab = event.target.closest('.steps [data-slot="tabs-trigger"]');
-        if (!tab) return;
-        var tabs = nativeVisitTabs();
-        var index = tabs.indexOf(tab);
-        if (index === 1) {
-          openingMeasures = false;
-          setVisitPhase("chequeo");
+        if (tab) {
+          window.setTimeout(function () {
+            syncPhaseFromNative();
+            placeMeasuresInChapters();
+          }, 60);
           return;
         }
-        window.setTimeout(function () {
-          if (!openingMeasures) syncPhaseFromNative();
-        }, 50);
+        var option = event.target.closest('[role="option"], [data-slot="select-item"]');
+        if (option) {
+          window.setTimeout(placeMeasuresInChapters, 80);
+        }
       },
       true
     );

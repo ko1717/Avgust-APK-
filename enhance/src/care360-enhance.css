@@ -570,80 +570,35 @@ html.dark .form-body img {
 }
 
 /* ------------------------------------------------------------------ *
- * 6c. Visita: mediciones en su propio paso
+ * 6c. Visita: mediciones dentro del capítulo de evaluación
  * ------------------------------------------------------------------ */
 
-.steps .c360-step-extra {
-  appearance: none;
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 44px;
-  padding: 16px 8px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.steps .c360-step-extra[data-active] {
-  border-bottom: 3px solid var(--c360-brand);
-  color: var(--c360-brand) !important;
-  font-weight: 800;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.editor[data-c360-visit="mediciones"] .steps [data-slot="tabs-trigger"][data-active] {
-  border-bottom-color: transparent;
-  color: inherit !important;
-  font-weight: inherit;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.editor[data-c360-visit="mediciones"] .form-body > :not(.c360-measure-heading):not(.c360-measure-lead):not(.c360-measure-fields):not(.c360-to-eval) {
-  display: none !important;
-}
-
 .editor[data-c360-visit="chequeo"] .c360-measure-heading,
-.editor[data-c360-visit="chequeo"] .c360-measure-lead,
 .editor[data-c360-visit="chequeo"] .c360-measure-fields,
-.editor[data-c360-visit="chequeo"] .c360-to-eval {
-  display: none !important;
+.editor[data-c360-visit="chequeo"] .c360-measure-lead,
+.editor[data-c360-visit="chequeo"] [data-c360-measure-source] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: -1px !important;
 }
 
-.c360-to-eval {
-  margin-top: 16px;
-  width: 100%;
-}
-
-.editor[data-c360-visit="mediciones"] .c360-measure-heading {
-  margin-top: 0;
-}
-
-.c360-measure-lead {
-  margin: 0 0 16px;
-  color: var(--c360-ink-soft);
-  font-size: 14px;
-  max-width: 46ch;
-}
-
-.c360-measure-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
+.c360-chapter-measure,
 .c360-measure-group {
-  margin: 0;
+  margin: 12px 0 18px;
   padding: 14px;
   border: 1px solid var(--c360-line);
   border-radius: 14px;
-  background: var(--c360-surface);
+  background: var(--c360-canvas);
 }
 
+.c360-chapter-measure .c360-measure-group-head,
 .c360-measure-group-head {
   display: flex;
   align-items: flex-start;
@@ -678,13 +633,20 @@ html.dark .form-body img {
   font-size: 12.5px;
 }
 
+.c360-chapter-measure label,
 .c360-measure-group label {
   display: block;
   margin-bottom: 10px;
 }
 
+.c360-chapter-measure label:last-child,
 .c360-measure-group label:last-child {
   margin-bottom: 0;
+}
+
+.c360-to-eval,
+.steps .c360-step-extra {
+  display: none !important;
 }
 
 .c360-farm-geo {
