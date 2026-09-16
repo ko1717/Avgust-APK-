@@ -810,7 +810,11 @@
     if (label.querySelector(".c360-equip-picks")) return;
     var input = label.querySelector("input");
     if (!input) return;
+    label.classList.add("c360-equip-host");
+    var caption = label.firstChild;
+    if (caption && caption.nodeType === 3) caption.textContent = "";
     input.setAttribute("placeholder", "Lanza o aguilón");
+    input.setAttribute("aria-label", "Implementos de aplicación");
     var picks = document.createElement("div");
     picks.className = "c360-equip-picks";
     ["Lanza", "Aguilón"].forEach(function (name) {
