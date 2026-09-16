@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.10}"
-  VERSION_CODE="${3:-22}"
+  VERSION_NAME="${2:-1.4.11}"
+  VERSION_CODE="${3:-23}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -155,6 +155,7 @@ if [[ "$DEBRAND" == "1" ]]; then
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$WORK"
 python3 "$ROOT/tools/patch_runtime.py" "$WORK"
+python3 "$ROOT/tools/patch_crop.py" "$WORK"
 
 # --------------------------------------------------------------------------
 # 5. Actualizar versionName y versionCode del manifiesto binario

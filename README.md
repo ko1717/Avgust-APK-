@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.10-sin-marca-Android.apk` | **Sin marca Avgust.** Borrar visitas/informes/solicitudes, responsable a mano y diccionario geo. |
+| `CARE-360-1.4.11-sin-marca-Android.apk` | **Sin marca Avgust.** Tipo de cultivo en el informe, borrado, responsable a mano y diccionario geo. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -27,6 +27,18 @@ aplicación, sin tocar el código compilado. Así se añade comportamiento nuevo
 riesgo de romper ninguna función existente.
 
 ---
+
+## Versión 1.4.11 sin marca Avgust
+
+En **Datos de la finca** (visita) puedes indicar el **tipo de cultivo**; queda en el
+**encabezado del informe** (pantalla y Word), junto a finca y fecha.
+
+Sigue el borrado de visitas/informes/solicitudes, responsable a mano y el
+diccionario departamento → municipio.
+
+**[CARE-360-1.4.11-sin-marca-Android.apk](./CARE-360-1.4.11-sin-marca-Android.apk)**
+
+Se instala encima de la 1.4.2 a la 1.4.10 (misma firma).
 
 ## Versión 1.4.10 sin marca Avgust
 

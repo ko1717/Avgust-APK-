@@ -61,6 +61,7 @@ if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$OUT"
 python3 "$ROOT/tools/patch_runtime.py" "$OUT"
+python3 "$ROOT/tools/patch_crop.py" "$OUT"
 
 echo "Vista previa lista en $OUT"
 echo "Sirviendo en http://localhost:$PORT"
