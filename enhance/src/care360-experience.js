@@ -610,9 +610,10 @@
       afterCode: "5.1",
       id: "presion",
       badge: "5.1",
-      title: "Presión de la bomba",
-      hint: "Presión de salida al momento de aplicar",
-      test: /^Presión/i,
+      title: "Presión",
+      hint: "Bomba e implemento al momento de aplicar",
+      test: /^(Presión de la bomba|Presión \(PSI\)|Presión del implemento)/i,
+      order: [/bomba|Presión \(PSI\)/i, /implemento/i],
     },
     {
       chapter: 5,
@@ -742,7 +743,21 @@
       });
       if (!matched.length) return;
 
-      if (spec.id === "equipo") {
+      if (spec.order && spec.order.length) {
+        matched.sort(function (a, b) {
+          var aTitle = measureLabelTitle(a);
+          var bTitle = measureLabelTitle(b);
+          var aIdx = spec.order.findIndex(function (re) {
+            return re.test(aTitle);
+          });
+          var bIdx = spec.order.findIndex(function (re) {
+            return re.test(bTitle);
+          });
+          if (aIdx < 0) aIdx = 999;
+          if (bIdx < 0) bIdx = 999;
+          return aIdx - bIdx;
+        });
+      } else if (spec.id === "equipo") {
         matched.sort(function (a, b) {
           var aEquipo = /Equipo de aplicación/i.test(measureLabelTitle(a));
           var bEquipo = /Equipo de aplicación/i.test(measureLabelTitle(b));
@@ -823,6 +838,19 @@
           return group.test.test(row.label) && used.indexOf(row.label) === -1;
         });
         if (!items.length) return;
+        if (group.order && group.order.length) {
+          items.sort(function (a, b) {
+            var aIdx = group.order.findIndex(function (re) {
+              return re.test(a.label);
+            });
+            var bIdx = group.order.findIndex(function (re) {
+              return re.test(b.label);
+            });
+            if (aIdx < 0) aIdx = 999;
+            if (bIdx < 0) bIdx = 999;
+            return aIdx - bIdx;
+          });
+        }
         items.forEach(function (row) {
           used.push(row.label);
         });

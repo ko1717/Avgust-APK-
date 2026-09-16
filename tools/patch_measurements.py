@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Mediciones MIPE dentro de los capítulos de evaluación.
 
-- Amplía el mapa de mediciones (conductividad, implementos, mezcla final).
+- Amplía el mapa de mediciones (conductividad, implementos, mezcla final,
+  presión del implemento).
 - En el Word agrupa por criterio del capítulo (4.6, 4.10, 5.1, 5.3, 5.6).
 """
 
@@ -20,10 +21,19 @@ MID_KF = (
     "implement:`Implementos de aplicación`,"
     "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`}"
 )
-NEW_KF = (
+MIX_KF = (
     "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,conductivity:`Conductividad`,"
     "mixPh:`pH mezcla final`,mixHardness:`Dureza mezcla final (ppm)`,"
     "pressure:`Presión (PSI)`,equipment:`Equipo de aplicación`,"
+    "implement:`Implementos de aplicación`,"
+    "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`}"
+)
+NEW_KF = (
+    "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,conductivity:`Conductividad`,"
+    "mixPh:`pH mezcla final`,mixHardness:`Dureza mezcla final (ppm)`,"
+    "pressure:`Presión de la bomba (PSI)`,"
+    "implementPressure:`Presión del implemento de aplicación (PSI)`,"
+    "equipment:`Equipo de aplicación`,"
     "implement:`Implementos de aplicación`,"
     "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`}"
 )
@@ -41,10 +51,19 @@ MID_WORD = (
     "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
     "r.length&&(s(t,Iv.HEADING_2),c(r))}))"
 )
-NEW_WORD = (
+MIX_WORD = (
     "let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
     "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixHardness`]],"
     "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]],"
+    "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+    "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+    "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+    "r.length&&(s(t,Iv.HEADING_2),c(r))})"
+)
+NEW_WORD = (
+    "let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixHardness`]],"
+    "[`Cap. 5 · 5.1 Presión`,[`pressure`,`implementPressure`]],"
     "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
     "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
     "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
@@ -56,23 +75,36 @@ def patch_file(path: Path) -> list[str]:
     source = path.read_text(encoding="utf-8")
     applied = []
 
-    if "mixPh:`pH mezcla final`" not in source:
+    if "implementPressure:`Presión del implemento" not in source:
         if OLD_KF in source:
             source = source.replace(OLD_KF, NEW_KF, 1)
             applied.append("mapa de mediciones")
         elif MID_KF in source:
             source = source.replace(MID_KF, NEW_KF, 1)
-            applied.append("mapa de mediciones (mezcla final)")
+            applied.append("mapa de mediciones")
+        elif MIX_KF in source:
+            source = source.replace(MIX_KF, NEW_KF, 1)
+            applied.append("mapa de mediciones (presión implemento)")
     else:
         applied.append("mapa de mediciones (ya estaba)")
 
-    if "[`Cap. 4 · 4.10 Mezcla final`" not in source:
+    if "implementPressure`" not in source or "[`pressure`,`implementPressure`]" not in source:
         if OLD_WORD in source:
             source = source.replace(OLD_WORD, NEW_WORD, 1)
             applied.append("informe Word")
         elif MID_WORD in source:
             source = source.replace(MID_WORD, NEW_WORD, 1)
-            applied.append("informe Word (mezcla final)")
+            applied.append("informe Word")
+        elif MIX_WORD in source:
+            source = source.replace(MIX_WORD, NEW_WORD, 1)
+            applied.append("informe Word (presión implemento)")
+        elif "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]]" in source:
+            source = source.replace(
+                "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]]",
+                "[`Cap. 5 · 5.1 Presión`,[`pressure`,`implementPressure`]]",
+                1,
+            )
+            applied.append("informe Word (presión implemento)")
     else:
         applied.append("informe Word (ya estaba)")
 

@@ -120,10 +120,31 @@ await p.evaluate(async () => {
 await wait(1200);
 
 const cap5 = await p.evaluate(() => {
-  const groups = [...document.querySelectorAll('.c360-chapter-measure')].map((el) => el.getAttribute('data-group'));
-  return { groups, hasPresion: groups.includes('presion'), hasEquipo: groups.includes('equipo'), hasCama: groups.includes('cama'), noAgua: !groups.includes('agua') };
+  const groups = [...document.querySelectorAll('.c360-chapter-measure')].map((el) => ({
+    group: el.getAttribute('data-group'),
+    labels: [...el.querySelectorAll('label')].map((l) => (l.childNodes[0]?.textContent || l.textContent || '').trim()),
+  }));
+  const ids = groups.map((g) => g.group);
+  const presion = groups.find((g) => g.group === 'presion');
+  const labels = (presion && presion.labels) || [];
+  const bombaIdx = labels.findIndex((t) => /bomba|Presión \(PSI\)/i.test(t));
+  const implementoIdx = labels.findIndex((t) => /implemento/i.test(t));
+  return {
+    groups: ids,
+    hasPresion: ids.includes('presion'),
+    hasEquipo: ids.includes('equipo'),
+    hasCama: ids.includes('cama'),
+    noAgua: !ids.includes('agua'),
+    pressureLabels: labels,
+    implementUnderPump: bombaIdx >= 0 && implementoIdx === bombaIdx + 1,
+  };
 });
 check('En cap. 5 solo salen presión, equipo y volumen/tiempo', cap5.hasPresion && cap5.hasEquipo && cap5.hasCama && cap5.noAgua, JSON.stringify(cap5));
+check(
+  'Debajo de presión de la bomba aparece presión del implemento',
+  !!cap5.implementUnderPump,
+  JSON.stringify(cap5.pressureLabels)
+);
 await p.screenshot({ path: path.join(OUT, 'evaluacion_cap5_mediciones.png') });
 
 fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
