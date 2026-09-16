@@ -36,6 +36,7 @@ head = (
     '<link rel="stylesheet" href="/enhance/care360-presentation.css">'
 )
 body = (
+    '<script defer src="/enhance/colombia-geo.js"></script>'
     '<script defer src="/enhance/care360-experience.js"></script>'
     '<script defer src="/enhance/care360-presentation.js"></script>'
 )
@@ -59,6 +60,7 @@ if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
   python3 "$ROOT/tools/debrand_web.py" "$OUT"
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$OUT"
+python3 "$ROOT/tools/patch_runtime.py" "$OUT"
 
 echo "Vista previa lista en $OUT"
 echo "Sirviendo en http://localhost:$PORT"

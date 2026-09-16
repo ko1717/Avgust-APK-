@@ -687,6 +687,46 @@ html.dark .form-body img {
   margin-bottom: 0;
 }
 
+.c360-farm-geo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 8px;
+}
+
+.c360-geo-field,
+.c360-person-host {
+  display: block;
+}
+
+.c360-farm-geo select,
+.c360-farm-geo input,
+.c360-person-input {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--c360-line);
+  border-radius: 12px;
+  background: var(--c360-canvas);
+  color: var(--c360-ink);
+  font: inherit;
+}
+
+label[data-c360-zone-host] {
+  display: none !important;
+}
+
+.c360-person-host [data-slot="select-trigger"],
+.c360-person-host button[role="combobox"] {
+  display: none !important;
+}
+
+.c360-person-input {
+  margin-top: 8px;
+}
+
 .report-paper table[data-c360-hidden-measures] {
   display: none !important;
 }

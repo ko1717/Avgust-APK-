@@ -1023,6 +1023,224 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * fincas: diccionario de ubicación y responsable
+   * solicitudes: representante / profesional a mano
+   * ------------------------------------------------------------------ */
+
+  function geoData() {
+    return window.__C360_GEO || {};
+  }
+
+  function fillMunicipios(select, departamento, selected) {
+    var list = geoData()[departamento] || [];
+    select.innerHTML = '<option value="">Municipio</option>';
+    list.forEach(function (name) {
+      var option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      if (selected && selected === name) option.selected = true;
+      select.appendChild(option);
+    });
+  }
+
+  function enhanceFarmRegister() {
+    var details = qa("details").find(function (node) {
+      var summary = q("summary", node);
+      return summary && /Registrar una finca/i.test(summary.textContent || "");
+    });
+    if (!details || q(".c360-farm-geo", details)) return;
+
+    var fields = q(".fields", details);
+    if (!fields) return;
+
+    var zoneLabel = qa("label", fields).find(function (label) {
+      return /^Zona/i.test((label.childNodes[0] && label.childNodes[0].textContent) || label.textContent || "");
+    });
+    var zoneInput = zoneLabel && zoneLabel.querySelector("input");
+
+    var geo = document.createElement("div");
+    geo.className = "c360-farm-geo";
+    geo.innerHTML =
+      '<label class="c360-geo-field">Departamento' +
+      '<select class="c360-geo-dept" aria-label="Departamento"><option value="">Departamento</option></select></label>' +
+      '<label class="c360-geo-field">Municipio' +
+      '<select class="c360-geo-muni" aria-label="Municipio" disabled><option value="">Municipio</option></select></label>' +
+      '<label class="c360-geo-field">Nombre del responsable / representante' +
+      '<input class="c360-farm-manager" maxlength="300" placeholder="Ej. Juan Pérez" /></label>';
+
+    var dept = q(".c360-geo-dept", geo);
+    var muni = q(".c360-geo-muni", geo);
+    Object.keys(geoData())
+      .sort(function (a, b) {
+        return a.localeCompare(b, "es");
+      })
+      .forEach(function (name) {
+        var option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        dept.appendChild(option);
+      });
+
+    dept.addEventListener("change", function () {
+      var value = dept.value;
+      muni.disabled = !value;
+      fillMunicipios(muni, value, "");
+      syncFarmZone(zoneInput, dept, muni);
+    });
+    muni.addEventListener("change", function () {
+      syncFarmZone(zoneInput, dept, muni);
+    });
+    q(".c360-farm-manager", geo).addEventListener("input", function (event) {
+      window.__C360_MANAGER_NAME = String(event.target.value || "").trim();
+    });
+
+    if (zoneLabel) zoneLabel.insertAdjacentElement("afterend", geo);
+    else fields.appendChild(geo);
+    if (zoneLabel) zoneLabel.setAttribute("data-c360-zone-host", "");
+  }
+
+  function syncFarmZone(zoneInput, dept, muni) {
+    if (!zoneInput) return;
+    var text = [muni.value, dept.value].filter(Boolean).join(", ");
+    setNativeValue(zoneInput, text);
+    window.__C360_MANAGER_NAME = (q(".c360-farm-manager") && q(".c360-farm-manager").value) || "";
+  }
+
+  function enhanceRequestPeople() {
+    var editor = qa(".action-editor").find(function (node) {
+      var heading = q("h3", node);
+      return heading && /solicitud/i.test(heading.textContent || "");
+    });
+    if (!editor) return;
+
+    [
+      { label: /Representante técnico comercial/i, key: "rtc" },
+      { label: /Profesional que realiza el servicio/i, key: "assignee" },
+    ].forEach(function (spec) {
+      var host = qa("label", editor).find(function (label) {
+        return spec.label.test(label.textContent || "");
+      });
+      if (!host || q(".c360-person-input", host)) return;
+      host.classList.add("c360-person-host");
+      host.setAttribute("data-c360-person", spec.key);
+
+      var current = "";
+      var active = q('[data-slot="select-value"]', host) || q("[data-placeholder]", host);
+      if (active) {
+        current = (active.textContent || "").trim();
+        if (/^Sin asignar$/i.test(current)) current = "";
+      }
+
+      var input = document.createElement("input");
+      input.className = "c360-person-input";
+      input.maxLength = 300;
+      input.placeholder = "Escribe el nombre";
+      input.value = current;
+      input.setAttribute("aria-label", host.childNodes[0] ? host.childNodes[0].textContent : "Participante");
+      host.appendChild(input);
+    });
+  }
+
+  function personInputValue(key) {
+    var input = q('.c360-person-host[data-c360-person="' + key + '"] .c360-person-input');
+    return input ? String(input.value || "").trim() : "";
+  }
+
+  function setupTeamFetchHooks() {
+    if (window.__C360_TEAM_HOOKS) return;
+    window.__C360_TEAM_HOOKS = true;
+    var original = window.fetch.bind(window);
+
+    async function resolveMemberId(farmId, name) {
+      if (!name) return "";
+      var team = await original("/api/team").then(function (res) {
+        return res.json();
+      });
+      var farm = (team.farms || []).find(function (item) {
+        return item.id === farmId;
+      });
+      if (!farm) throw new Error("No se encontró la finca de la solicitud.");
+      var match = (farm.members || []).find(function (member) {
+        return String(member.name || "").trim().toLowerCase() === name.toLowerCase();
+      });
+      if (match) return match.user_id;
+      var local = (farm.members || []).find(function (member) {
+        return member.user_id === "local";
+      });
+      if (local && /responsable local/i.test(local.name || "")) {
+        await original("/api/team", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ op: "renameLocal", farmId: farmId, name: name }),
+        }).then(function (res) {
+          if (!res.ok) return res.json().then(function (body) {
+            throw new Error(body.error || "No se pudo guardar el responsable.");
+          });
+        });
+        return "local";
+      }
+      var created = await original("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "addLocal", farmId: farmId, name: name }),
+      }).then(function (res) {
+        return res.json().then(function (body) {
+          if (!res.ok) throw new Error(body.error || "No se pudo registrar al participante.");
+          return body;
+        });
+      });
+      return created.id;
+    }
+
+    window.fetch = async function (input, init) {
+      var url = typeof input === "string" ? input : (input && input.url) || "";
+      var method = ((init && init.method) || "GET").toUpperCase();
+      if (method === "POST" && /\/api\/team(?:\?|$)/.test(url) && init && typeof init.body === "string") {
+        try {
+          var teamBody = JSON.parse(init.body);
+          if (teamBody && teamBody.op === "create") {
+            var manager =
+              (q(".c360-farm-manager") && q(".c360-farm-manager").value) ||
+              window.__C360_MANAGER_NAME ||
+              "";
+            if (manager && !teamBody.managerName) teamBody.managerName = String(manager).trim();
+            var dept = q(".c360-geo-dept");
+            var muni = q(".c360-geo-muni");
+            if (dept && muni && (dept.value || muni.value)) {
+              teamBody.zone = [muni.value, dept.value].filter(Boolean).join(", ");
+            }
+            init = Object.assign({}, init, { body: JSON.stringify(teamBody) });
+          }
+        } catch (err) {
+          /* seguir con el cuerpo original */
+        }
+      }
+      if (method === "POST" && /\/api\/requests(?:\?|$)/.test(url) && init && typeof init.body === "string") {
+        try {
+          var body = JSON.parse(init.body);
+          if (body && body.farmId) {
+            var rtcName = personInputValue("rtc");
+            var assigneeName = personInputValue("assignee");
+            if (rtcName) body.rtc = await resolveMemberId(body.farmId, rtcName);
+            else if (q('.c360-person-host[data-c360-person="rtc"]')) body.rtc = "";
+            if (assigneeName) body.assignee = await resolveMemberId(body.farmId, assigneeName);
+            else if (q('.c360-person-host[data-c360-person="assignee"]')) body.assignee = "";
+            init = Object.assign({}, init, { body: JSON.stringify(body) });
+          }
+        } catch (err) {
+          /* seguir con el cuerpo original */
+        }
+      }
+      return original(input, init);
+    };
+  }
+
+  function enhanceTeamForms() {
+    enhanceFarmRegister();
+    enhanceRequestPeople();
+  }
+
+  /* ------------------------------------------------------------------ *
    * arranque
    * ------------------------------------------------------------------ */
 
@@ -1035,6 +1253,7 @@
     setupKeyboard();
     setupModuleSwipe();
     setupVisitSteps();
+    setupTeamFetchHooks();
 
     var pendingSync = false;
     var observer = new MutationObserver(function () {
@@ -1045,6 +1264,7 @@
         syncChromeSizes();
         enhanceVisitSteps();
         organizeReportMeasurements();
+        enhanceTeamForms();
       });
     });
     observer.observe(document.body, {
@@ -1065,7 +1285,10 @@
       watchChromeSizes();
       enhanceVisitSteps();
       organizeReportMeasurements();
-      if (Date.now() - started < 8000 || q(".editor")) window.setTimeout(poll, 500);
+      enhanceTeamForms();
+      if (Date.now() - started < 8000 || q(".editor") || q("details") || q(".action-editor")) {
+        window.setTimeout(poll, 500);
+      }
     })();
   }
 

@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.8}"
-  VERSION_CODE="${3:-20}"
+  VERSION_NAME="${2:-1.4.9}"
+  VERSION_CODE="${3:-21}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -66,6 +66,7 @@ else
     "assets/public/index.html" \
     "assets/public/sw.js" \
     "assets/public/assets/index-*.js" \
+    "assets/public/assets/device-runtime-*.js" \
     "AndroidManifest.xml"
 fi
 
@@ -77,6 +78,7 @@ cp "$ROOT/enhance/src/care360-enhance.css" assets/public/enhance/
 cp "$ROOT/enhance/src/care360-presentation.css" assets/public/enhance/
 cp "$ROOT/enhance/src/care360-presentation.js" assets/public/enhance/
 cp "$ROOT/enhance/src/care360-experience.js" assets/public/enhance/
+cp "$ROOT/enhance/src/colombia-geo.js" assets/public/enhance/
 if [[ "$DEBRAND" == "1" ]]; then
   cp "$ROOT/enhance/src/care360-debrand.css" assets/public/enhance/
   cp "$ROOT/enhance/src/care360-debrand.js" assets/public/enhance/
@@ -103,8 +105,9 @@ head = (
     '<link rel="stylesheet" href="/enhance/care360-presentation.css?v=%s">' % (version, version)
 )
 body = (
+    '<script defer src="/enhance/colombia-geo.js?v=%s"></script>'
     '<script defer src="/enhance/care360-experience.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version)
+    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version, version)
 )
 if __import__("os").environ.get("C360_DEBRAND") == "1":
     head += '<link rel="stylesheet" href="/enhance/care360-debrand.css?v=%s">' % version
@@ -151,6 +154,7 @@ if [[ "$DEBRAND" == "1" ]]; then
   python3 "$ROOT/tools/debrand_web.py" "$WORK"
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$WORK"
+python3 "$ROOT/tools/patch_runtime.py" "$WORK"
 
 # --------------------------------------------------------------------------
 # 5. Actualizar versionName y versionCode del manifiesto binario
@@ -186,7 +190,7 @@ if [[ "$DEBRAND" == "1" ]]; then
     assets/public/enhance/*
   zip -q -X -0 "$STAGED" resources.arsc
 else
-  zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/* assets/public/assets/index-*.js
+  zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/* assets/public/assets/index-*.js assets/public/assets/device-runtime-*.js
 fi
 
 ALIGNED="$WORK/aligned.apk"

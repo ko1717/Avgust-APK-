@@ -1,0 +1,40 @@
+/* Diccionario de departamentos y municipios de Colombia para el registro de fincas. */
+(function () {
+  "use strict";
+  window.__C360_GEO = {
+    "Amazonas": ["Leticia", "Puerto Nariño"],
+    "Antioquia": ["Medellín", "Rionegro", "Envigado", "Bello", "Itagüí", "La Ceja", "El Retiro", "Marinilla", "Guarne", "Carmen de Viboral", "Santuario", "La Unión", "Abejorral", "Sonsón", "Apartadó", "Turbo", "Carepa", "Chigorodó", "Santa Fe de Antioquia", "Yarumal", "Caucasia"],
+    "Arauca": ["Arauca", "Saravena", "Tame", "Arauquita"],
+    "Atlántico": ["Barranquilla", "Soledad", "Malambo", "Sabanalarga", "Puerto Colombia", "Galapa"],
+    "Bogotá, D.C.": ["Bogotá"],
+    "Bolívar": ["Cartagena", "Magangué", "Turbaco", "Arjona", "El Carmen de Bolívar", "Mompóx"],
+    "Boyacá": ["Tunja", "Duitama", "Sogamoso", "Chiquinquirá", "Paipa", "Villa de Leyva", "Nobsa", "Tibasosa", "Firavitoba", "Santa Rosa de Viterbo", "Moniquirá", "Puerto Boyacá"],
+    "Caldas": ["Manizales", "Villamaría", "Chinchiná", "La Dorada", "Riosucio", "Anserma", "Palestina"],
+    "Caquetá": ["Florencia", "San Vicente del Caguán", "Puerto Rico", "Belén de los Andaquíes"],
+    "Casanare": ["Yopal", "Aguazul", "Villanueva", "Tauramena", "Paz de Ariporo"],
+    "Cauca": ["Popayán", "Santander de Quilichao", "Puerto Tejada", "Patía", "Miranda", "Corinto"],
+    "Cesar": ["Valledupar", "Aguachica", "Codazzi", "Bosconia", "La Jagua de Ibirico"],
+    "Chocó": ["Quibdó", "Istmina", "Condoto", "Bahía Solano", "Acandí"],
+    "Córdoba": ["Montería", "Cereté", "Lorica", "Sahagún", "Planeta Rica", "Tierralta"],
+    "Cundinamarca": ["Soacha", "Facatativá", "Zipaquirá", "Chía", "Mosquera", "Madrid", "Funza", "Cajicá", "Sibaté", "La Calera", "Cogua", "Nemocón", "Sopó", "Tocancipá", "Gachancipá", "Sesquilé", "Guasca", "Guatavita", "Tabio", "Tenjo", "Cota", "El Rosal", "Subachoque", "Bojacá", "Zipacón", "Anapoima", "La Mesa", "Tena", "San Antonio del Tequendama", "Fusagasogá", "Silvania", "Granada", "Pacho", "Ubaté", "Carmen de Carupa", "Simijaca", "Villa Pinzón", "Guayabetal", "Cáqueza", "Fómeque", "Choachí", "Ubaque", "Chipaque"],
+    "Guainía": ["Inírida"],
+    "Guaviare": ["San José del Guaviare", "Calamar", "El Retorno"],
+    "Huila": ["Neiva", "Pitalito", "Garzón", "La Plata", "Campoalegre", "Rivera", "Timaná"],
+    "La Guajira": ["Riohacha", "Maicao", "Uribia", "Manaure", "San Juan del Cesar", "Fonseca"],
+    "Magdalena": ["Santa Marta", "Ciénaga", "Fundación", "El Banco", "Plato", "Aracataca"],
+    "Meta": ["Villavicencio", "Acacías", "Granada", "Puerto López", "Puerto Gaitán", "Restrepo", "Cumaral"],
+    "Nariño": ["Pasto", "Ipiales", "Túquerres", "Tumaco", "La Unión", "Sandoná"],
+    "Norte de Santander": ["Cúcuta", "Ocaña", "Pamplona", "Villa del Rosario", "Los Patios", "El Zulia", "Chinácota"],
+    "Putumayo": ["Mocoa", "Puerto Asís", "Orito", "Valle del Guamuez", "Villagarzón"],
+    "Quindío": ["Armenia", "Calarcá", "La Tebaida", "Montenegro", "Quimbaya", "Circasia", "Salento"],
+    "Risaralda": ["Pereira", "Dosquebradas", "Santa Rosa de Cabal", "La Virginia", "Quinchía", "Belén de Umbría"],
+    "San Andrés y Providencia": ["San Andrés", "Providencia"],
+    "Santander": ["Bucaramanga", "Floridablanca", "Girón", "Piedecuesta", "Barrancabermeja", "San Gil", "Socorro", "Barbosa", "Vélez"],
+    "Sucre": ["Sincelejo", "Corozal", "Sampués", "San Marcos", "Tolú"],
+    "Tolima": ["Ibagué", "Espinal", "Melgar", "Honda", "Líbano", "Chaparral", "Mariquita", "Flandes"],
+    "Valle del Cauca": ["Cali", "Palmira", "Buenaventura", "Tuluá", "Buga", "Cartago", "Yumbo", "Jamundí", "Candelaria", "Florida", "Pradera", "Ginebra", "El Cerrito", "Roldanillo", "Zarzal", "Sevilla"],
+    "Vaupés": ["Mitú"],
+    "Vichada": ["Puerto Carreño", "La Primavera", "Cumaribo"],
+  };
+})();
+
