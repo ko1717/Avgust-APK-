@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.6-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones agrupadas por capítulo MIPE también en el informe. Instalable en Samsung. |
+| `CARE-360-1.4.7-sin-marca-Android.apk` | **Sin marca Avgust.** Implementos de aplicación junto a la presión, también en el informe. Instalable en Samsung. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -28,7 +28,7 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.6 sin marca Avgust
+## Versión 1.4.7 sin marca Avgust
 
 Esta versión **no incluye logos de Avgust ni el nombre Avgust**. El programa se
 presenta como **CARE 360**. Las mediciones de campo van organizadas por el
@@ -36,13 +36,12 @@ protocolo MIPE **en el formulario y en el informe** (vista previa, Word y PDF):
 
 - **Cap. 4 · 4.6** calidad del agua: pH, dureza y conductividad.
 - **Cap. 5 · 5.1** presión de salida de la bomba.
-- **Anexo** bomba e implemento de aplicación.
+- **Anexo** implementos de aplicación: lanza o aguilón, y bomba.
 - **Cap. 5 · 5.6** volumen y tiempo por cama.
-- **Equipo** lanza o aguilón.
 
-**[CARE-360-1.4.6-sin-marca-Android.apk](./CARE-360-1.4.6-sin-marca-Android.apk)**
+**[CARE-360-1.4.7-sin-marca-Android.apk](./CARE-360-1.4.7-sin-marca-Android.apk)**
 
-Se instala encima de la 1.4.2, la 1.4.4 o la 1.4.5 (misma firma).
+Se instala encima de la 1.4.2 a la 1.4.6 (misma firma).
 
 ## Versión 1.4.2 (con marca Avgust)
 
@@ -80,9 +79,9 @@ botones o deslizando el dedo, y reabrir con el botón **Guía**.
   cortas para que tampoco quede ningún módulo oculto.
 - **Pasos de la visita siempre visibles.** La barra `01 · 02 · 03 · 04 · 05` queda
   fija bajo la cabecera mientras se llena el formulario. Las mediciones de campo
-  (pH, dureza, conductividad, presión, volumen, tiempo y equipo) van en el paso **02**,
-  agrupadas por capítulo MIPE: agua en 4.6, presión en 5.1, cama en 5.6, aparte
-  de la evaluación.
+  (pH, dureza, conductividad, presión, implementos, volumen y tiempo) van en el paso **02**,
+  agrupadas por capítulo MIPE: agua en 4.6, presión en 5.1, implementos de
+  aplicación junto a la presión, cama en 5.6, aparte de la evaluación.
 - **Objetivos táctiles de 46 px** en botones, campos y respuestas Sí / No /
   No aplica, pensados para trabajar con guantes.
 - **Foco visible** en todos los controles, sombras y radios consistentes,
@@ -127,7 +126,7 @@ Para generar la APK **sin marca Avgust**:
 
 ```bash
 C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
-  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.6 18
+  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.7 19
 ```
 
 El guion extrae del paquete base sólo lo que va a cambiar, añade la capa de

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Amplía las mediciones de campo según el protocolo MIPE.
 
-Añade conductividad y bomba/implemento, aclara que el equipo es lanza o
-aguilón, y agrupa esos datos por capítulo en el informe Word.
+Añade conductividad y bomba, nombra los implementos de aplicación
+(lanza o aguilón) y los agrupa junto a la presión en el informe Word.
 """
 
 from __future__ import annotations
@@ -16,9 +16,8 @@ OLD_KF = (
 )
 NEW_KF = (
     "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,conductivity:`Conductividad`,"
-    "pressure:`Presión (PSI)`,implement:`Bomba / implemento`,"
-    "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`,"
-    "equipment:`Equipo (lanza o aguilón)`}"
+    "pressure:`Presión (PSI)`,equipment:`Implementos de aplicación`,implement:`Bomba`,"
+    "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`}"
 )
 
 OLD_WORD = (
@@ -28,17 +27,20 @@ OLD_WORD = (
 NEW_WORD = (
     "let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
     "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]],"
-    "[`Anexo · Bomba e implemento`,[`implement`]],"
-    "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]],"
-    "[`Equipo de aplicación (lanza o aguilón)`,[`equipment`]]];"
+    "[`Implementos de aplicación`,[`equipment`,`implement`]],"
+    "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
     "xf.some(([,n])=>n.some(t=>e.measurements[t]))&&(s(`Mediciones de campo`),"
     "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
     "r.length&&(s(t,Iv.HEADING_2),c(r))}))"
 )
 
+OLD_METRIC = "{id:`equipment`,label:`Equipo de aplicación`"
+NEW_METRIC = "{id:`equipment`,label:`Implementos de aplicación`"
+
 PATCHES = (
     ("mapa de mediciones", OLD_KF, NEW_KF),
     ("informe Word", OLD_WORD, NEW_WORD),
+    ("métricas", OLD_METRIC, NEW_METRIC),
 )
 
 

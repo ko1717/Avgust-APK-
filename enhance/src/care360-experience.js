@@ -651,11 +651,11 @@
       test: /Presión/i,
     },
     {
-      id: "anexo",
+      id: "implementos",
       badge: "Anexo",
-      title: "Bomba e implemento",
-      hint: "Implemento de aplicación",
-      test: /Bomba \/ implemento|implemento/i,
+      title: "Implementos de aplicación",
+      hint: "Lanza, aguilón o bomba",
+      test: /Implementos de aplicación|Bomba \/ implemento|Equipo \(lanza|Equipo de aplicación|lanza o aguilón|^Bomba\b/i,
     },
     {
       id: "cama",
@@ -663,13 +663,6 @@
       title: "Volumen y tiempo por cama",
       hint: "Lo que se indica a la cuadrilla antes de aplicar",
       test: /Volumen por cama|Tiempo por cama/i,
-    },
-    {
-      id: "equipo",
-      badge: "Equipo",
-      title: "Equipo de aplicación",
-      hint: "Lanza o aguilón",
-      test: /Equipo \(lanza|Equipo de aplicación|lanza o aguilón/i,
     },
   ];
 
@@ -711,13 +704,21 @@
           "</p></div></header>";
         fields.appendChild(box);
       }
+      if (group.id === "implementos") {
+        matched.sort(function (a, b) {
+          var aChip = /Implementos|Equipo|lanza/i.test(a.textContent || "");
+          var bChip = /Implementos|Equipo|lanza/i.test(b.textContent || "");
+          if (aChip === bChip) return 0;
+          return aChip ? -1 : 1;
+        });
+      }
       matched.forEach(function (label) {
         box.appendChild(label);
       });
     });
 
     qa("label", fields).forEach(function (label) {
-      if (/lanza|Equipo/i.test(label.textContent || "")) enhanceEquipmentPicks(label);
+      if (/lanza|Equipo|Implementos/i.test(label.textContent || "")) enhanceEquipmentPicks(label);
     });
   }
 

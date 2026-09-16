@@ -161,7 +161,7 @@ await p.evaluate(() => {
   byLabel(/Dureza/i, '45');
   byLabel(/Conductividad/i, '0.35');
   byLabel(/Presión/i, '80');
-  byLabel(/Bomba \/ implemento|implemento/i, 'Bomba 3 pistones');
+  byLabel(/^Bomba(\s|\/|$)/i, 'Bomba 3 pistones');
   byLabel(/Volumen por cama/i, '12');
   byLabel(/Tiempo por cama/i, '25');
 });
@@ -174,9 +174,12 @@ check('Las mediciones se agrupan por capítulo MIPE', await p.evaluate(() => {
   const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
   const visiblePh = [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
   const conductivity = [...document.querySelectorAll('label')].some((el) => /Conductividad/i.test(el.textContent || '') && el.getClientRects().length > 0);
-  return visiblePh && conductivity && badges.includes('Cap. 4 · 4.6') && badges.includes('Cap. 5 · 5.1') && badges.includes('Cap. 5 · 5.6');
+  const implementos = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Implementos de aplicación/i.test(el.textContent || ''));
+  const cama = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Volumen y tiempo por cama/i.test(el.textContent || ''));
+  const beforeCama = !!(implementos && cama && implementos.getBoundingClientRect().top < cama.getBoundingClientRect().top);
+  return visiblePh && conductivity && beforeCama && badges.includes('Cap. 4 · 4.6') && badges.includes('Cap. 5 · 5.1') && badges.includes('Cap. 5 · 5.6');
 }));
-check('El equipo de aplicación ofrece lanza o aguilón', await p.evaluate(() => {
+check('Los implementos de aplicación ofrecen lanza o aguilón', await p.evaluate(() => {
   return [...document.querySelectorAll('.c360-equip-pick')].map((el) => el.textContent.trim()).join(' ') === 'Lanza Aguilón';
 }));
 
@@ -204,7 +207,7 @@ check('La vista previa del informe se genera', /Informe técnico de visita/i.tes
 check('El informe agrupa las mediciones por capítulo MIPE',
   /Cap\. 4 · 4\.6/.test(report) && /Calidad del agua/.test(report) && /Conductividad/.test(report) && /0\.35/.test(report)
   && /Cap\. 5 · 5\.1/.test(report) && /80/.test(report)
-  && /Anexo/.test(report) && /Bomba 3 pistones/.test(report)
+  && /Implementos de aplicación/.test(report) && /Bomba 3 pistones/.test(report)
   && /Cap\. 5 · 5\.6/.test(report) && /12/.test(report)
   && /Lanza/.test(report),
   report.match(/Mediciones de campo[\s\S]{0,700}/)?.[0]?.replace(/\n/g, ' | ')
@@ -281,7 +284,7 @@ for (const name of fs.readdirSync(OUT)) {
 }
 check('El Word lleva las mediciones por capítulo MIPE',
   /Cap\. 4 · 4\.6/.test(wordText) && /Conductividad/.test(wordText) && /0\.35/.test(wordText)
-  && /Cap\. 5 · 5\.1/.test(wordText) && /Anexo/.test(wordText) && /Cap\. 5 · 5\.6/.test(wordText)
+  && /Cap\. 5 · 5\.1/.test(wordText) && /Implementos de aplicación/.test(wordText) && /Cap\. 5 · 5\.6/.test(wordText)
   && /Lanza/.test(wordText),
   wordText.slice(Math.max(0, wordText.indexOf('Mediciones de campo')), Math.max(0, wordText.indexOf('Mediciones de campo')) + 420)
 );
