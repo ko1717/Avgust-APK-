@@ -643,10 +643,19 @@
 
   function chartBars(rows, valueKey) {
     var max = 1;
+    var any = false;
     rows.forEach(function (r) {
       var v = r[valueKey];
+      if (v != null && v > 0) any = true;
       if (v != null && v > max) max = v;
     });
+    if (!rows.length || (valueKey === "findings" && !any)) {
+      return (
+        '<div class="c360-linechart c360-linechart-empty"><p>' +
+        (valueKey === "findings" ? "Sin hallazgos No cumple en este corte." : "Sin datos para graficar.") +
+        "</p></div>"
+      );
+    }
     var html = '<div class="c360-mchart"><div class="c360-mchart-bars">';
     rows.forEach(function (r) {
       var v = r[valueKey];
@@ -666,7 +675,7 @@
         '</div><div class="c360-mchart-bar tone-' +
         tone +
         '" style="height:' +
-        Math.max(h, v == null ? 0 : 6) +
+        Math.max(h, v == null || v === 0 ? 0 : 6) +
         '%"></div><div class="c360-mchart-label">' +
         escapeHtml(String(label)) +
         "</div></div>";
