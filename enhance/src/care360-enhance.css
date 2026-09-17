@@ -3370,7 +3370,7 @@ html.c360-metrics-lite .metrics-actions {
 .c360-leg-item.tone-critical i,
 .c360-hbar-leg.tone-critical::before { background: #c44b3c; }
 .c360-leg-item.tone-warn i,
-.c360-hbar-leg.tone-warn::before { background: #c44b3c; }
+.c360-hbar-leg.tone-warn::before { background: #c98512; }
 .c360-leg-item.tone-pending i { background: #8aa0a6; }
 .c360-leg-item.target i,
 .c360-hbar-leg.target::before {
@@ -3465,8 +3465,8 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-hbar-fill.tone-healthy { background: linear-gradient(90deg, #3cb87f, #1f8a5b); }
 .c360-hbar-fill.tone-acceptable { background: linear-gradient(90deg, #e0a63a, #c98512); }
-.c360-hbar-fill.tone-critical,
-.c360-hbar-fill.tone-warn { background: linear-gradient(90deg, #e06b5c, #c44b3c); }
+.c360-hbar-fill.tone-critical { background: linear-gradient(90deg, #e06b5c, #c44b3c); }
+.c360-hbar-fill.tone-warn { background: linear-gradient(90deg, #e0a63a, #c98512); }
 .c360-hbar-fill.tone-pending { background: #8aa0a6; }
 
 .c360-hbar-target {
