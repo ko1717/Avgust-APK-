@@ -133,7 +133,7 @@
 .c360-slide-eyebrow {
   display: block;
   margin-bottom: 8px;
-  color: #007fa3;
+  color: var(--c360-brand, #007fa3);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 2.2px;
@@ -141,7 +141,29 @@
 }
 
 html.dark .c360-slide-eyebrow {
-  color: #4fd3f5;
+  color: var(--c360-accent, #00b5e2);
+}
+
+html.dark .c360-intro-card,
+html.dark .c360-intro-foot {
+  background: var(--c360-surface, #16262a);
+  color: var(--c360-ink, #e8f2ef);
+}
+
+html.dark .c360-list li {
+  background: rgb(0 181 226 / 10%);
+  border-color: var(--c360-line, #3a5552);
+}
+
+html.dark .c360-credit {
+  background: linear-gradient(140deg, rgb(0 127 163 / 18%), rgb(141 198 63 / 12%));
+  border-color: var(--c360-line, #3a5552);
+}
+
+html.dark .c360-nav-btn[data-kind="back"],
+html.dark .c360-intro-skip {
+  color: var(--c360-ink, #e8f2ef);
+  border-color: var(--c360-line, #3a5552);
 }
 
 .c360-slide h2 {
@@ -178,10 +200,6 @@ html.dark .c360-slide-eyebrow {
   background: rgb(0 181 226 / 5%);
   font-size: 14px;
   line-height: 1.45;
-}
-
-html.dark .c360-list li {
-  background: rgb(0 181 226 / 8%);
 }
 
 .c360-list li b {
