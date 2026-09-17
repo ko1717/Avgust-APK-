@@ -16,7 +16,7 @@ Carpeta: `tools/demo-informes/`
 | `2026-03-11_finca-san-isidro.csv` | Visita 3 — Ana Ruiz — ~90% |
 | `2026-06-25_finca-san-isidro.csv` | Visita 4 — Luis Pérez — ~70% |
 
-Formato: CSV con columnas `finca`, `fecha`, `capitulo`, `item`, `respuesta`, `responsable avgust`, `hallazgo observacion`, `recomendacion`. Fechas `AAAA-MM-DD`. Respuestas `Sí cumple` / `No cumple`.
+Formato: CSV con columnas `finca`, `fecha`, `capitulo`, `item`, `respuesta`, `responsable avgust`, `hallazgo observacion`, `recomendacion`. Fechas `AAAA-MM-DD`. Respuestas `Sí cumple` / `No cumple` / `No aplica`. Cada visita incluye la **matriz completa** de criterios CARE 360 (ítems no evaluados van como No aplica).
 
 ## Cómo importarlos en la app
 

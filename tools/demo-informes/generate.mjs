@@ -12,6 +12,16 @@ const DATA = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../metrics-demo-4-informes/visits.json'), 'utf8')
 );
 
+// Must match enhance/src/care360-import.js CHAPTER_ITEMS
+const CHAPTER_ITEMS = {
+  1: ['1.1', '1.2', '1.3', '1.4'],
+  2: ['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8'],
+  3: ['3.1', '3.2', '3.3', '3.4'],
+  4: ['4.1', '4.2', '4.3', '4.4', '4.5', '4.6', '4.7', '4.8', '4.9', '4.10'],
+  5: ['5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8', '5.9', '5.10', '5.11'],
+};
+const ALL_ITEMS = Object.values(CHAPTER_ITEMS).flat();
+
 const HEADER = [
   'finca',
   'fecha',
@@ -38,7 +48,9 @@ function answerLabel(value) {
 
 function rowsForVisit(visit) {
   const rows = [];
-  for (const [item, value] of Object.entries(visit.answers)) {
+  // Full matrix: seed answers + NA for the rest (avoids import warnings; NA no cuenta en el %).
+  for (const item of ALL_ITEMS) {
+    const value = visit.answers[item] || 'NA';
     const chapter = Number(String(item).split('.')[0]);
     const isNo = value === 'NO';
     rows.push([

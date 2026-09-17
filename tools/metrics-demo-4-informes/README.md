@@ -13,6 +13,17 @@ Semilla reutilizable para ver **Evolución**, **capítulos** y **hallazgos** con
 
 Trayectoria: mejora fuerte (40→90) y leve caída en junio (−20 pts), para poblar «Qué atender».
 
+## Opción C — Importar CSV en la app (sin script)
+
+Archivos listos para **Fincas → Importar finca e informes**:
+
+→ **`tools/demo-informes/`** (CSV combinado + 4 individuales + README en español)
+
+```bash
+# regenerar desde visits.json
+node tools/demo-informes/generate.mjs
+```
+
 ## Opción A — Preview real (IndexedDB / `/api/visits`)
 
 Con la vista previa sirviendo en el puerto 8080:
