@@ -1355,6 +1355,18 @@ html.c360-metrics-lite .matrix-import {
   margin: 12px 0 20px;
 }
 
+/* Oculta el historial nativo incompleto; deja solo nuestro tablero e importación. */
+html.c360-metrics-lite .metrics-panel > :not(.c360-metrics-board):not(details.matrix-import):not(.matrix-import),
+html.c360-metrics-lite .consolidated-panel > :not(.c360-metrics-board):not(details.matrix-import):not(.matrix-import),
+html.c360-metrics-lite .metrics-area > :not(.c360-metrics-board):not(details.matrix-import):not(.matrix-import):not(.metrics-panel):not(.consolidated-panel) {
+  display: none !important;
+}
+
+html.c360-metrics-lite #farm-metrics-title,
+html.c360-metrics-lite .metrics-actions {
+  display: none !important;
+}
+
 .c360-metrics-board {
   display: flex;
   flex-direction: column;
@@ -1501,8 +1513,16 @@ html.c360-metrics-lite .matrix-import {
   padding: 10px 8px;
   border-bottom: 1px solid var(--c360-line, #d7e2e5);
   text-align: left;
-  vertical-align: middle;
+  vertical-align: top;
   font-size: 13px;
+  line-height: 1.35;
+}
+
+.c360-metrics-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 280px;
 }
 
 .c360-metrics-table th {
@@ -1614,6 +1634,9 @@ html.c360-metrics-lite .matrix-import {
   text-align: center;
   line-height: 1.2;
   color: #334348;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 72px;
 }
 
 .c360-mchart-avg {

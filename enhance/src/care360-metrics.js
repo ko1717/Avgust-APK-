@@ -156,6 +156,12 @@
           });
         });
         var score = applicable ? Math.round(((applicable - findings) / applicable) * 100) : null;
+        var sortedDates = f.visits
+          .map(function (v) {
+            return v.date;
+          })
+          .filter(Boolean)
+          .sort();
         return {
           name: f.name,
           visits: f.visits.length,
@@ -164,6 +170,8 @@
           score: score,
           status: scoreStatus(score),
           years: uniqueYears(f.visits),
+          firstDate: sortedDates[0] || "",
+          lastDate: sortedDates[sortedDates.length - 1] || "",
         };
       })
       .sort(function (a, b) {
@@ -224,6 +232,31 @@
     };
   }
 
+  function formatDateEs(iso) {
+    var s = String(iso || "").trim();
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s || "—";
+    return m[3] + "/" + m[2] + "/" + m[1];
+  }
+
+  function visitScore(v) {
+    var applicable = 0;
+    var findings = 0;
+    Object.keys(v.answers || {}).forEach(function (id) {
+      var val = answerValue(v.answers[id]);
+      if (val === "SI" || val === "NO") {
+        applicable += 1;
+        if (val === "NO") findings += 1;
+      }
+    });
+    if (!applicable) return { applicable: 0, findings: 0, score: null };
+    return {
+      applicable: applicable,
+      findings: findings,
+      score: Math.round(((applicable - findings) / applicable) * 100),
+    };
+  }
+
   function uniqueYears(visits) {
     var years = {};
     visits.forEach(function (v) {
@@ -232,14 +265,18 @@
     return Object.keys(years).sort();
   }
 
-  function aggregateFarm(visits, farmName, yearFrom, yearTo) {
+  function inDateRange(date, from, to) {
+    var d = String(date || "");
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return true;
+  }
+
+  function aggregateFarm(visits, farmName, dateFrom, dateTo) {
     var filtered = visits.filter(function (v) {
       if (!visitUsable(v)) return false;
       if (normFarm(v.farm) !== normFarm(farmName)) return false;
-      var y = Number((v.date || "").slice(0, 4));
-      if (yearFrom && y < Number(yearFrom)) return false;
-      if (yearTo && y > Number(yearTo)) return false;
-      return true;
+      return inDateRange(v.date, dateFrom, dateTo);
     });
     filtered.sort(function (a, b) {
       return String(a.date).localeCompare(String(b.date));
@@ -258,35 +295,36 @@
         var app = 0;
         var find = 0;
         list.forEach(function (v) {
-          Object.keys(v.answers || {}).forEach(function (id) {
-            var val = answerValue(v.answers[id]);
-            if (val === "SI" || val === "NO") {
-              app += 1;
-              if (val === "NO") find += 1;
-            }
-          });
+          var st = visitScore(v);
+          app += st.applicable;
+          find += st.findings;
         });
         var average = app ? Math.round(((app - find) / app) * 100) : null;
         var last = list[list.length - 1];
-        var closingStats = { applicable: 0, findings: 0, score: null };
-        Object.keys(CHAPTER_TITLES).forEach(function (ch) {
-          var st = chapterScore(last.answers || {}, Number(ch), catalog);
-          closingStats.applicable += st.applicable;
-          closingStats.findings += st.findings;
-        });
-        if (closingStats.applicable) {
-          closingStats.score = Math.round(
-            ((closingStats.applicable - closingStats.findings) / closingStats.applicable) * 100
-          );
-        }
+        var closing = visitScore(last);
         return {
           year: y,
           visits: list.length,
           average: average,
-          closing: closingStats.score,
+          closing: closing.score,
           status: scoreStatus(average),
+          firstDate: list[0].date,
+          lastDate: last.date,
         };
       });
+
+    var timeline = filtered.map(function (v) {
+      var st = visitScore(v);
+      return {
+        date: v.date,
+        label: formatDateEs(v.date),
+        score: st.score,
+        findings: st.findings,
+        status: scoreStatus(st.score),
+        responsible: v.responsible || v.technician || "",
+        crop: v.crop || "",
+      };
+    });
 
     var last = filtered[filtered.length - 1];
     var chapters = Object.keys(CHAPTER_TITLES)
@@ -322,7 +360,16 @@
       });
     }
 
-    return { years: years, chapters: chapters, items: items, visits: filtered.length, last: last };
+    return {
+      years: years,
+      timeline: timeline,
+      chapters: chapters,
+      items: items,
+      visits: filtered.length,
+      last: last,
+      firstDate: filtered[0] && filtered[0].date,
+      lastDate: last && last.date,
+    };
   }
 
   function barHtml(pct, tone) {
@@ -392,6 +439,8 @@
     farm: "",
     yearFrom: "",
     yearTo: "",
+    dateFrom: "",
+    dateTo: "",
     visits: null,
     loading: false,
     error: "",
@@ -490,7 +539,8 @@
     var html = "";
     html += '<header class="c360-metrics-head">';
     html += "<div><p class=\"eyebrow\">MÉTRICAS MIPE</p><h2>Tablero de aseguramientos</h2>";
-    html += "<p>Indicador por finca, por año y por capítulo. Compara con el promedio sin perder el detalle.</p></div>";
+    html +=
+      "<p>Compara fincas y visitas con fecha completa (día, mes y año). El informe importado queda editable en Visitas.</p></div>";
     html += '<div class="c360-metrics-switch" role="tablist">';
     html +=
       '<button type="button" role="tab" data-mode="all" class="' +
@@ -506,7 +556,7 @@
       '<div class="c360-metrics-import" data-c360-board-import="1">' +
       '<p class="c360-import-open">Importar finca e informes</p>' +
       '<div class="c360-import-box">' +
-      '<p class="c360-import-lead">Sube matriz <strong>Excel/CSV</strong>, informe <strong>Word (.docx)</strong> o <strong>PDF</strong>. Si la finca no existe, se crea sola.</p>' +
+      '<p class="c360-import-lead">Sube matriz <strong>Excel/CSV</strong>, informe <strong>Word (.docx)</strong> o <strong>PDF</strong>. Se crea la finca si falta y el informe queda completo (5 capítulos) para editarlo en Visitas.</p>' +
       '<label class="c360-import-file">' +
       "<span>Elegir archivo</span>" +
       '<input id="c360-board-file" type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
@@ -517,7 +567,7 @@
 
     if (!usable.length) {
       html +=
-        '<div class="c360-metrics-empty"><p>Aún no hay visitas revisadas de aseguramiento. Guarda un informe o importa una finca con su historial.</p></div>';
+        '<div class="c360-metrics-empty"><p>Aún no hay visitas revisadas de aseguramiento. Guarda un informe en Visitas o importa un Word/CSV para empezar.</p></div>';
       root.innerHTML = html;
       bind(root);
       state.boardMounted = true;
@@ -539,15 +589,15 @@
       });
       html += "</select></label>";
       html +=
-        '<label>Desde<input data-field="yearFrom" type="number" min="2000" max="2100" placeholder="Año" value="' +
-        escapeHtml(state.yearFrom) +
+        '<label>Desde<input data-field="dateFrom" type="date" value="' +
+        escapeHtml(state.dateFrom) +
         '"></label>';
       html +=
-        '<label>Hasta<input data-field="yearTo" type="number" min="2000" max="2100" placeholder="Año" value="' +
-        escapeHtml(state.yearTo) +
+        '<label>Hasta<input data-field="dateTo" type="date" value="' +
+        escapeHtml(state.dateTo) +
         '"></label>';
       html += "</div>";
-      html += renderFarmView(aggregateFarm(usable, state.farm, state.yearFrom, state.yearTo));
+      html += renderFarmView(aggregateFarm(usable, state.farm, state.dateFrom, state.dateTo));
     } else {
       html += renderAllView(aggregateAll(usable));
     }
@@ -567,26 +617,28 @@
     html += "</div>";
 
     html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Resumen por finca</h3>';
-    html += "<p>Indicador consolidado y hallazgos de no cumple.</p></div>";
+    html += "<p>Indicador consolidado, hallazgos y rango de fechas de las visitas.</p></div>";
     html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
-    html += "<th>Finca</th><th>Visitas</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Años</th>";
+    html +=
+      "<th>Finca</th><th>Visitas</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Primera visita</th><th>Última visita</th>";
     html += "</tr></thead><tbody>";
     data.farms.forEach(function (f) {
-      html += "<tr data-open-farm=\"" + escapeHtml(f.name) + "\">";
+      html += '<tr data-open-farm="' + escapeHtml(f.name) + '">';
       html += "<td><strong>" + escapeHtml(f.name) + "</strong></td>";
       html += "<td>" + f.visits + "</td>";
       html +=
-        "<td><div class=\"c360-metrics-inline\">" +
+        '<td><div class="c360-metrics-inline">' +
         (f.score == null ? "—" : f.score + "%") +
         barHtml(f.score, f.status) +
         "</div></td>";
       html +=
-        "<td><div class=\"c360-metrics-inline\">" +
+        '<td><div class="c360-metrics-inline">' +
         f.findings +
         barHtml(data.findings ? (f.findings / data.findings) * 100 : 0, "warn") +
         "</div></td>";
       html += '<td><span class="c360-mpill tone-' + f.status + '">' + statusLabel(f.status) + "</span></td>";
-      html += "<td>" + escapeHtml(f.years.join(", ") || "—") + "</td>";
+      html += "<td>" + escapeHtml(formatDateEs(f.firstDate)) + "</td>";
+      html += "<td>" + escapeHtml(formatDateEs(f.lastDate)) + "</td>";
       html += "</tr>";
     });
     html += "</tbody></table></div></section>";
@@ -628,7 +680,7 @@
         html += "<td>" + escapeHtml(it.chapter + ". " + it.chapterTitle) + "</td>";
         html += "<td>" + it.findings + "</td>";
         html +=
-          "<td><div class=\"c360-metrics-inline\">" +
+          '<td><div class="c360-metrics-inline">' +
           it.rate +
           "%" +
           barHtml(it.rate, "warn") +
@@ -645,37 +697,40 @@
     var html = "";
     html += '<div class="c360-metrics-kpis">';
     html += kpi("Visitas", data.visits);
-    html += kpi("Años", data.years.length);
-    var lastScore = data.years.length ? data.years[data.years.length - 1].average : null;
-    html += kpi("Último promedio", lastScore == null ? "—" : lastScore + "%");
-    html += kpi("Hallazgos abiertos", data.items.length);
+    html += kpi("Primera visita", formatDateEs(data.firstDate));
+    html += kpi("Última visita", formatDateEs(data.lastDate));
+    var lastScore = data.timeline.length ? data.timeline[data.timeline.length - 1].score : null;
+    html += kpi("Último indicador", lastScore == null ? "—" : lastScore + "%");
     html += "</div>";
 
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Evolución anual</h3>';
-    html += "<p>Promedio del año y cierre de la última visita.</p></div>";
-    if (!data.years.length) {
-      html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
+    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Visitas por fecha</h3>';
+    html += "<p>Cada aseguramiento con día, mes y año.</p></div>";
+    if (!data.timeline.length) {
+      html += '<p class="muted">No hay visitas revisadas para esta finca en el rango de fechas.</p>';
     } else {
       html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
-      html += "<th>Año</th><th>Visitas</th><th>Promedio</th><th>Cierre</th><th>Estado</th>";
+      html += "<th>Fecha</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Responsable</th>";
       html += "</tr></thead><tbody>";
-      data.years.forEach(function (y) {
-        html += "<tr>";
-        html += "<td><strong>" + escapeHtml(y.year) + "</strong></td>";
-        html += "<td>" + y.visits + "</td>";
-        html +=
-          "<td><div class=\"c360-metrics-inline\">" +
-          (y.average == null ? "—" : y.average + "%") +
-          barHtml(y.average, y.status) +
-          "</div></td>";
-        html += "<td>" + (y.closing == null ? "—" : y.closing + "%") + "</td>";
-        html += '<td><span class="c360-mpill tone-' + y.status + '">' + statusLabel(y.status) + "</span></td>";
-        html += "</tr>";
-      });
+      data.timeline
+        .slice()
+        .reverse()
+        .forEach(function (row) {
+          html += "<tr>";
+          html += "<td><strong>" + escapeHtml(row.label) + "</strong></td>";
+          html +=
+            '<td><div class="c360-metrics-inline">' +
+            (row.score == null ? "—" : row.score + "%") +
+            barHtml(row.score, row.status) +
+            "</div></td>";
+          html += "<td>" + row.findings + "</td>";
+          html += '<td><span class="c360-mpill tone-' + row.status + '">' + statusLabel(row.status) + "</span></td>";
+          html += "<td>" + escapeHtml(row.responsible || "—") + "</td>";
+          html += "</tr>";
+        });
       html += "</tbody></table></div>";
       html += chartBars(
-        data.years.map(function (y) {
-          return { label: y.year, score: y.average };
+        data.timeline.map(function (row) {
+          return { label: row.label, score: row.score };
         }),
         "score",
         true
@@ -683,9 +738,35 @@
     }
     html += "</section>";
 
+    if (data.years.length > 1) {
+      html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Resumen por año</h3>';
+      html += "<p>Promedio anual a partir de las visitas del periodo.</p></div>";
+      html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
+      html += "<th>Año</th><th>Visitas</th><th>Desde</th><th>Hasta</th><th>Promedio</th><th>Estado</th>";
+      html += "</tr></thead><tbody>";
+      data.years.forEach(function (y) {
+        html += "<tr>";
+        html += "<td><strong>" + escapeHtml(y.year) + "</strong></td>";
+        html += "<td>" + y.visits + "</td>";
+        html += "<td>" + escapeHtml(formatDateEs(y.firstDate)) + "</td>";
+        html += "<td>" + escapeHtml(formatDateEs(y.lastDate)) + "</td>";
+        html +=
+          '<td><div class="c360-metrics-inline">' +
+          (y.average == null ? "—" : y.average + "%") +
+          barHtml(y.average, y.status) +
+          "</div></td>";
+        html += '<td><span class="c360-mpill tone-' + y.status + '">' + statusLabel(y.status) + "</span></td>";
+        html += "</tr>";
+      });
+      html += "</tbody></table></div></section>";
+    }
+
     html += '<div class="c360-metrics-charts">';
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Capítulos · última visita</h3>';
-    html += "<p>Indicador por capítulo.</p></div>";
+    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Capítulos de la última visita</h3>';
+    html +=
+      "<p>" +
+      (data.lastDate ? "Visita del " + formatDateEs(data.lastDate) + "." : "Sin visita reciente.") +
+      "</p></div>";
     html += chartBars(
       data.chapters.map(function (c) {
         return { label: c.id + ". " + shortTitle(c.title), score: c.score };
@@ -695,7 +776,7 @@
     );
     html += "</section>";
     html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Hallazgos por capítulo</h3>';
-    html += "<p>No cumple en la última visita.</p></div>";
+    html += "<p>Respuestas No cumple en la última visita.</p></div>";
     html += chartBars(
       data.chapters.map(function (c) {
         return { label: c.id + ". " + shortTitle(c.title), findings: c.findings };
@@ -706,8 +787,13 @@
     html += "</section>";
     html += "</div>";
 
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Subcapítulos · No cumple</h3>';
-    html += "<p>Detalle de la última visita revisada.</p></div>";
+    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Detalle de No cumple</h3>';
+    html +=
+      "<p>" +
+      (data.lastDate
+        ? "Hallazgos y recomendaciones de la visita del " + formatDateEs(data.lastDate) + "."
+        : "Sin hallazgos para mostrar.") +
+      "</p></div>";
     if (!data.items.length) {
       html += '<p class="muted">La última visita no tiene respuestas No cumple.</p>';
     } else {
@@ -717,9 +803,12 @@
       data.items.forEach(function (it) {
         html += "<tr>";
         html += "<td><strong>" + escapeHtml(it.id) + "</strong></td>";
-        html += "<td>" + escapeHtml(String(it.chapter)) + "</td>";
-        html += "<td>" + escapeHtml(it.observation || "—") + "</td>";
-        html += "<td>" + escapeHtml(it.recommendation || "—") + "</td>";
+        html +=
+          "<td>" +
+          escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")) +
+          "</td>";
+        html += '<td class="c360-metrics-wrap">' + escapeHtml(it.observation || "—") + "</td>";
+        html += '<td class="c360-metrics-wrap">' + escapeHtml(it.recommendation || "—") + "</td>";
         html += "</tr>";
       });
       html += "</tbody></table></div>";
@@ -739,9 +828,7 @@
   }
 
   function shortTitle(title) {
-    return String(title || "")
-      .replace(/^Capítulo\s+/i, "")
-      .slice(0, 18);
+    return String(title || "").replace(/^Capítulo\s+/i, "");
   }
 
   function bind(root) {
@@ -801,7 +888,11 @@
         try {
           setStatus("Importando…", false);
           var saved = await window.C360Import.saveVisits(state.pendingVisits.visits);
-          setStatus(saved.length + " aseguramientos importados.", false);
+          setStatus(
+            saved.length +
+              " informe(s) importados. Quedan en Visitas listos para editar y aquí en Métricas con su fecha.",
+            false
+          );
           preview.hidden = true;
           preview.innerHTML = "";
           state.importPreviewHtml = "";
@@ -819,9 +910,10 @@
       var html =
         "<p><strong>" +
         parsed.visits.length +
-        "</strong> aseguramiento(s) listos · " +
+        "</strong> informe(s) completo(s) listos · " +
         parsed.rows +
-        " filas/criterios leídos.</p>" +
+        " criterios.</p>" +
+        "<p class=\"muted\">Se guardarán con datos de finca y los 5 capítulos para poder editarlos en Visitas.</p>" +
         (warn ? '<p class="notice error">' + warn + "</p>" : "") +
         '<button type="button" class="primary c360-import-go">Confirmar importación</button>';
       state.importPreviewHtml = html;

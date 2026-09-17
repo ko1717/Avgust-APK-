@@ -84,9 +84,22 @@
     return "";
   }
 
+  function normalizeTextMap(obj) {
+    var out = {};
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return out;
+    Object.keys(obj).forEach(function (key) {
+      if (!/^[a-z0-9.]+$/i.test(key)) return;
+      var val = clampStr(obj[key], 12000);
+      if (val) out[key] = val;
+    });
+    return out;
+  }
+
   /** Align a parsed visit with device-runtime saveVisit validation. */
-  function sanitizeVisit(visit, warnings) {
+  function sanitizeVisit(visit, warnings, opts) {
     warnings = warnings || [];
+    opts = opts || {};
+    var complete = opts.complete !== false;
     var farm = clampStr(visit.farm, 300);
     var responsible = clampStr(visit.responsible || visit.technician || "Histórico importado", 300);
     var date = normalizeDate(visit.date);
@@ -95,18 +108,22 @@
     if (!date) throw new Error("Fecha inválida. Usa formato AAAA-MM-DD.");
 
     var chapters = [];
-    (Array.isArray(visit.chapters) ? visit.chapters : []).forEach(function (ch) {
-      var n = Number(ch);
-      if (Number.isInteger(n) && n >= 1 && n <= 5 && chapters.indexOf(n) < 0) chapters.push(n);
-    });
-    Object.keys(visit.answers || {}).forEach(function (id) {
-      if (!ALL_ITEM_IDS[id]) return;
-      var ch = Number(String(id).split(".")[0]);
-      if (chapters.indexOf(ch) < 0) chapters.push(ch);
-    });
-    chapters.sort(function (a, b) {
-      return a - b;
-    });
+    if (complete) {
+      chapters = [1, 2, 3, 4, 5];
+    } else {
+      (Array.isArray(visit.chapters) ? visit.chapters : []).forEach(function (ch) {
+        var n = Number(ch);
+        if (Number.isInteger(n) && n >= 1 && n <= 5 && chapters.indexOf(n) < 0) chapters.push(n);
+      });
+      Object.keys(visit.answers || {}).forEach(function (id) {
+        if (!ALL_ITEM_IDS[id]) return;
+        var ch = Number(String(id).split(".")[0]);
+        if (chapters.indexOf(ch) < 0) chapters.push(ch);
+      });
+      chapters.sort(function (a, b) {
+        return a - b;
+      });
+    }
     if (!chapters.length) throw new Error("No hay capítulos válidos para importar.");
 
     var answers = {};
@@ -136,7 +153,6 @@
       });
     });
 
-    // Drop any stray keys outside selected chapters.
     Object.keys(answers).forEach(function (id) {
       var ch = Number(String(id).split(".")[0]);
       if (chapters.indexOf(ch) < 0) delete answers[id];
@@ -155,12 +171,12 @@
       rtc: clampStr(visit.rtc, 300),
       chapters: chapters,
       answers: answers,
-      notes: {},
-      recommendations: {},
-      measurements: {},
+      notes: normalizeTextMap(visit.notes),
+      recommendations: normalizeTextMap(visit.recommendations),
+      measurements: normalizeTextMap(visit.measurements),
       delivery: normalizeDate(visit.delivery) || "",
       followup: normalizeDate(visit.followup) || "",
-      conclusion: clampStr(visit.conclusion || "Informe histórico importado.", 15000),
+      conclusion: clampStr(visit.conclusion || "Informe histórico importado. Revisar y completar en Visitas.", 15000),
       photos: [],
       reviewed: true,
       serviceKind: "assurance",
@@ -445,23 +461,36 @@
     return raw;
   }
 
+  function parseHeaderField(text, labels) {
+    for (var i = 0; i < labels.length; i++) {
+      var re = new RegExp(labels[i] + "\\s*[:|]?\\s*([^\\n|]+)", "i");
+      var m = text.match(re);
+      if (m && m[1]) {
+        var val = m[1].replace(/\s+/g, " ").trim();
+        if (val && !/^no registrado$/i.test(val)) return val;
+      }
+    }
+    return "";
+  }
+
   function parseReportText(text) {
-    var farm =
-      (text.match(/Finca\s*[:|]?\s*([^\n|]+)/i) ||
-        text.match(/Nombre de la finca\s*[:|]?\s*([^\n]+)/i) ||
-        [])[1] || "";
-    farm = farm.replace(/\s+/g, " ").trim();
-    var dateRaw =
-      (text.match(/Fecha\s*[:|]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.\s]\d{1,2}[\/\-.\s]\d{2,4})/i) ||
-        [])[1] || "";
-    var date = normalizeDate(dateRaw);
+    var farm = parseHeaderField(text, ["Nombre de la finca", "Finca"]);
+    var date = normalizeDate(parseHeaderField(text, ["Fecha de visita", "Fecha"]));
+    var city = parseHeaderField(text, ["Ciudad / departamento", "Departamento / ciudad", "Departamento", "Ciudad"]);
+    var zone = parseHeaderField(text, ["Municipio / zona", "Municipio", "Zona"]);
+    var crop = parseHeaderField(text, ["Tipo de cultivo", "Cultivo"]);
+    var technician = parseHeaderField(text, ["Representante de la finca", "Representante finca"]);
     var responsible =
-      (text.match(/Responsable t[eé]cnico\s*[:|]?\s*([^\n|]+)/i) ||
-        text.match(/Representante t[eé]cnico\s*[:|]?\s*([^\n|]+)/i) ||
-        [])[1] || "Histórico importado";
-    responsible = responsible.replace(/\s+/g, " ").trim();
+      parseHeaderField(text, ["Responsable técnico", "Responsable tecnico"]) || "Histórico importado";
+    var rtc = parseHeaderField(text, ["Representante técnico comercial", "RTC"]);
+    var conclusion =
+      parseHeaderField(text, ["Conclusión", "Conclusion", "Alcance"]) ||
+      "Informe importado completo. Puedes editarlo en Visitas.";
 
     var answers = {};
+    var notes = {};
+    var recommendations = {};
+    var measurements = {};
     var re =
       /(\d+\.\d+)\s*(?:·|-|:)?\s*(Sí cumple|No cumple|No aplica|Sin evaluar|Sí|No)/gi;
     var match;
@@ -473,7 +502,7 @@
       if (!ALL_ITEM_IDS[m.id]) return;
       var value = normalizeAnswer(m.answer);
       if (!value) return;
-      var chunk = text.slice(m.end, matches[i + 1] ? matches[i + 1].index : m.end + 800);
+      var chunk = text.slice(m.end, matches[i + 1] ? matches[i + 1].index : m.end + 1200);
       var observation = (chunk.match(/Hallazgo\s*\/?\s*observaci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
       var recommendation = (chunk.match(/Recomendaci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
       answers[m.id] = {
@@ -482,6 +511,25 @@
         recommendation: recommendation.trim(),
       };
     });
+
+    // Chapter notes / measurements when present in Word exports.
+    for (var ch = 1; ch <= 5; ch++) {
+      var noteRe = new RegExp(
+        "(?:Cap[ií]tulo\\s*" + ch + "[^\\n]{0,80}|Observaciones?\\s*(?:cap[ií]tulo\\s*" + ch + ")?)\\s*[:：]?\\s*([^\\n]{8,})" ,
+        "i"
+      );
+      var nm = text.match(noteRe);
+      if (nm) notes[String(ch)] = nm[1].trim().slice(0, 12000);
+    }
+    var measurePairs = text.matchAll
+      ? text.matchAll(/(Presi[oó]n[^:\n]{0,40}|pH|Dureza|Caudal|Temperatura|Humedad)[:：]?\s*([^\n]{1,80})/gi)
+      : [];
+    try {
+      for (var mm of measurePairs) {
+        var key = norm(mm[1]).replace(/\s+/g, ".").slice(0, 40) || "medida";
+        measurements[key] = String(mm[2] || "").trim();
+      }
+    } catch (err) {}
 
     if (!farm || !date) {
       throw new Error(
@@ -497,22 +545,31 @@
       {
         farm: farm,
         date: date,
+        city: city,
+        zone: zone,
+        crop: crop,
+        technician: technician || responsible,
         responsible: responsible,
-        technician: responsible,
+        rtc: rtc,
         answers: answers,
-        conclusion: "Informe importado desde documento.",
+        notes: notes,
+        recommendations: recommendations,
+        measurements: measurements,
+        conclusion: conclusion,
       },
-      warnings
+      warnings,
+      { complete: true }
     );
 
     return {
       visits: [visit],
       errors: warnings,
       rows: Object.keys(visit.answers).length,
+      farmMeta: { name: farm, zone: zone || "Importado", city: city, crop: crop },
     };
   }
 
-  async function ensureFarm(name, responsible) {
+  async function ensureFarm(name, responsible, zone) {
     var teamRes = await fetch("/api/team");
     var team = await teamRes.json();
     if (!teamRes.ok) throw new Error(team.error || "No se pudo leer el equipo");
@@ -524,15 +581,15 @@
     if (existing) return existing.id || existing.farmId || null;
 
     var manager = String(responsible || "").trim() || "Responsable importado";
+    var farmZone = clampStr(zone || "Importado", 300) || "Importado";
     var create = await fetch("/api/team", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         op: "create",
         name: name,
-        zone: "Importado",
+        zone: farmZone,
         managerName: manager,
-        // Runtime exige al menos 1 contacto con nombre, cargo, teléfono y correo.
         contacts: [
           {
             name: manager,
@@ -548,7 +605,6 @@
       return {};
     });
     if (!create.ok) {
-      // Idempotent: ignore if already exists under another code path.
       if (!/ya existe|duplicate|unique/i.test(body.error || "")) {
         throw new Error(String(body.error || "No se pudo crear la finca " + name).replace(/^400:/, ""));
       }
@@ -571,7 +627,7 @@
     var prepErrors = [];
     (visits || []).forEach(function (v, idx) {
       try {
-        prepared.push(sanitizeVisit(v, prepErrors));
+        prepared.push(sanitizeVisit(v, prepErrors, { complete: true }));
       } catch (err) {
         prepErrors.push("Visita " + (idx + 1) + ": " + (err.message || String(err)));
       }
@@ -585,7 +641,11 @@
     if (!todo.length) throw new Error("Todos los aseguramientos ya aparecen con la misma finca y fecha.");
     var saved = [];
     for (var i = 0; i < todo.length; i++) {
-      var farmId = await ensureFarm(todo[i].farm, todo[i].responsible || todo[i].technician);
+      var farmId = await ensureFarm(
+        todo[i].farm,
+        todo[i].responsible || todo[i].technician,
+        todo[i].zone
+      );
       var payload = Object.assign({}, todo[i]);
       if (farmId) payload.farmId = farmId;
       var res = await fetch("/api/visits", {
@@ -686,7 +746,11 @@
           try {
             ui.setStatus("Importando…", false);
             var saved = await saveVisits(pending.visits);
-            ui.setStatus(saved.length + " aseguramientos importados. Recarga Métricas para verlos.", false);
+            ui.setStatus(
+              saved.length +
+                " informe(s) importados completos. Ábrelos en Visitas para editar finca, criterios y conclusiones.",
+              false
+            );
             preview.hidden = true;
             pending = null;
             setTimeout(function () {
@@ -714,7 +778,7 @@
       if (/\/api\/visits\/?$/.test(url) && init && String(init.method || "GET").toUpperCase() === "POST" && init.body) {
         var payload = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
         if (payload && payload.farm) {
-          await ensureFarm(payload.farm, payload.responsible || payload.technician);
+          await ensureFarm(payload.farm, payload.responsible || payload.technician, payload.zone);
         }
       }
     } catch (err) {
