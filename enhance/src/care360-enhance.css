@@ -1661,11 +1661,23 @@ html.c360-metrics-lite .matrix-import {
   line-height: 1.4;
 }
 
+.c360-import-open {
+  margin: 0;
+  padding: 12px 0 4px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--c360-brand, #007fa3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .c360-import-file {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: flex-start;
+  overflow: hidden;
   border-radius: 10px;
   padding: 10px 14px;
   background: var(--c360-brand, #007fa3);
@@ -1673,10 +1685,22 @@ html.c360-metrics-lite .matrix-import {
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.c360-import-file input {
-  display: none;
+/* Keep the input clickable in Android WebView (display:none breaks the picker). */
+.c360-import-file .c360-import-input,
+.c360-import-file input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0.01;
+  cursor: pointer;
+  border: 0;
+  font-size: 16px;
 }
 
 .c360-import-preview .primary,
@@ -1703,17 +1727,13 @@ html.c360-metrics-lite .matrix-import {
   border: 1px solid var(--c360-line, #d7e2e5);
   border-radius: 14px;
   background: #f7fbfc;
-  padding: 0 12px;
+  padding: 0 12px 12px;
+  margin: 0 0 14px;
 }
 
-.c360-metrics-import > summary {
-  cursor: pointer;
-  padding: 12px 0;
-  font-weight: 800;
-  color: var(--c360-brand, #007fa3);
-}
-
-.c360-metrics-import[open] > summary {
-  border-bottom: 1px solid var(--c360-line, #d7e2e5);
-  margin-bottom: 10px;
+.c360-metrics-import .c360-import-box {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }

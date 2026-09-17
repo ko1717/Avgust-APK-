@@ -455,8 +455,8 @@
     box.className = "c360-import-box";
     box.innerHTML =
       '<p class="c360-import-lead">Importa una <strong>finca</strong> y sus <strong>informes</strong> desde matriz Excel/CSV, Word o PDF. Si la finca no existe, se crea sola.</p>' +
-      '<label class="c360-import-file">Elegir archivo' +
-      '<input type="file" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
+      '<label class="c360-import-file"><span>Elegir archivo</span>' +
+      '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
       "</label>" +
       '<div class="c360-import-status muted" hidden></div>' +
       '<div class="c360-import-preview" hidden></div>';

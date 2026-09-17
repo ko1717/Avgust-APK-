@@ -396,6 +396,12 @@
     loading: false,
     error: "",
     openChapter: null,
+    importExpanded: true,
+    importStatus: "",
+    importStatusError: false,
+    importPreviewHtml: "",
+    pendingVisits: null,
+    boardMounted: false,
   };
 
   async function loadVisits() {
@@ -448,6 +454,7 @@
       document.documentElement.classList.remove("c360-metrics-lite");
       var existing = q("#" + ROOT_ID);
       if (existing) existing.remove();
+      state.boardMounted = false;
       return;
     }
     document.documentElement.classList.add("c360-metrics-lite");
@@ -457,10 +464,12 @@
     if (state.visits === null && !state.loading) {
       loadVisits();
       root.innerHTML = '<p class="c360-metrics-loading">Cargando métricas…</p>';
+      state.boardMounted = true;
       return;
     }
     if (state.loading) {
       root.innerHTML = '<p class="c360-metrics-loading">Cargando métricas…</p>';
+      state.boardMounted = true;
       return;
     }
     if (state.error) {
@@ -469,6 +478,7 @@
         escapeHtml(state.error) +
         '</p><button type="button" data-act="reload">Reintentar</button></div>';
       bind(root);
+      state.boardMounted = true;
       return;
     }
 
@@ -493,21 +503,24 @@
     html += "</div></header>";
 
     html +=
-      '<details class="c360-metrics-import"><summary>Importar finca e informes</summary>' +
-      '<div class="c360-import-box" data-c360-board-import="1">' +
-      '<p class="c360-import-lead">Sube matriz <strong>Excel/CSV</strong>, informe <strong>Word</strong> o <strong>PDF</strong>. Si la finca no existe, se crea sola.</p>' +
-      '<label class="c360-import-file">Elegir archivo' +
-      '<input type="file" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
+      '<div class="c360-metrics-import" data-c360-board-import="1">' +
+      '<p class="c360-import-open">Importar finca e informes</p>' +
+      '<div class="c360-import-box">' +
+      '<p class="c360-import-lead">Sube matriz <strong>Excel/CSV</strong>, informe <strong>Word (.docx)</strong> o <strong>PDF</strong>. Si la finca no existe, se crea sola.</p>' +
+      '<label class="c360-import-file">' +
+      "<span>Elegir archivo</span>" +
+      '<input id="c360-board-file" type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
       "</label>" +
       '<div class="c360-import-status muted" hidden></div>' +
       '<div class="c360-import-preview" hidden></div>' +
-      "</div></details>";
+      "</div></div>";
 
     if (!usable.length) {
       html +=
         '<div class="c360-metrics-empty"><p>Aún no hay visitas revisadas de aseguramiento. Guarda un informe o importa una finca con su historial.</p></div>';
       root.innerHTML = html;
       bind(root);
+      state.boardMounted = true;
       return;
     }
 
@@ -541,6 +554,7 @@
 
     root.innerHTML = html;
     bind(root);
+    state.boardMounted = true;
   }
 
   function renderAllView(data) {
@@ -757,71 +771,150 @@
 
   function wireBoardImport(root) {
     var box = q("[data-c360-board-import]", root);
-    if (!box || box.getAttribute("data-bound") === "1") return;
-    box.setAttribute("data-bound", "1");
-    if (!window.C360Import || !window.C360Import.handleFile) return;
-    var input = q('input[type=file]', box);
+    if (!box) return;
+    var input = q("#c360-board-file", box) || q("input[type=file]", box);
     var status = q(".c360-import-status", box);
     var preview = q(".c360-import-preview", box);
-    var pending = null;
-    var ui = {
-      setStatus: function (text, isError) {
-        status.hidden = !text;
-        status.textContent = text || "";
-        status.className = "c360-import-status " + (isError ? "notice error" : "muted");
-      },
-      setPreview: function (parsed) {
-        pending = parsed;
-        preview.hidden = false;
-        var warn = (parsed.errors || []).slice(0, 3).join(" · ");
-        preview.innerHTML =
-          "<p><strong>" +
-          parsed.visits.length +
-          "</strong> aseguramiento(s) listos · " +
-          parsed.rows +
-          " filas/criterios leídos.</p>" +
-          (warn ? '<p class="notice error">' + warn + "</p>" : "") +
-          '<button type="button" class="primary c360-import-go">Importar finca e informes</button>';
-        q(".c360-import-go", preview).addEventListener("click", async function () {
+    if (!input || !status || !preview) return;
+
+    function setStatus(text, isError) {
+      state.importStatus = text || "";
+      state.importStatusError = !!isError;
+      status.hidden = !text;
+      status.textContent = text || "";
+      status.className = "c360-import-status " + (isError ? "notice error" : "muted");
+    }
+
+    function bindConfirm() {
+      var go = q(".c360-import-go", preview);
+      if (!go || go.getAttribute("data-bound") === "1") return;
+      go.setAttribute("data-bound", "1");
+      go.addEventListener("click", async function () {
+        if (!state.pendingVisits || !state.pendingVisits.visits) {
+          setStatus("No hay aseguramientos pendientes por importar.", true);
+          return;
+        }
+        if (!window.C360Import || !window.C360Import.saveVisits) {
+          setStatus("El módulo de importación no está listo. Recarga la app.", true);
+          return;
+        }
+        try {
+          setStatus("Importando…", false);
+          var saved = await window.C360Import.saveVisits(state.pendingVisits.visits);
+          setStatus(saved.length + " aseguramientos importados.", false);
+          preview.hidden = true;
+          preview.innerHTML = "";
+          state.importPreviewHtml = "";
+          state.pendingVisits = null;
+          loadVisits();
+        } catch (err) {
+          setStatus(err.message || String(err), true);
+        }
+      });
+    }
+
+    function setPreview(parsed) {
+      state.pendingVisits = parsed;
+      var warn = (parsed.errors || []).slice(0, 3).join(" · ");
+      var html =
+        "<p><strong>" +
+        parsed.visits.length +
+        "</strong> aseguramiento(s) listos · " +
+        parsed.rows +
+        " filas/criterios leídos.</p>" +
+        (warn ? '<p class="notice error">' + warn + "</p>" : "") +
+        '<button type="button" class="primary c360-import-go">Confirmar importación</button>';
+      state.importPreviewHtml = html;
+      preview.hidden = false;
+      preview.innerHTML = html;
+      bindConfirm();
+    }
+
+    if (state.importStatus) setStatus(state.importStatus, state.importStatusError);
+    if (state.importPreviewHtml) {
+      preview.hidden = false;
+      preview.innerHTML = state.importPreviewHtml;
+      bindConfirm();
+    }
+
+    if (input.getAttribute("data-bound") === "1") return;
+    input.setAttribute("data-bound", "1");
+    var openTitle = q(".c360-import-open", box);
+    if (openTitle) {
+      openTitle.setAttribute("role", "button");
+      openTitle.tabIndex = 0;
+      openTitle.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        try {
+          input.click();
+        } catch (err) {}
+      });
+      openTitle.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
           try {
-            ui.setStatus("Importando…", false);
-            var saved = await window.C360Import.saveVisits(pending.visits);
-            ui.setStatus(saved.length + " aseguramientos importados.", false);
-            preview.hidden = true;
-            pending = null;
-            loadVisits();
-          } catch (err) {
-            ui.setStatus(err.message || String(err), true);
-          }
-        });
-      },
-    };
+            input.click();
+          } catch (err) {}
+        }
+      });
+    }
     input.addEventListener("change", function () {
       var file = input.files && input.files[0];
-      if (file) window.C360Import.handleFile(file, ui);
-      input.value = "";
+      if (!file) return;
+      if (!window.C360Import || !window.C360Import.handleFile) {
+        setStatus("El módulo de importación no está listo. Recarga la app.", true);
+        return;
+      }
+      window.C360Import.handleFile(file, { setStatus: setStatus, setPreview: setPreview });
+      try {
+        input.value = "";
+      } catch (err) {}
     });
   }
 
   function tick() {
-    render();
+    var onMetrics = onMetricsTab();
+    if (!onMetrics) {
+      if (state.boardMounted || q("#" + ROOT_ID)) render();
+      return;
+    }
+    if (!q("#" + ROOT_ID) || !state.boardMounted) render();
   }
 
   function boot() {
     tick();
     var pending = false;
+    var lastOnMetrics = onMetricsTab();
     var obs = new MutationObserver(function () {
       if (pending) return;
       pending = true;
       requestAnimationFrame(function () {
         pending = false;
-        tick();
+        var now = onMetricsTab();
+        if (now !== lastOnMetrics) {
+          lastOnMetrics = now;
+          state.boardMounted = false;
+          render();
+          return;
+        }
+        if (now && !q("#" + ROOT_ID)) {
+          state.boardMounted = false;
+          render();
+        }
       });
     });
-    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-active", "aria-selected", "data-state", "class"] });
+    obs.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-active", "aria-selected", "data-state", "class"],
+    });
     setInterval(function () {
-      if (onMetricsTab() && !q("#" + ROOT_ID)) tick();
-    }, 1500);
+      if (onMetricsTab() && !q("#" + ROOT_ID)) {
+        state.boardMounted = false;
+        render();
+      }
+    }, 2000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
