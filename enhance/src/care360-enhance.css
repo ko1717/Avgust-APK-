@@ -1858,9 +1858,9 @@ html.c360-metrics-lite .metrics-actions {
 }
 
 .c360-linechart-zone { pointer-events: none; }
-.c360-linechart-zone.zone-critical { fill: rgb(196 75 60 / 5%); }
-.c360-linechart-zone.zone-acceptable { fill: rgb(201 133 18 / 5%); }
-.c360-linechart-zone.zone-healthy { fill: rgb(31 138 91 / 7%); }
+.c360-linechart-zone.zone-critical { fill: rgb(196 75 60 / 4%); }
+.c360-linechart-zone.zone-acceptable { fill: rgb(201 133 18 / 4%); }
+.c360-linechart-zone.zone-healthy { fill: rgb(31 138 91 / 5%); }
 
 .c360-linechart-grid { stroke: var(--c360-chart-grid); stroke-width: 1; }
 .c360-linechart-ylabel {
@@ -1869,7 +1869,7 @@ html.c360-metrics-lite .metrics-actions {
   font-weight: 700;
   opacity: 0.85;
 }
-.c360-linechart-area { fill: rgb(31 138 91 / 8%); }
+.c360-linechart-area { fill: rgb(31 138 91 / 4%); }
 .c360-linechart-path {
   fill: none;
   stroke: #1f8a5b;
@@ -1884,7 +1884,7 @@ html.c360-metrics-lite .metrics-actions {
 }
 .c360-linechart-dot.is-last {
   stroke-width: 3;
-  filter: drop-shadow(0 1px 2px rgb(31 138 91 / 35%));
+  filter: none;
 }
 .c360-linechart-val {
   fill: var(--c360-chart-val);
@@ -1907,20 +1907,12 @@ html.c360-metrics-lite .metrics-actions {
 }
 .c360-linechart-meta {
   stroke: var(--c360-brand, #007fa3);
-  stroke-width: 1.75;
+  stroke-width: 2;
   stroke-dasharray: 6 5;
-  opacity: 0.85;
+  opacity: 0.95;
 }
 .c360-linechart-meta-label {
-  fill: var(--c360-brand, #007fa3);
-  font-size: 10px;
-  font-weight: 800;
-  text-anchor: start;
-  opacity: 0.95;
-  paint-order: stroke;
-  stroke: var(--c360-surface);
-  stroke-width: 3px;
-  stroke-linejoin: round;
+  display: none; /* chip legend is the source of truth */
 }
 .c360-linechart-sparse-note {
   margin: 8px 2px 0;
@@ -3005,7 +2997,12 @@ html.c360-metrics-lite .metrics-actions {
   letter-spacing: -0.02em;
 }
 
+.c360-metrics-hero-chart {
+  overflow: visible;
+}
+
 .c360-metrics-hero-chart .c360-linechart {
+  overflow: visible;
   min-height: 260px;
 }
 
@@ -4325,9 +4322,9 @@ html.dark .c360-linechart-sparse-note {
   color: var(--c360-ink-soft);
 }
 
-html.dark .c360-linechart-zone.zone-critical { fill: rgb(196 75 60 / 10%); }
-html.dark .c360-linechart-zone.zone-acceptable { fill: rgb(201 133 18 / 9%); }
-html.dark .c360-linechart-zone.zone-healthy { fill: rgb(31 138 91 / 12%); }
+html.dark .c360-linechart-zone.zone-critical { fill: rgb(196 75 60 / 7%); }
+html.dark .c360-linechart-zone.zone-acceptable { fill: rgb(201 133 18 / 6%); }
+html.dark .c360-linechart-zone.zone-healthy { fill: rgb(31 138 91 / 8%); }
 
 html.dark .c360-linechart-chip {
   background: var(--c360-muted);
@@ -4350,7 +4347,7 @@ html.dark .c360-linechart-val {
 }
 
 html.dark .c360-linechart-area {
-  fill: rgb(31 138 91 / 14%);
+  fill: rgb(31 138 91 / 8%);
 }
 
 html.dark .c360-linechart-grid {

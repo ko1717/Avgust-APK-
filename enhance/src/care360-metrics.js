@@ -1196,10 +1196,10 @@
       );
     }
     var W = 720;
-    var H = 320;
+    var H = 340;
     var padL = 36;
     var padR = 24;
-    var padT = 34;
+    var padT = 42;
     var padB = 48;
     var innerW = W - padL - padR;
     var innerH = H - padT - padB;
@@ -1356,15 +1356,7 @@
       '" y2="' +
       metaY +
       '" />';
-    // Meta label inside the plot (right of the left edge) — never clipped
-    html +=
-      '<text class="c360-linechart-meta-label" x="' +
-      (padL + 8) +
-      '" y="' +
-      (metaY - 6) +
-      '" text-anchor="start">meta ' +
-      META_TARGET +
-      "%</text>";
+    // Meta label lives in the HTML chip legend (never clipped by SVG/plot edges)
 
     if (compareCoords.length) {
       html += '<path class="c360-linechart-path compare" d="' + smoothPath(compareCoords) + '" />';
@@ -1396,34 +1388,49 @@
       var placedLabels = [];
       var xStep = coords.length > 1 ? innerW / (coords.length - 1) : innerW;
       coords.forEach(function (c, idx) {
+        var isLast = idx === coords.length - 1;
+        var isFirst = idx === 0;
+        var aboveMeta = c.y < metaY - 2;
+        var nearMeta = Math.abs(c.y - metaY) < 18;
         var preferAbove = true;
-        var labelY = c.y - 16;
-        if (labelY < padT + 14) {
-          preferAbove = false;
-          labelY = c.y + 24;
+        // High scores: keep label above the point (never push into the meta band)
+        if (aboveMeta) preferAbove = true;
+        // Scores just under meta: put label below the point to clear the meta line
+        else if (nearMeta) preferAbove = false;
+        // Near floor: keep above
+        if (c.y > padT + innerH - 28) preferAbove = true;
+
+        var labelY = preferAbove ? c.y - 16 : c.y + 22;
+        // If above would clip the top, nudge sideways rather than into the meta line
+        if (preferAbove && labelY < padT + 10) {
+          if (aboveMeta || nearMeta) {
+            labelY = padT + 12;
+          } else {
+            preferAbove = false;
+            labelY = c.y + 22;
+          }
         }
-        // Prefer below when near meta line from above (avoids collision with meta label)
-        if (preferAbove && Math.abs(c.y - metaY) < 14 && c.y <= metaY) {
-          preferAbove = false;
-          labelY = c.y + 24;
+        if (!preferAbove && labelY > padT + innerH - 4) {
+          labelY = c.y - 16;
         }
-        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 20) {
+        // Neighbor collision: flip only when both are mid-band (safe room)
+        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 22 && !aboveMeta && !nearMeta) {
           preferAbove = !preferAbove;
-          labelY = preferAbove ? c.y - 16 : c.y + 24;
+          labelY = preferAbove ? c.y - 16 : c.y + 22;
         }
         for (var pi = 0; pi < placedLabels.length; pi++) {
           var prevL = placedLabels[pi];
           if (Math.abs(prevL.y - labelY) < 13 && Math.abs(prevL.x - c.x) < xStep * 0.7) {
-            preferAbove = !preferAbove;
-            labelY = preferAbove ? c.y - 16 : c.y + 24;
+            if (aboveMeta) labelY = Math.min(labelY, c.y - 16);
+            else {
+              preferAbove = !preferAbove;
+              labelY = preferAbove ? c.y - 16 : c.y + 22;
+            }
             break;
           }
         }
-        if (labelY > padT + innerH - 6) labelY = c.y - 16;
-        if (labelY < padT + 10) labelY = c.y + 24;
         placedLabels.push({ x: c.x, y: labelY });
 
-        var isLast = idx === coords.length - 1;
         var focusDate = escapeHtml(c.p.date || "");
         var focusLabel = escapeHtml(c.p.label || c.p.shortLabel || "");
         var xLabel = c.p.shortLabel || c.p.label || "";
@@ -1431,16 +1438,16 @@
         var xPos = c.x;
         var valAnchor = "middle";
         var valX = c.x;
-        if (coords.length >= 2 && idx === 0) {
+        if (coords.length >= 2 && isFirst) {
           xAnchor = "start";
           xPos = Math.max(padL, c.x - 2);
           valAnchor = "start";
-          valX = Math.max(padL + 2, c.x - 2);
+          valX = Math.min(W - padR - 4, c.x + 10);
         } else if (coords.length >= 2 && isLast) {
           xAnchor = "end";
           xPos = Math.min(W - padR, c.x + 2);
           valAnchor = "end";
-          valX = Math.min(W - padR - 2, c.x + 2);
+          valX = Math.max(padL + 4, c.x - 8);
         }
         html +=
           '<g class="c360-linechart-hit' +
