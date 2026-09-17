@@ -2403,3 +2403,113 @@ html.c360-metrics-lite .metrics-actions {
     text-align: center;
   }
 }
+
+/* —— Comparación y exportación —— */
+.c360-metrics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.c360-action-btn {
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #fff;
+  color: var(--c360-ink-soft, #58696d);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.c360-action-btn.active {
+  border-color: rgb(0 127 163 / 35%);
+  background: #e8f5f9;
+  color: var(--c360-brand, #007fa3);
+}
+
+.c360-action-btn.primary {
+  border-color: var(--c360-brand, #007fa3);
+  background: var(--c360-brand, #007fa3);
+  color: #fff;
+}
+
+.c360-metrics-compare .c360-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.c360-compare-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: #f8fbfc;
+  min-width: 0;
+}
+
+.c360-compare-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-compare-cell strong {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.c360-compare-prev {
+  font-size: 12px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-linechart-path.compare {
+  stroke: #8aa0a6;
+  stroke-width: 2.2;
+  stroke-dasharray: 6 5;
+  fill: none;
+  opacity: 0.9;
+}
+
+.c360-linechart-dot.compare {
+  fill: #fff;
+  stroke: #8aa0a6;
+  stroke-width: 2;
+}
+
+.c360-linechart-legend {
+  fill: #5b6b70;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .c360-metrics-compare .c360-compare-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .c360-metrics-actions {
+    flex-direction: column;
+  }
+
+  .c360-action-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1023px) {
+  .c360-metrics-compare .c360-compare-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

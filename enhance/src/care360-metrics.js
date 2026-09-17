@@ -408,6 +408,415 @@
     });
   }
 
+  function isoDate(d) {
+    return (
+      d.getFullYear() +
+      "-" +
+      String(d.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(d.getDate()).padStart(2, "0")
+    );
+  }
+
+  function parseIsoDate(s) {
+    var m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+
+  function currentWindow() {
+    var from = state.dateFrom;
+    var to = state.dateTo;
+    if (from && to) return { from: from, to: to };
+    var end = new Date();
+    var start = new Date();
+    start.setFullYear(end.getFullYear() - 1);
+    return { from: isoDate(start), to: isoDate(end) };
+  }
+
+  function previousWindow(win) {
+    var from = parseIsoDate(win.from);
+    var to = parseIsoDate(win.to);
+    if (!from || !to) return null;
+    var ms = to.getTime() - from.getTime();
+    if (ms < 24 * 60 * 60 * 1000) ms = 30 * 24 * 60 * 60 * 1000;
+    var prevTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
+    var prevFrom = new Date(prevTo.getTime() - ms);
+    return { from: isoDate(prevFrom), to: isoDate(prevTo) };
+  }
+
+  function filterByWindow(visits, win, farmName) {
+    return (visits || []).filter(function (v) {
+      if (!visitUsable(v)) return false;
+      if (farmName && normFarm(v.farm) !== normFarm(farmName)) return false;
+      return inDateRange(v.date, win.from, win.to);
+    });
+  }
+
+  function deltaPts(curr, prev) {
+    if (curr == null || prev == null || isNaN(curr) || isNaN(prev)) return null;
+    return curr - prev;
+  }
+
+  function buildCompare(currScore, prevScore, currFindings, prevFindings, currVisits, prevVisits, win, prevWin) {
+    return {
+      enabled: !!state.compare,
+      win: win,
+      prevWin: prevWin,
+      score: currScore,
+      prevScore: prevScore,
+      scoreDelta: deltaPts(currScore, prevScore),
+      findings: currFindings,
+      prevFindings: prevFindings,
+      findingsDelta: currFindings - (prevFindings || 0),
+      visits: currVisits,
+      prevVisits: prevVisits,
+      visitsDelta: currVisits - (prevVisits || 0),
+    };
+  }
+
+  function renderCompareStrip(cmp) {
+    if (!cmp || !cmp.enabled || !cmp.prevWin) return "";
+    function cell(label, curr, prev, delta, suffix) {
+      suffix = suffix || "";
+      var cls = "flat";
+      var sign = "";
+      if (delta != null && !isNaN(delta)) {
+        if (label === "Hallazgos") cls = delta > 0 ? "down" : delta < 0 ? "up" : "flat";
+        else cls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+        sign = delta > 0 ? "+" : "";
+      }
+      return (
+        '<div class="c360-compare-cell"><span class="c360-compare-label">' +
+        escapeHtml(label) +
+        '</span><strong>' +
+        escapeHtml(String(curr == null ? "—" : curr + suffix)) +
+        '</strong><span class="c360-compare-prev">Antes: ' +
+        escapeHtml(String(prev == null ? "—" : prev + suffix)) +
+        '</span><span class="c360-mkpi-delta ' +
+        cls +
+        '">' +
+        (delta == null || isNaN(delta) ? "Sin base" : sign + delta + (suffix === "%" ? " pts" : "")) +
+        "</span></div>"
+      );
+    }
+    var html = '<section class="c360-metrics-card c360-metrics-compare">';
+    html += cardHead(
+      "Comparación de periodos",
+      "Actual " +
+        formatDateEs(cmp.win.from) +
+        " → " +
+        formatDateEs(cmp.win.to) +
+        " vs anterior " +
+        formatDateEs(cmp.prevWin.from) +
+        " → " +
+        formatDateEs(cmp.prevWin.to)
+    );
+    html += '<div class="c360-compare-grid">';
+    html += cell("Indicador", cmp.score, cmp.prevScore, cmp.scoreDelta, "%");
+    html += cell("Hallazgos", cmp.findings, cmp.prevFindings, cmp.findingsDelta, "");
+    html += cell("Visitas", cmp.visits, cmp.prevVisits, cmp.visitsDelta, "");
+    html += "</div></section>";
+    return html;
+  }
+
+  function downloadText(filename, text, mime) {
+    var blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 800);
+  }
+
+  function csvEscape(v) {
+    var s = String(v == null ? "" : v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function exportBoardCsv() {
+    var data = state._viewData;
+    if (!data) {
+      setNotice("No hay datos para exportar.", true);
+      render();
+      return;
+    }
+    var lines = [];
+    lines.push("CARE 360 · Exportación de métricas");
+    lines.push(
+      "Modo," +
+        csvEscape(state.mode === "farm" ? "Una finca" : "Todas las fincas") +
+        (state.mode === "farm" ? "," + csvEscape(state.farm) : "")
+    );
+    lines.push(
+      "Periodo," +
+        csvEscape(formatDateEs(state.dateFrom) || "Todo") +
+        "," +
+        csvEscape(formatDateEs(state.dateTo) || "Todo")
+    );
+    if (state._compare) {
+      lines.push(
+        "Periodo anterior," +
+          csvEscape(formatDateEs(state._compare.prevWin.from)) +
+          "," +
+          csvEscape(formatDateEs(state._compare.prevWin.to))
+      );
+      lines.push(
+        "Indicador actual,Indicador anterior,Delta pts,Hallazgos actual,Hallazgos anterior,Visitas actual,Visitas anterior"
+      );
+      lines.push(
+        [
+          state._compare.score,
+          state._compare.prevScore,
+          state._compare.scoreDelta,
+          state._compare.findings,
+          state._compare.prevFindings,
+          state._compare.visits,
+          state._compare.prevVisits,
+        ]
+          .map(csvEscape)
+          .join(",")
+      );
+    }
+    lines.push("");
+    if (data.farms && data.farms.length) {
+      lines.push("Resumen por finca");
+      lines.push("Finca,Visitas,Indicador %,Hallazgos,Estado,Primera visita,Última visita");
+      data.farms.forEach(function (f) {
+        lines.push(
+          [
+            f.name,
+            f.visits,
+            f.score,
+            f.findings,
+            statusLabel(f.status),
+            formatDateEs(f.firstDate),
+            formatDateEs(f.lastDate),
+          ]
+            .map(csvEscape)
+            .join(",")
+        );
+      });
+      lines.push("");
+    }
+    if (data.timeline && data.timeline.length) {
+      lines.push("Evolución / visitas");
+      lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable,Finca");
+      data.timeline.forEach(function (r) {
+        lines.push(
+          [
+            formatDateEs(r.date) || r.label,
+            r.score,
+            r.findings,
+            statusLabel(r.status),
+            r.responsible || "",
+            r.farm || state.farm || "",
+          ]
+            .map(csvEscape)
+            .join(",")
+        );
+      });
+      lines.push("");
+    }
+    if (data.chapters && data.chapters.length) {
+      lines.push("Capítulos");
+      lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables");
+      data.chapters.forEach(function (c) {
+        lines.push([c.id, c.title, c.score, c.findings, c.applicable].map(csvEscape).join(","));
+      });
+      lines.push("");
+    }
+    if (data.items && data.items.length) {
+      lines.push("Hallazgos / criterios");
+      lines.push("Ítem,Capítulo,Hallazgos,Frecuencia %,Observación,Recomendación");
+      data.items.forEach(function (it) {
+        lines.push(
+          [
+            it.id,
+            it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
+            it.findings != null ? it.findings : 1,
+            it.rate != null ? it.rate : "",
+            it.observation || "",
+            it.recommendation || "",
+          ]
+            .map(csvEscape)
+            .join(",")
+        );
+      });
+    }
+    var stamp = isoDate(new Date());
+    var name =
+      "CARE360-metricas-" +
+      (state.mode === "farm" ? normFarm(state.farm).replace(/\s+/g, "-") + "-" : "todas-") +
+      stamp +
+      ".csv";
+    downloadText(name, "\ufeff" + lines.join("\r\n"), "text/csv;charset=utf-8");
+    setNotice("Excel/CSV exportado: " + name, false);
+    render();
+  }
+
+  function exportBoardPrint() {
+    var data = state._viewData;
+    if (!data) {
+      setNotice("No hay datos para exportar.", true);
+      render();
+      return;
+    }
+    var cmp = state._compare;
+    var title =
+      "CARE 360 · Métricas" +
+      (state.mode === "farm" ? " · " + (state.farm || "") : " · Todas las fincas");
+    var body = "";
+    body += "<h1>" + escapeHtml(title) + "</h1>";
+    body +=
+      "<p class='meta'>Periodo: " +
+      escapeHtml(formatDateEs(state.dateFrom) || "Todo") +
+      " → " +
+      escapeHtml(formatDateEs(state.dateTo) || "Todo") +
+      "</p>";
+    if (cmp && cmp.prevWin) {
+      body +=
+        "<p class='meta'>Comparado con: " +
+        escapeHtml(formatDateEs(cmp.prevWin.from)) +
+        " → " +
+        escapeHtml(formatDateEs(cmp.prevWin.to)) +
+        "</p>";
+      body += "<div class='kpis'>";
+      body +=
+        "<div><b>Indicador</b><br>" +
+        (cmp.score == null ? "—" : cmp.score + "%") +
+        " <small>(" +
+        (cmp.scoreDelta == null ? "sin base" : (cmp.scoreDelta > 0 ? "+" : "") + cmp.scoreDelta + " pts") +
+        ")</small></div>";
+      body +=
+        "<div><b>Hallazgos</b><br>" +
+        cmp.findings +
+        " <small>(" +
+        (cmp.findingsDelta > 0 ? "+" : "") +
+        cmp.findingsDelta +
+        ")</small></div>";
+      body +=
+        "<div><b>Visitas</b><br>" +
+        cmp.visits +
+        " <small>(" +
+        (cmp.visitsDelta > 0 ? "+" : "") +
+        cmp.visitsDelta +
+        ")</small></div>";
+      body += "</div>";
+    }
+    function table(headers, rows) {
+      var h =
+        "<table><thead><tr>" +
+        headers
+          .map(function (x) {
+            return "<th>" + escapeHtml(x) + "</th>";
+          })
+          .join("") +
+        "</tr></thead><tbody>";
+      rows.forEach(function (r) {
+        h +=
+          "<tr>" +
+          r
+            .map(function (c) {
+              return "<td>" + escapeHtml(String(c == null ? "" : c)) + "</td>";
+            })
+            .join("") +
+          "</tr>";
+      });
+      return h + "</tbody></table>";
+    }
+    if (data.farms && data.farms.length) {
+      body += "<h2>Resumen por finca</h2>";
+      body += table(
+        ["Finca", "Visitas", "Indicador", "Hallazgos", "Estado", "Primera", "Última"],
+        data.farms.map(function (f) {
+          return [
+            f.name,
+            f.visits,
+            f.score == null ? "—" : f.score + "%",
+            f.findings,
+            statusLabel(f.status),
+            formatDateEs(f.firstDate),
+            formatDateEs(f.lastDate),
+          ];
+        })
+      );
+    }
+    if (data.timeline && data.timeline.length) {
+      body += "<h2>Evolución / visitas</h2>";
+      body += table(
+        ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
+        data.timeline.map(function (r) {
+          return [
+            r.label || formatDateEs(r.date),
+            r.score == null ? "—" : r.score + "%",
+            r.findings,
+            statusLabel(r.status),
+            r.responsible || "—",
+          ];
+        })
+      );
+    }
+    if (data.chapters && data.chapters.length) {
+      body += "<h2>Capítulos</h2>";
+      body += table(
+        ["Capítulo", "Indicador", "Hallazgos"],
+        data.chapters.map(function (c) {
+          return [c.id + ". " + c.title, c.score == null ? "—" : c.score + "%", c.findings];
+        })
+      );
+    }
+    if (data.items && data.items.length) {
+      body += "<h2>Hallazgos</h2>";
+      body += table(
+        ["Ítem", "Capítulo", "Detalle"],
+        data.items.slice(0, 40).map(function (it) {
+          return [
+            it.id,
+            it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
+            it.observation || (it.findings != null ? it.findings + " hallazgos" : it.recommendation || ""),
+          ];
+        })
+      );
+    }
+    body += "<p class='meta'>Generado " + escapeHtml(formatDateEs(isoDate(new Date()))) + " · CARE 360</p>";
+    var html =
+      "<!doctype html><html lang='es'><head><meta charset='utf-8'><title>" +
+      escapeHtml(title) +
+      "</title><style>" +
+      "body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1c2b32;padding:24px;}" +
+      "h1{font-size:22px;margin:0 0 8px}h2{font-size:16px;margin:22px 0 8px}" +
+      ".meta{color:#58696d;font-size:13px;margin:4px 0}" +
+      ".kpis{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}" +
+      ".kpis>div{border:1px solid #dbe4e8;border-radius:12px;padding:12px 14px;min-width:120px}" +
+      "table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}" +
+      "th,td{border-bottom:1px solid #dbe4e8;text-align:left;padding:8px 6px;vertical-align:top}" +
+      "th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d}" +
+      "@media print{body{padding:0}}" +
+      "</style></head><body>" +
+      body +
+      "<script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>" +
+      "</body></html>";
+    var w = window.open("", "_blank", "noopener,noreferrer,width=920,height=720");
+    if (!w) {
+      setNotice("Permite ventanas emergentes para exportar PDF/imprimir.", true);
+      render();
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setNotice("Informe listo para imprimir o guardar como PDF.", false);
+    render();
+  }
+
+
   function formatDateEs(iso) {
     var s = String(iso || "").trim();
     var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -571,11 +980,14 @@
     );
   }
 
-  function chartLine(rows) {
+  function chartLine(rows, compareRows) {
     var points = (rows || []).filter(function (r) {
       return r && r.score != null;
     });
-    if (!points.length) {
+    var compare = (compareRows || []).filter(function (r) {
+      return r && r.score != null;
+    });
+    if (!points.length && !compare.length) {
       return '<div class="c360-linechart c360-linechart-empty"><p>Sin datos de indicador en este periodo.</p></div>';
     }
     var W = 720;
@@ -583,15 +995,18 @@
     var padL = 12;
     var padR = 12;
     var padT = 40;
-    var padB = 36;
+    var padB = 42;
     var innerW = W - padL - padR;
     var innerH = H - padT - padB;
-    var coords = points.map(function (p, i) {
-      var x = padL + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
-      var y = padT + innerH - (Math.max(0, Math.min(100, p.score)) / 100) * innerH;
-      return { x: x, y: y, p: p };
-    });
+    function toCoords(list) {
+      return list.map(function (p, i) {
+        var x = padL + (list.length === 1 ? innerW / 2 : (i / (list.length - 1)) * innerW);
+        var y = padT + innerH - (Math.max(0, Math.min(100, p.score)) / 100) * innerH;
+        return { x: x, y: y, p: p };
+      });
+    }
     function smoothPath(list) {
+      if (!list.length) return "";
       if (list.length === 1) return "M " + list[0].x + " " + list[0].y;
       var d = "M " + list[0].x + " " + list[0].y;
       for (var i = 0; i < list.length - 1; i++) {
@@ -602,18 +1017,8 @@
       }
       return d;
     }
-    var line = smoothPath(coords);
-    var area =
-      line +
-      " L " +
-      coords[coords.length - 1].x +
-      " " +
-      (padT + innerH) +
-      " L " +
-      coords[0].x +
-      " " +
-      (padT + innerH) +
-      " Z";
+    var coords = toCoords(points);
+    var compareCoords = toCoords(compare);
     var html =
       '<div class="c360-linechart"><svg viewBox="0 0 ' +
       W +
@@ -633,54 +1038,85 @@
         gy +
         '" />';
     }
-    html += '<path class="c360-linechart-area" d="' + area + '" />';
-    html += '<path class="c360-linechart-path" d="' + line + '" />';
-    coords.forEach(function (c, idx) {
-      var labelY = c.y - 14;
-      if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 16) {
-        labelY = c.y + 22;
-      }
-      var focusDate = escapeHtml(c.p.date || "");
-      var focusLabel = escapeHtml(c.p.label || c.p.shortLabel || "");
+    if (compareCoords.length) {
+      html += '<path class="c360-linechart-path compare" d="' + smoothPath(compareCoords) + '" />';
+      compareCoords.forEach(function (c) {
+        html +=
+          '<circle class="c360-linechart-dot compare" cx="' +
+          c.x +
+          '" cy="' +
+          c.y +
+          '" r="3.5" />';
+      });
+    }
+    if (coords.length) {
+      var line = smoothPath(coords);
+      var area =
+        line +
+        " L " +
+        coords[coords.length - 1].x +
+        " " +
+        (padT + innerH) +
+        " L " +
+        coords[0].x +
+        " " +
+        (padT + innerH) +
+        " Z";
+      html += '<path class="c360-linechart-area" d="' + area + '" />';
+      html += '<path class="c360-linechart-path" d="' + line + '" />';
+      coords.forEach(function (c, idx) {
+        var labelY = c.y - 14;
+        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 16) labelY = c.y + 22;
+        var focusDate = escapeHtml(c.p.date || "");
+        var focusLabel = escapeHtml(c.p.label || c.p.shortLabel || "");
+        html +=
+          '<g class="c360-linechart-hit" data-focus-date="' +
+          focusDate +
+          '" data-focus-label="' +
+          focusLabel +
+          '" data-focus-score="' +
+          c.p.score +
+          '" tabindex="0" role="button" aria-label="Ver detalle ' +
+          focusLabel +
+          '">';
+        html +=
+          '<circle class="c360-linechart-dot" cx="' +
+          c.x +
+          '" cy="' +
+          c.y +
+          '" r="7" />';
+        html +=
+          '<circle class="c360-linechart-hitarea" cx="' +
+          c.x +
+          '" cy="' +
+          c.y +
+          '" r="16" />';
+        html +=
+          '<text class="c360-linechart-val" x="' +
+          c.x +
+          '" y="' +
+          labelY +
+          '">' +
+          c.p.score.toFixed(2).replace(/\.00$/, ".00") +
+          "%</text>";
+        html +=
+          '<text class="c360-linechart-xlabel" x="' +
+          c.x +
+          '" y="' +
+          (H - 10) +
+          '">' +
+          escapeHtml(c.p.shortLabel || c.p.label || "") +
+          "</text></g>";
+      });
+    }
+    if (compareCoords.length) {
       html +=
-        '<g class="c360-linechart-hit" data-focus-date="' +
-        focusDate +
-        '" data-focus-label="' +
-        focusLabel +
-        '" data-focus-score="' +
-        c.p.score +
-        '" tabindex="0" role="button" aria-label="Ver detalle ' +
-        focusLabel +
-        '">';
-      html +=
-        '<circle class="c360-linechart-dot" cx="' +
-        c.x +
-        '" cy="' +
-        c.y +
-        '" r="7" />';
-      html +=
-        '<circle class="c360-linechart-hitarea" cx="' +
-        c.x +
-        '" cy="' +
-        c.y +
-        '" r="16" />';
-      html +=
-        '<text class="c360-linechart-val" x="' +
-        c.x +
+        '<text class="c360-linechart-legend" x="' +
+        padL +
         '" y="' +
-        labelY +
-        '">' +
-        c.p.score.toFixed(2).replace(/\.00$/, ".00") +
-        "%</text>";
-      html +=
-        '<text class="c360-linechart-xlabel" x="' +
-        c.x +
-        '" y="' +
-        (H - 10) +
-        '">' +
-        escapeHtml(c.p.shortLabel || c.p.label || "") +
-        "</text></g>";
-    });
+        (H - 2) +
+        '">Verde: periodo actual · Gris: periodo anterior</text>';
+    }
     html += "</svg></div>";
     return html;
   }
@@ -752,7 +1188,7 @@
         '"><span class="c360-lbl-full">' +
         sign +
         delta +
-        ' pts vs visita anterior</span><span class="c360-lbl-short">' +
+        ' pts vs anterior</span><span class="c360-lbl-short">' +
         sign +
         delta +
         " pts</span></span>";
@@ -828,6 +1264,7 @@
     error: "",
     openChapter: null,
     focus: null,
+    compare: true,
     notice: "",
     noticeError: false,
     importExpanded: true,
@@ -917,8 +1354,14 @@
     }
 
     var visits = state.visits || [];
-    var usable = filterUsableByRange(visits);
-    var farms = farmOptions(usable);
+    var win = currentWindow();
+    var usable;
+    if (state.compare) {
+      usable = filterByWindow(visits, win, null);
+    } else {
+      usable = filterUsableByRange(visits);
+    }
+    var farms = farmOptions(usable.length ? usable : filterUsableByRange(visits));
     if (!state.farm && farms.length) state.farm = farms[0];
     if (state.mode === "farm" && farms.length && farms.indexOf(state.farm) === -1) {
       state.farm = farms[0];
@@ -963,6 +1406,12 @@
         "</span></button>";
     });
     html += "</div>";
+    if (state.compare && (!state.dateFrom || !state.dateTo || state.range === "all")) {
+      html +=
+        '<p class="c360-metrics-range-hint">Comparación activa: últimos 12 meses vs 12 meses previos' +
+        (state.range === "all" ? " (el tablero se acota a esa ventana)" : "") +
+        ".</p>";
+    }
     if (state.range === "custom" && (state.dateFrom || state.dateTo)) {
       html +=
         '<p class="c360-metrics-range-hint">Rango personalizado: ' +
@@ -971,7 +1420,18 @@
         escapeHtml(formatDateEs(state.dateTo) || "…") +
         "</p>";
     }
-    html += "</div></header>";
+    html += '<div class="c360-metrics-actions">';
+    html +=
+      '<button type="button" class="c360-action-btn' +
+      (state.compare ? " active" : "") +
+      '" data-act="toggle-compare" aria-pressed="' +
+      (state.compare ? "true" : "false") +
+      '">Comparar periodos</button>';
+    html +=
+      '<button type="button" class="c360-action-btn" data-act="export-csv">Exportar Excel</button>';
+    html +=
+      '<button type="button" class="c360-action-btn primary" data-act="export-print">PDF / Imprimir</button>';
+    html += "</div></div></header>";
 
     if (state.notice) {
       html +=
@@ -1034,7 +1494,10 @@
     html += "</div>";
 
     if (state.mode === "farm") {
-      html += renderFarmView(aggregateFarm(usable, state.farm, state.dateFrom, state.dateTo));
+      var farmWin = state.compare ? win : { from: state.dateFrom, to: state.dateTo };
+      html += renderFarmView(
+        aggregateFarm(visits, state.farm, farmWin.from || "", farmWin.to || "")
+      );
     } else {
       html += renderAllView(aggregateAll(usable));
     }
@@ -1046,6 +1509,21 @@
 
   function renderAllView(data) {
     state._viewData = data;
+    var win = currentWindow();
+    var prevWin = previousWindow(win);
+    var prevVisits = prevWin ? filterByWindow(state.visits || [], prevWin, null) : [];
+    var prevData = prevWin ? aggregateAll(prevVisits) : null;
+    var cmp = buildCompare(
+      data.score,
+      prevData ? prevData.score : null,
+      data.findings,
+      prevData ? prevData.findings : 0,
+      data.visits,
+      prevData ? prevData.visits : 0,
+      win,
+      prevWin
+    );
+    state._compare = cmp;
     var trend = timelineTrend(data.timeline);
     var mix = chapterKpi(data.chapters, 4);
     var dose = chapterKpi(data.chapters, 2);
@@ -1057,12 +1535,13 @@
       data.score == null ? "—" : data.score + "%",
       scoreStatus(data.score),
       ICONS.score,
-      trend
+      cmp.scoreDelta != null ? cmp.scoreDelta : trend
     );
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
     html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
     html += kpiCard("Hallazgos", data.findings, data.findings ? "critical" : "healthy", ICONS.findings);
     html += "</div>";
+    html += renderCompareStrip(cmp);
     html += renderAlerts(alerts);
     html += renderFocusPanel();
 
@@ -1079,9 +1558,11 @@
           " visita(s) en " +
           data.farms.length +
           " finca(s)"
-        : "Sin visitas en el periodo") + " · Tocá un punto para ver detalle"
+        : "Sin visitas en el periodo") +
+        (state.compare ? " · Línea gris = periodo anterior" : "") +
+        " · Tocá un punto para ver detalle"
     );
-    html += chartLine(data.timeline);
+    html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
     html += "</section>";
 
     html += '<section class="c360-metrics-card">';
@@ -1161,7 +1642,24 @@
 
   function renderFarmView(data) {
     state._viewData = data;
+    var win = currentWindow();
+    var prevWin = previousWindow(win);
+    var prevVisits = prevWin ? filterByWindow(state.visits || [], prevWin, state.farm) : [];
+    var prevData = prevWin ? aggregateFarm(state.visits || [], state.farm, prevWin.from, prevWin.to) : null;
     var lastScore = data.timeline.length ? data.timeline[data.timeline.length - 1].score : null;
+    var prevLast =
+      prevData && prevData.timeline.length ? prevData.timeline[prevData.timeline.length - 1].score : null;
+    var cmp = buildCompare(
+      lastScore,
+      prevLast,
+      data.findings,
+      prevData ? prevData.findings : 0,
+      data.visits,
+      prevData ? prevData.visits : 0,
+      win,
+      prevWin
+    );
+    state._compare = cmp;
     var trend = timelineTrend(data.timeline);
     var mix = chapterKpi(data.chapters, 4);
     var dose = chapterKpi(data.chapters, 2);
@@ -1173,7 +1671,7 @@
       lastScore == null ? "—" : lastScore + "%",
       scoreStatus(lastScore),
       ICONS.score,
-      trend
+      cmp.scoreDelta != null ? cmp.scoreDelta : trend
     );
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
     html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
@@ -1184,6 +1682,7 @@
       ICONS.findings
     );
     html += "</div>";
+    html += renderCompareStrip(cmp);
     html += renderAlerts(alerts);
     html += renderFocusPanel();
 
@@ -1198,9 +1697,14 @@
           " · " +
           data.visits +
           " visita(s)"
-        : "Sin visitas en el rango") + " · Tocá un punto para abrir detalle"
+        : "Sin visitas en el rango") +
+        (state.compare ? " · Línea gris = periodo anterior" : "") +
+        " · Tocá un punto para abrir detalle"
     );
-    html += chartLine(data.chartTimeline || data.timeline);
+    html += chartLine(
+      data.chartTimeline || data.timeline,
+      state.compare && prevData ? prevData.chartTimeline || prevData.timeline : null
+    );
     html += "</section>";
 
     html += '<section class="c360-metrics-card">';
@@ -1817,6 +2321,17 @@
         render();
       });
     }
+    var toggleCompare = q('[data-act="toggle-compare"]', root);
+    if (toggleCompare) {
+      toggleCompare.addEventListener("click", function () {
+        state.compare = !state.compare;
+        render();
+      });
+    }
+    var exportCsvBtn = q('[data-act="export-csv"]', root);
+    if (exportCsvBtn) exportCsvBtn.addEventListener("click", exportBoardCsv);
+    var exportPrintBtn = q('[data-act="export-print"]', root);
+    if (exportPrintBtn) exportPrintBtn.addEventListener("click", exportBoardPrint);
     var reload = q('[data-act="reload"]', root);
     if (reload) reload.addEventListener("click", loadVisits);
     wireBoardImport(root);
