@@ -177,6 +177,11 @@ check('Sin overflow horizontal en tablet 768', toolsOk.overflowX, JSON.stringify
 
 if (barVisible) {
   await p.click('#c360-farm-actions .c360-farm-delete-btn');
+  try {
+    await p.waitForNavigation({ waitUntil: 'networkidle2', timeout: 8000 });
+  } catch (_) {
+    /* may refresh without full navigation */
+  }
   await wait(2500);
 } else if (before.farmId) {
   // Direct API path if UI select failed — still prove cascade delete
@@ -187,9 +192,19 @@ if (barVisible) {
 }
 
 const after = await p.evaluate(async (farmId) => {
-  const team = await fetch('/api/team').then((r) => r.json());
+  async function json(url) {
+    const res = await fetch(url);
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { __html: true, status: res.status, sample: text.slice(0, 80) };
+    }
+  }
+  const team = await json('/api/team');
+  if (team.__html) return { still: true, error: 'team not json', team };
+  const visits = await json('/api/visits');
   const still = (team.farms || []).some((f) => f.id === farmId);
-  const visits = await fetch('/api/visits').then((r) => r.json());
   return {
     still,
     farmCount: (team.farms || []).length,
