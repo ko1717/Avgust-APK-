@@ -2188,3 +2188,218 @@ html.c360-metrics-lite .metrics-actions {
   .c360-linechart,
   .c360-linechart svg { min-height: 150px; }
 }
+
+/* —— Alertas, foco y acciones de métricas —— */
+.c360-metrics-notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgb(0 127 163 / 25%);
+  border-radius: 12px;
+  background: #eef8fb;
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-metrics-notice.error {
+  border-color: rgb(196 75 60 / 35%);
+  background: #fde8e4;
+}
+
+.c360-metrics-notice p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.c360-metrics-notice button {
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 4px;
+}
+
+.c360-alerts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.c360-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: #fbfcfd;
+  border-left: 4px solid #c98512;
+}
+
+.c360-alert.tone-critical { border-left-color: #c44b3c; background: #fff8f7; }
+.c360-alert.tone-warn { border-left-color: #c98512; background: #fffbf2; }
+.c360-alert.tone-healthy { border-left-color: #1f8a5b; background: #f4fbf7; }
+
+.c360-alert-main {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.c360-alert-main strong {
+  display: block;
+  font-size: 14px;
+}
+
+.c360-alert-main p {
+  margin: 4px 0 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.c360-alert-actions,
+.c360-focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.c360-alert-btn {
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #fff;
+  color: var(--c360-brand, #007fa3);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.c360-alert-btn.primary {
+  border-color: var(--c360-brand, #007fa3);
+  background: var(--c360-brand, #007fa3);
+  color: #fff;
+}
+
+.c360-metrics-focus {
+  border-color: rgb(0 127 163 / 28%);
+  box-shadow: 0 0 0 1px rgb(0 127 163 / 8%), var(--c360-shadow-1);
+}
+
+.c360-focus-close {
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-metrics-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.c360-focus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.c360-focus-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 12px;
+  background: #f8fbfc;
+}
+
+.c360-focus-item strong {
+  font-size: 14px;
+}
+
+.c360-focus-item p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-focus-meta {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-linechart-hit {
+  cursor: pointer;
+}
+
+.c360-linechart-hitarea {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.c360-linechart-hit:focus {
+  outline: none;
+}
+
+.c360-linechart-hit:focus .c360-linechart-dot,
+.c360-linechart-hit:hover .c360-linechart-dot {
+  stroke-width: 3.5;
+  r: 8;
+}
+
+.c360-mchart-col-hit,
+.c360-row-hit {
+  cursor: pointer;
+}
+
+.c360-mchart-col-hit:hover .c360-mchart-bar,
+.c360-mchart-col-hit:focus .c360-mchart-bar {
+  filter: brightness(1.05);
+}
+
+.c360-row-hit:hover,
+.c360-row-hit:focus-visible {
+  background: rgb(0 127 163 / 5%);
+  outline: none;
+}
+
+@media (max-width: 700px) {
+  .c360-alert,
+  .c360-focus-item {
+    flex-direction: column;
+  }
+
+  .c360-alert-actions,
+  .c360-focus-actions {
+    width: 100%;
+  }
+
+  .c360-alert-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}

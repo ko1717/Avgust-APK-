@@ -279,6 +279,16 @@
           findings: find,
           visits: list.length,
           status: scoreStatus(score),
+          visitRefs: list.map(function (v) {
+            return {
+              id: v.id || "",
+              farm: v.farm || "",
+              date: v.date || date,
+              responsible: v.responsible || v.technician || "",
+              score: visitScore(v).score,
+              findings: visitScore(v).findings,
+            };
+          }),
         };
       });
     return bucketTimeline(daily);
@@ -293,11 +303,23 @@
         key = r.date || "sin-fecha";
       }
       if (!byMonth[key]) {
-        byMonth[key] = { date: key + "-01", scores: [], findings: 0, visits: 0 };
+        byMonth[key] = { date: key + "-01", scores: [], findings: 0, visits: 0, visitRefs: [] };
       }
       if (r.score != null) byMonth[key].scores.push(r.score);
       byMonth[key].findings += r.findings || 0;
       byMonth[key].visits += r.visits || 1;
+      if (r.visitRefs && r.visitRefs.length) {
+        byMonth[key].visitRefs = byMonth[key].visitRefs.concat(r.visitRefs);
+      } else if (r.farm || r.id) {
+        byMonth[key].visitRefs.push({
+          id: r.id || "",
+          farm: r.farm || "",
+          date: r.date,
+          responsible: r.responsible || "",
+          score: r.score,
+          findings: r.findings || 0,
+        });
+      }
     });
     return Object.keys(byMonth)
       .sort()
@@ -315,12 +337,14 @@
         var label = m ? MONTHS_ES[Number(m[2]) - 1] + " " + m[1] : key;
         return {
           date: b.date,
+          monthKey: key,
           label: label,
           shortLabel: shortLabel,
           score: score,
           findings: b.findings,
           visits: b.visits,
           status: scoreStatus(score),
+          visitRefs: b.visitRefs,
         };
       });
   }
@@ -468,6 +492,8 @@
     var timeline = filtered.map(function (v) {
       var st = visitScore(v);
       return {
+        id: v.id || "",
+        farm: v.farm || farmName,
         date: v.date,
         label: formatDateEs(v.date),
         shortLabel: formatDateShort(v.date),
@@ -614,12 +640,30 @@
       if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 16) {
         labelY = c.y + 22;
       }
+      var focusDate = escapeHtml(c.p.date || "");
+      var focusLabel = escapeHtml(c.p.label || c.p.shortLabel || "");
+      html +=
+        '<g class="c360-linechart-hit" data-focus-date="' +
+        focusDate +
+        '" data-focus-label="' +
+        focusLabel +
+        '" data-focus-score="' +
+        c.p.score +
+        '" tabindex="0" role="button" aria-label="Ver detalle ' +
+        focusLabel +
+        '">';
       html +=
         '<circle class="c360-linechart-dot" cx="' +
         c.x +
         '" cy="' +
         c.y +
-        '" r="5" />';
+        '" r="7" />';
+      html +=
+        '<circle class="c360-linechart-hitarea" cx="' +
+        c.x +
+        '" cy="' +
+        c.y +
+        '" r="16" />';
       html +=
         '<text class="c360-linechart-val" x="' +
         c.x +
@@ -635,7 +679,7 @@
         (H - 10) +
         '">' +
         escapeHtml(c.p.shortLabel || c.p.label || "") +
-        "</text>";
+        "</text></g>";
     });
     html += "</svg></div>";
     return html;
@@ -669,8 +713,21 @@
             : v / max >= 0.66
               ? "critical"
               : "warn";
+      var focusAttr = "";
+      if (r.chapterId != null) {
+        focusAttr =
+          ' data-focus-chapter="' +
+          r.chapterId +
+          '" tabindex="0" role="button" aria-label="Ver capítulo ' +
+          escapeHtml(String(label)) +
+          '"';
+      }
       html +=
-        '<div class="c360-mchart-col"><div class="c360-mchart-val">' +
+        '<div class="c360-mchart-col' +
+        (r.chapterId != null ? " c360-mchart-col-hit" : "") +
+        '"' +
+        focusAttr +
+        '><div class="c360-mchart-val">' +
         (v == null ? "—" : v + (valueKey === "score" ? "%" : "")) +
         '</div><div class="c360-mchart-bar tone-' +
         tone +
@@ -770,6 +827,9 @@
     loading: false,
     error: "",
     openChapter: null,
+    focus: null,
+    notice: "",
+    noticeError: false,
     importExpanded: true,
     importStatus: "",
     importStatusError: false,
@@ -913,6 +973,15 @@
     }
     html += "</div></header>";
 
+    if (state.notice) {
+      html +=
+        '<div class="c360-metrics-notice' +
+        (state.noticeError ? " error" : "") +
+        '"><p>' +
+        escapeHtml(state.notice) +
+        '</p><button type="button" data-act="clear-notice" aria-label="Cerrar aviso">×</button></div>';
+    }
+
     html +=
       '<div class="c360-metrics-import" data-c360-board-import="1">' +
       '<p class="c360-import-open">Importar finca e informes</p>' +
@@ -976,9 +1045,11 @@
   }
 
   function renderAllView(data) {
+    state._viewData = data;
     var trend = timelineTrend(data.timeline);
     var mix = chapterKpi(data.chapters, 4);
     var dose = chapterKpi(data.chapters, 2);
+    var alerts = buildAlerts(data, null);
     var html = "";
     html += '<div class="c360-metrics-kpis">';
     html += kpiCard(
@@ -992,21 +1063,23 @@
     html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
     html += kpiCard("Hallazgos", data.findings, data.findings ? "critical" : "healthy", ICONS.findings);
     html += "</div>";
+    html += renderAlerts(alerts);
+    html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
     html += cardHead(
       "Evolución del indicador",
-      data.firstDate || data.lastDate
+      (data.firstDate || data.lastDate
         ? "De " +
-            formatDateEs(data.firstDate) +
-            " a " +
-            formatDateEs(data.lastDate) +
-            " · " +
-            data.visits +
-            " visita(s) en " +
-            data.farms.length +
-            " finca(s)"
-        : "Sin visitas en el periodo"
+          formatDateEs(data.firstDate) +
+          " a " +
+          formatDateEs(data.lastDate) +
+          " · " +
+          data.visits +
+          " visita(s) en " +
+          data.farms.length +
+          " finca(s)"
+        : "Sin visitas en el periodo") + " · Tocá un punto para ver detalle"
     );
     html += chartLine(data.timeline);
     html += "</section>";
@@ -1044,19 +1117,19 @@
 
     html += '<div class="c360-metrics-charts">';
     html += '<section class="c360-metrics-card">';
-    html += cardHead("Indicador por capítulo", "Promedio de cumplimiento global.");
+    html += cardHead("Indicador por capítulo", "Tocá una barra para ver hallazgos del capítulo.");
     html += chartBars(
       data.chapters.map(function (c) {
-        return { label: c.id + ". " + shortTitle(c.title), score: c.score };
+        return { label: c.id + ". " + shortTitle(c.title), score: c.score, chapterId: c.id };
       }),
       "score"
     );
     html += "</section>";
     html += '<section class="c360-metrics-card">';
-    html += cardHead("Hallazgos por capítulo", "Cantidad de No cumple.");
+    html += cardHead("Hallazgos por capítulo", "Tocá una barra para profundizar.");
     html += chartBars(
       data.chapters.map(function (c) {
-        return { label: c.id + ". " + shortTitle(c.title), findings: c.findings };
+        return { label: c.id + ". " + shortTitle(c.title), findings: c.findings, chapterId: c.id };
       }),
       "findings"
     );
@@ -1070,7 +1143,7 @@
       html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
       html += "<th>Ítem</th><th>Capítulo</th><th>Hallazgos</th><th>Frecuencia</th></tr></thead><tbody>";
       data.items.slice(0, 12).forEach(function (it) {
-        html += "<tr>";
+        html += '<tr data-focus-chapter="' + it.chapter + '" tabindex="0" class="c360-row-hit">';
         html += td("Ítem", "<strong>" + escapeHtml(it.id) + "</strong>");
         html += td("Capítulo", escapeHtml(it.chapter + ". " + it.chapterTitle));
         html += td("Hallazgos", String(it.findings));
@@ -1087,10 +1160,12 @@
   }
 
   function renderFarmView(data) {
+    state._viewData = data;
     var lastScore = data.timeline.length ? data.timeline[data.timeline.length - 1].score : null;
     var trend = timelineTrend(data.timeline);
     var mix = chapterKpi(data.chapters, 4);
     var dose = chapterKpi(data.chapters, 2);
+    var alerts = buildAlerts(null, data);
     var html = "";
     html += '<div class="c360-metrics-kpis">';
     html += kpiCard(
@@ -1109,30 +1184,33 @@
       ICONS.findings
     );
     html += "</div>";
+    html += renderAlerts(alerts);
+    html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
     html += cardHead(
       "Evolución de la finca",
-      data.firstDate || data.lastDate
+      (data.firstDate || data.lastDate
         ? "Visitas del " +
-            formatDateEs(data.firstDate) +
-            " al " +
-            formatDateEs(data.lastDate) +
-            " · " +
-            data.visits +
-            " visita(s)"
-        : "Sin visitas en el rango"
+          formatDateEs(data.firstDate) +
+          " al " +
+          formatDateEs(data.lastDate) +
+          " · " +
+          data.visits +
+          " visita(s)"
+        : "Sin visitas en el rango") + " · Tocá un punto para abrir detalle"
     );
     html += chartLine(data.chartTimeline || data.timeline);
     html += "</section>";
 
     html += '<section class="c360-metrics-card">';
-    html += cardHead("Visitas por fecha", "Detalle de cada aseguramiento.");
+    html += cardHead("Visitas por fecha", "Abrí cualquier visita directamente en Visitas.");
     if (!data.timeline.length) {
       html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
     } else {
       html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
-      html += "<th>Fecha</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Responsable</th></tr></thead><tbody>";
+      html +=
+        "<th>Fecha</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Responsable</th><th></th></tr></thead><tbody>";
       data.timeline
         .slice()
         .reverse()
@@ -1152,6 +1230,12 @@
             '<span class="c360-mpill tone-' + row.status + '">' + statusLabel(row.status) + "</span>"
           );
           html += td("Responsable", escapeHtml(row.responsible || "—"));
+          html +=
+            '<td data-label="Acción"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
+            escapeHtml(row.farm || state.farm || "") +
+            '" data-open-date="' +
+            escapeHtml(row.date || "") +
+            '">Abrir</button></td>';
           html += "</tr>";
         });
       html += "</tbody></table></div>";
@@ -1162,11 +1246,12 @@
     html += '<section class="c360-metrics-card">';
     html += cardHead(
       "Capítulos · última visita",
-      data.lastDate ? "Visita del " + formatDateEs(data.lastDate) + "." : "Sin visita reciente."
+      (data.lastDate ? "Visita del " + formatDateEs(data.lastDate) + "." : "Sin visita reciente.") +
+        " Tocá una barra para ver No cumple."
     );
     html += chartBars(
       data.chapters.map(function (c) {
-        return { label: c.id + ". " + shortTitle(c.title), score: c.score };
+        return { label: c.id + ". " + shortTitle(c.title), score: c.score, chapterId: c.id };
       }),
       "score"
     );
@@ -1175,7 +1260,7 @@
     html += cardHead("Hallazgos por capítulo", "No cumple en la última visita.");
     html += chartBars(
       data.chapters.map(function (c) {
-        return { label: c.id + ". " + shortTitle(c.title), findings: c.findings };
+        return { label: c.id + ". " + shortTitle(c.title), findings: c.findings, chapterId: c.id };
       }),
       "findings"
     );
@@ -1192,13 +1277,20 @@
       html += '<p class="muted">La última visita no tiene respuestas No cumple.</p>';
     } else {
       html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
-      html += "<th>Ítem</th><th>Capítulo</th><th>Hallazgo</th><th>Recomendación</th></tr></thead><tbody>";
+      html +=
+        "<th>Ítem</th><th>Capítulo</th><th>Hallazgo</th><th>Recomendación</th><th></th></tr></thead><tbody>";
       data.items.forEach(function (it) {
         html += "<tr>";
         html += td("Ítem", "<strong>" + escapeHtml(it.id) + "</strong>");
         html += td("Capítulo", escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")));
         html += td("Hallazgo", escapeHtml(it.observation || "—"), "c360-metrics-wrap");
         html += td("Recomendación", escapeHtml(it.recommendation || "—"), "c360-metrics-wrap");
+        html +=
+          '<td data-label="Acción"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
+          escapeHtml(state.farm || "") +
+          '" data-open-date="' +
+          escapeHtml(data.lastDate || "") +
+          '">Abrir visita</button></td>';
         html += "</tr>";
       });
       html += "</tbody></table></div>";
@@ -1211,16 +1303,430 @@
     return String(title || "").replace(/^Capítulo\s+/i, "");
   }
 
+  function setNotice(text, isError) {
+    state.notice = text || "";
+    state.noticeError = !!isError;
+  }
+
+  function clickModuleTab(labelRe) {
+    var tabs = qa('.module-nav [role="tab"], .module-nav [data-slot="tabs-trigger"]');
+    for (var i = 0; i < tabs.length; i++) {
+      if (labelRe.test(tabs[i].textContent || "")) {
+        tabs[i].click();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function clickVisibleButton(pattern) {
+    var buttons = qa("button").filter(function (btn) {
+      if (btn.disabled) return false;
+      var r = btn.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    });
+    for (var i = 0; i < buttons.length; i++) {
+      if (pattern.test((buttons[i].textContent || "").trim())) {
+        buttons[i].click();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function findVisitRow(farm, date) {
+    var farmKey = normFarm(farm);
+    var dateEs = formatDateEs(date);
+    var rows = qa(".visit-row");
+    for (var i = 0; i < rows.length; i++) {
+      var strong = q("strong", rows[i]);
+      var small = q("small", rows[i]) || rows[i];
+      var name = strong ? strong.textContent : "";
+      var meta = small ? small.textContent : "";
+      if (normFarm(name) !== farmKey) continue;
+      if (date && meta.indexOf(date) === -1 && meta.indexOf(dateEs) === -1) continue;
+      return rows[i];
+    }
+    return null;
+  }
+
+  function openVisitInApp(farm, date) {
+    if (!farm) {
+      setNotice("No se pudo identificar la finca de la visita.", true);
+      render();
+      return;
+    }
+    window.__C360_OPEN_VISIT = { farm: farm, date: date || "", at: Date.now() };
+    setNotice("Abriendo Visitas…", false);
+    render();
+    if (!clickModuleTab(/Visitas/i)) {
+      setNotice("No se encontró la pestaña Visitas.", true);
+      render();
+      return;
+    }
+    var tries = 0;
+    function attempt() {
+      tries += 1;
+      clickVisibleButton(/ver visitas guardadas/i);
+      var row = findVisitRow(farm, date);
+      if (row) {
+        var openBtn = null;
+        qa("button", row).forEach(function (btn) {
+          if (/^abrir$/i.test((btn.textContent || "").trim())) openBtn = btn;
+        });
+        if (openBtn) {
+          openBtn.click();
+          setNotice(
+            "Visita abierta: " + farm + (date ? " · " + formatDateEs(date) : "") + ".",
+            false
+          );
+          return;
+        }
+        row.click();
+        setNotice("Visita localizada en Visitas.", false);
+        return;
+      }
+      if (tries < 12) {
+        window.setTimeout(attempt, 220);
+        return;
+      }
+      setNotice(
+        "Ve a Visitas y abre “" +
+          farm +
+          (date ? " · " + formatDateEs(date) : "") +
+          "”. No se encontró el botón Abrir automáticamente.",
+        true
+      );
+    }
+    window.setTimeout(attempt, 280);
+  }
+
+  function visitsForFocusDate(dateKey) {
+    var key = String(dateKey || "");
+    var monthKey = /^\d{4}-\d{2}/.test(key) ? key.slice(0, 7) : "";
+    var list = filterUsableByRange(state.visits || []);
+    if (state.mode === "farm" && state.farm) {
+      list = list.filter(function (v) {
+        return normFarm(v.farm) === normFarm(state.farm);
+      });
+    }
+    var exact = list.filter(function (v) {
+      return v.date === key;
+    });
+    if (exact.length) return exact;
+    if (monthKey) {
+      return list.filter(function (v) {
+        return String(v.date || "").slice(0, 7) === monthKey;
+      });
+    }
+    return [];
+  }
+
+  function buildAlerts(allData, farmData) {
+    var alerts = [];
+    if (state.mode === "all" && allData) {
+      allData.farms.forEach(function (f) {
+        if (f.status === "critical") {
+          alerts.push({
+            tone: "critical",
+            title: f.name + " en crítico",
+            text: "Indicador " + (f.score == null ? "—" : f.score + "%") + " · " + f.findings + " hallazgos",
+            farm: f.name,
+          });
+        }
+      });
+      allData.farms.forEach(function (f) {
+        if (f.status === "acceptable" && f.findings >= 3) {
+          alerts.push({
+            tone: "warn",
+            title: f.name + " con hallazgos",
+            text: f.findings + " No cumple en el periodo",
+            farm: f.name,
+          });
+        }
+      });
+      allData.items.slice(0, 4).forEach(function (it) {
+        if (it.findings < 2) return;
+        alerts.push({
+          tone: "warn",
+          title: "Criterio " + it.id + " recurrente",
+          text: it.findings + " hallazgos · " + it.chapterTitle,
+          chapter: it.chapter,
+        });
+      });
+    }
+    if (state.mode === "farm" && farmData) {
+      var trend = timelineTrend(farmData.timeline);
+      if (trend != null && trend <= -10) {
+        alerts.push({
+          tone: "critical",
+          title: "Indicador bajó " + Math.abs(trend) + " pts",
+          text: "Comparado con la visita anterior de esta finca",
+          farm: state.farm,
+        });
+      }
+      farmData.items.slice(0, 4).forEach(function (it) {
+        alerts.push({
+          tone: "warn",
+          title: "No cumple " + it.id,
+          text: (CHAPTER_TITLES[it.chapter] || "Capítulo " + it.chapter) + (it.observation ? " · " + it.observation : ""),
+          chapter: it.chapter,
+          farm: state.farm,
+          date: farmData.lastDate,
+          visitId: farmData.last && farmData.last.id,
+        });
+      });
+      if (!farmData.items.length && farmData.lastDate) {
+        alerts.push({
+          tone: "healthy",
+          title: "Última visita sin No cumple",
+          text: "Visita del " + formatDateEs(farmData.lastDate),
+          farm: state.farm,
+          date: farmData.lastDate,
+          visitId: farmData.last && farmData.last.id,
+        });
+      }
+    }
+    var seen = {};
+    return alerts
+      .filter(function (a) {
+        var k = a.title + "|" + (a.farm || "") + "|" + (a.chapter || "");
+        if (seen[k]) return false;
+        seen[k] = true;
+        return true;
+      })
+      .slice(0, 5);
+  }
+
+  function renderAlerts(alerts) {
+    if (!alerts || !alerts.length) return "";
+    var html = '<section class="c360-metrics-card c360-metrics-alerts">';
+    html += cardHead("Qué atender", "Alertas del periodo seleccionado. Tocá una para profundizar.");
+    html += '<ul class="c360-alerts-list">';
+    alerts.forEach(function (a, idx) {
+      html +=
+        '<li class="c360-alert tone-' +
+        (a.tone || "warn") +
+        '"><div class="c360-alert-main"><strong>' +
+        escapeHtml(a.title) +
+        "</strong><p>" +
+        escapeHtml(a.text || "") +
+        '</p></div><div class="c360-alert-actions">';
+      if (a.farm && state.mode !== "farm") {
+        html +=
+          '<button type="button" class="c360-alert-btn" data-open-farm="' +
+          escapeHtml(a.farm) +
+          '">Ver finca</button>';
+      }
+      if (a.chapter != null) {
+        html +=
+          '<button type="button" class="c360-alert-btn" data-focus-chapter="' +
+          a.chapter +
+          '">Capítulo</button>';
+      }
+      if (a.farm && a.date) {
+        html +=
+          '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
+          escapeHtml(a.farm) +
+          '" data-open-date="' +
+          escapeHtml(a.date) +
+          '">Abrir visita</button>';
+      }
+      html += "</div></li>";
+    });
+    html += "</ul></section>";
+    return html;
+  }
+
+  function renderFocusPanel() {
+    var focus = state.focus;
+    if (!focus) return "";
+    var html = '<section class="c360-metrics-card c360-metrics-focus" id="c360-metrics-focus">';
+    html +=
+      '<div class="c360-metrics-card-head"><div><h3>' +
+      escapeHtml(focus.title || "Detalle") +
+      "</h3><p>" +
+      escapeHtml(focus.subtitle || "") +
+      '</p></div><button type="button" class="c360-focus-close" data-act="clear-focus" aria-label="Cerrar detalle">Cerrar</button></div>';
+
+    if (focus.type === "point") {
+      var refs = focus.visits || [];
+      if (!refs.length) {
+        html += '<p class="muted">No hay visitas en este punto del periodo.</p>';
+      } else {
+        html += '<div class="c360-focus-list">';
+        refs.forEach(function (v) {
+          var st = visitScore(v);
+          html += '<article class="c360-focus-item">';
+          html +=
+            "<div><strong>" +
+            escapeHtml(v.farm || state.farm || "Finca") +
+            "</strong><p>" +
+            escapeHtml(formatDateEs(v.date)) +
+            (v.responsible || v.technician ? " · " + escapeHtml(v.responsible || v.technician) : "") +
+            "</p><p class=\"c360-focus-meta\">Indicador " +
+            (st.score == null ? "—" : st.score + "%") +
+            " · " +
+            st.findings +
+            " hallazgos</p></div>";
+          html += '<div class="c360-focus-actions">';
+          if (v.farm) {
+            html +=
+              '<button type="button" class="c360-alert-btn" data-open-farm="' +
+              escapeHtml(v.farm) +
+              '">Ver finca</button>';
+          }
+          html +=
+            '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
+            escapeHtml(v.farm || state.farm || "") +
+            '" data-open-date="' +
+            escapeHtml(v.date || "") +
+            '">Abrir en Visitas</button>';
+          html += "</div></article>";
+        });
+        html += "</div>";
+      }
+    } else if (focus.type === "chapter") {
+      var chId = focus.chapter;
+      var items = focus.items || [];
+      html +=
+        '<p class="c360-focus-meta">Indicador del capítulo: <strong>' +
+        (focus.score == null ? "—" : focus.score + "%") +
+        "</strong> · Hallazgos: <strong>" +
+        (focus.findings || 0) +
+        "</strong></p>";
+      if (!items.length) {
+        html += '<p class="muted">Sin respuestas No cumple en este capítulo para el corte actual.</p>';
+      } else {
+        html += '<div class="c360-focus-list">';
+        items.forEach(function (it) {
+          html += '<article class="c360-focus-item">';
+          html +=
+            "<div><strong>" +
+            escapeHtml(it.id) +
+            "</strong><p>" +
+            escapeHtml(it.observation || "Sin observación") +
+            "</p>";
+          if (it.recommendation) {
+            html += "<p class=\"muted\">" + escapeHtml(it.recommendation) + "</p>";
+          }
+          html += "</div>";
+          if (it.farm && it.date) {
+            html +=
+              '<div class="c360-focus-actions"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
+              escapeHtml(it.farm) +
+              '" data-open-date="' +
+              escapeHtml(it.date) +
+              '">Abrir visita</button></div>';
+          }
+          html += "</article>";
+        });
+        html += "</div>";
+      }
+    }
+    html += "</section>";
+    return html;
+  }
+
+  function focusPoint(dateKey, label, score) {
+    var visits = visitsForFocusDate(dateKey);
+    state.focus = {
+      type: "point",
+      title: "Detalle · " + (label || formatDateEs(dateKey) || "periodo"),
+      subtitle:
+        (score == null ? "Sin indicador" : "Indicador " + score + "%") +
+        " · " +
+        visits.length +
+        " visita(s)",
+      date: dateKey,
+      visits: visits,
+    };
+    render();
+    window.setTimeout(function () {
+      var el = q("#c360-metrics-focus");
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 40);
+  }
+
+  function focusChapter(chapterId, contextData) {
+    var ch = Number(chapterId);
+    var title = CHAPTER_TITLES[ch] || "Capítulo " + ch;
+    var items = [];
+    var score = null;
+    var findings = 0;
+    if (state.mode === "farm" && contextData && contextData.last) {
+      var last = contextData.last;
+      Object.keys(last.answers || {}).forEach(function (id) {
+        if (Number(String(id).split(".")[0]) !== ch) return;
+        if (answerValue(last.answers[id]) !== "NO") return;
+        items.push({
+          id: id,
+          observation: last.answers[id].observation || "",
+          recommendation: last.answers[id].recommendation || "",
+          farm: last.farm || state.farm,
+          date: last.date,
+        });
+      });
+      var chRow = null;
+      (contextData.chapters || []).forEach(function (c) {
+        if (c.id === ch) chRow = c;
+      });
+      if (chRow) {
+        score = chRow.score;
+        findings = chRow.findings;
+      }
+    } else {
+      var usable = filterUsableByRange(state.visits || []);
+      usable.forEach(function (v) {
+        Object.keys(v.answers || {}).forEach(function (id) {
+          if (Number(String(id).split(".")[0]) !== ch) return;
+          if (answerValue(v.answers[id]) !== "NO") return;
+          items.push({
+            id: id,
+            observation: v.answers[id].observation || "",
+            recommendation: v.answers[id].recommendation || "",
+            farm: v.farm,
+            date: v.date,
+          });
+        });
+      });
+      findings = items.length;
+      if (contextData && contextData.chapters) {
+        var row = null;
+        contextData.chapters.forEach(function (c) {
+          if (c.id === ch) row = c;
+        });
+        if (row) score = row.score;
+      }
+    }
+    state.focus = {
+      type: "chapter",
+      title: ch + ". " + title,
+      subtitle: state.mode === "farm" ? "Última visita de la finca" : "Hallazgos del periodo",
+      chapter: ch,
+      items: items.slice(0, 20),
+      score: score,
+      findings: findings,
+    };
+    render();
+    window.setTimeout(function () {
+      var el = q("#c360-metrics-focus");
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 40);
+  }
+
   function bind(root) {
     qa("[data-mode]", root).forEach(function (btn) {
       btn.addEventListener("click", function () {
         state.mode = btn.getAttribute("data-mode") || "all";
+        state.focus = null;
         render();
       });
     });
     qa("[data-range]", root).forEach(function (btn) {
       btn.addEventListener("click", function () {
         applyRangePreset(btn.getAttribute("data-range") || "all");
+        state.focus = null;
         render();
       });
     });
@@ -1230,23 +1736,87 @@
         if (el.getAttribute("data-field") === "dateFrom" || el.getAttribute("data-field") === "dateTo") {
           state.range = "custom";
         }
+        state.focus = null;
         render();
       });
     });
-    qa("[data-open-farm]", root).forEach(function (row) {
+    qa("[data-open-farm]", root).forEach(function (el) {
       function openFarm() {
         state.mode = "farm";
-        state.farm = row.getAttribute("data-open-farm") || "";
+        state.farm = el.getAttribute("data-open-farm") || "";
+        state.focus = null;
         render();
       }
-      row.addEventListener("click", openFarm);
-      row.addEventListener("keydown", function (ev) {
+      el.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openFarm();
+      });
+      el.addEventListener("keydown", function (ev) {
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
           openFarm();
         }
       });
     });
+    qa("[data-focus-date]", root).forEach(function (el) {
+      function go() {
+        focusPoint(
+          el.getAttribute("data-focus-date"),
+          el.getAttribute("data-focus-label"),
+          Number(el.getAttribute("data-focus-score"))
+        );
+      }
+      el.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        go();
+      });
+      el.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          go();
+        }
+      });
+    });
+    qa("[data-focus-chapter]", root).forEach(function (el) {
+      function go() {
+        focusChapter(el.getAttribute("data-focus-chapter"), state._viewData || null);
+      }
+      el.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        go();
+      });
+      el.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          go();
+        }
+      });
+    });
+    qa("[data-open-visit]", root).forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openVisitInApp(btn.getAttribute("data-open-visit"), btn.getAttribute("data-open-date"));
+      });
+    });
+    var clearFocus = q('[data-act="clear-focus"]', root);
+    if (clearFocus) {
+      clearFocus.addEventListener("click", function () {
+        state.focus = null;
+        render();
+      });
+    }
+    var clearNotice = q('[data-act="clear-notice"]', root);
+    if (clearNotice) {
+      clearNotice.addEventListener("click", function () {
+        state.notice = "";
+        state.noticeError = false;
+        render();
+      });
+    }
     var reload = q('[data-act="reload"]', root);
     if (reload) reload.addEventListener("click", loadVisits);
     wireBoardImport(root);
