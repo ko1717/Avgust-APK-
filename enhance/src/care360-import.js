@@ -703,27 +703,47 @@
     ui.setPreview(parsed);
   }
 
-  function enhanceImportPanel() {
-    var details = q("details.matrix-import");
-    if (!details || details.getAttribute("data-c360-import") === "1") return;
-    details.setAttribute("data-c360-import", "1");
+  function onFarmsTab() {
+    var tabs = qa('.module-nav [role="tab"], .module-nav [data-slot="tabs-trigger"]');
+    for (var i = 0; i < tabs.length; i++) {
+      var el = tabs[i];
+      if (!/Fincas/i.test(el.textContent || "")) continue;
+      return (
+        el.getAttribute("aria-selected") === "true" ||
+        el.getAttribute("data-state") === "active" ||
+        !!el.hasAttribute("data-active")
+      );
+    }
+    return false;
+  }
 
-    var box = document.createElement("div");
-    box.className = "c360-import-box";
-    box.innerHTML =
-      '<p class="c360-import-lead">Importa una <strong>finca</strong> y sus <strong>informes</strong> desde matriz Excel/CSV, Word o PDF. Si la finca no existe, se crea sola.</p>' +
-      '<label class="c360-import-file"><span>Elegir archivo</span>' +
-      '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
-      "</label>" +
-      '<div class="c360-import-status muted" hidden></div>' +
-      '<div class="c360-import-preview" hidden></div>';
-    details.insertBefore(box, details.firstChild.nextSibling);
+  function findFarmsHost() {
+    var headings = qa("h1, h2, h3");
+    for (var i = 0; i < headings.length; i++) {
+      if (/Directorio de fincas|Fincas y equipo/i.test(headings[i].textContent || "")) {
+        return (
+          headings[i].closest("section, article, .panel, .module-shell, main") ||
+          headings[i].parentElement
+        );
+      }
+    }
+    var eyebrows = qa(".eyebrow");
+    for (var j = 0; j < eyebrows.length; j++) {
+      if (/EQUIPO/i.test(eyebrows[j].textContent || "")) {
+        return eyebrows[j].closest("section, article, .panel, div") || eyebrows[j].parentElement;
+      }
+    }
+    return q("main") || q("#root");
+  }
 
-    var input = q("input[type=file]", box);
-    var status = q(".c360-import-status", box);
-    var preview = q(".c360-import-preview", box);
+  function wireImportUi(root) {
+    if (!root || root.getAttribute("data-c360-import-wired") === "1") return;
+    root.setAttribute("data-c360-import-wired", "1");
+    var input = q("input[type=file]", root);
+    var status = q(".c360-import-status", root);
+    var preview = q(".c360-import-preview", root);
+    if (!input || !status || !preview) return;
     var pending = null;
-
     var ui = {
       setStatus: function (text, isError) {
         status.hidden = !text;
@@ -748,7 +768,7 @@
             var saved = await saveVisits(pending.visits);
             ui.setStatus(
               saved.length +
-                " informe(s) importados completos. Ábrelos en Visitas para editar finca, criterios y conclusiones.",
+                " informe(s) importados. Ábrelos en Visitas para editar finca, criterios y conclusiones.",
               false
             );
             preview.hidden = true;
@@ -762,12 +782,59 @@
         });
       },
     };
-
     input.addEventListener("change", function () {
       var file = input.files && input.files[0];
       if (file) handleFile(file, ui);
       input.value = "";
     });
+  }
+
+  function mountFarmsImport() {
+    var existing = q("#c360-farms-import");
+    if (!onFarmsTab()) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
+    var host = findFarmsHost();
+    if (!host) return;
+    var details = document.createElement("details");
+    details.id = "c360-farms-import";
+    details.className = "c360-farms-import no-print";
+    details.setAttribute("data-c360-farms-import", "1");
+    details.innerHTML =
+      "<summary>Importar finca e informes</summary>" +
+      '<div class="c360-import-box">' +
+      '<p class="c360-import-lead">Sube Excel/CSV, Word o PDF. Se crea la finca si falta y el informe queda editable en Visitas.</p>' +
+      '<label class="c360-import-file"><span>Elegir archivo</span>' +
+      '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
+      "</label>" +
+      '<div class="c360-import-status muted" hidden></div>' +
+      '<div class="c360-import-preview" hidden></div>' +
+      "</div>";
+    var heading = null;
+    var heads = qa("h1, h2", host);
+    for (var i = 0; i < heads.length; i++) {
+      if (/Directorio de fincas|Fincas/i.test(heads[i].textContent || "")) {
+        heading = heads[i];
+        break;
+      }
+    }
+    if (heading && heading.parentElement) {
+      heading.parentElement.insertAdjacentElement("afterend", details);
+    } else {
+      host.insertAdjacentElement("afterbegin", details);
+    }
+    wireImportUi(details);
+  }
+
+  function enhanceImportPanel() {
+    var details = q("details.matrix-import");
+    if (details) {
+      details.setAttribute("hidden", "hidden");
+      details.style.display = "none";
+    }
+    mountFarmsImport();
   }
 
   // Also ensure farm on native matrix import POSTs.
@@ -798,7 +865,7 @@
   };
 
   function tick() {
-    if (q("details.matrix-import")) enhanceImportPanel();
+    enhanceImportPanel();
   }
 
   function boot() {
