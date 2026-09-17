@@ -2078,7 +2078,7 @@
       (data.lastDate
         ? "Hallazgos de la visita del " + formatDateEs(data.lastDate) + "."
         : "Hallazgos de la última visita.") +
-      '</p></div><button type="button" class="c360-focus-close" data-act="close-nocumple" aria-label="Cerrar detalle">Cerrar</button></div>';
+      '</p></div><button type="button" class="c360-focus-close primary" data-act="close-nocumple" aria-label="Cerrar detalle">Cerrar detalle</button></div>';
     html += '<div class="c360-nocumple-list">';
     data.items.forEach(function (it) {
       html += '<article class="c360-nocumple-card">';
@@ -2106,7 +2106,7 @@
     });
     html += "</div>";
     html +=
-      '<div class="c360-nocumple-footer"><button type="button" class="c360-focus-close" data-act="close-nocumple">Cerrar detalle</button></div>';
+      '<div class="c360-nocumple-footer"><button type="button" class="c360-focus-close primary" data-act="close-nocumple">Cerrar detalle</button></div>';
     html += "</section>";
     return html;
   }
