@@ -1549,6 +1549,7 @@
     importPreviewHtml: "",
     pendingVisits: null,
     boardMounted: false,
+    nocumpleOpen: true,
   };
 
   async function loadVisits() {
@@ -1968,37 +1969,45 @@
     if (!data.timeline.length) {
       html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
     } else {
-      html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
-      html +=
-        "<th>Fecha</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Responsable</th><th></th></tr></thead><tbody>";
+      html += '<div class="c360-visit-cards">';
       data.timeline
         .slice()
         .reverse()
         .forEach(function (row) {
-          html += "<tr>";
-          html += td("Fecha", "<strong>" + escapeHtml(row.label) + "</strong>");
-          html += td(
-            "Indicador",
-            '<div class="c360-metrics-inline">' +
-              (row.score == null ? "—" : row.score + "%") +
-              barHtml(row.score, row.status) +
-              "</div>"
-          );
-          html += td("Hallazgos", String(row.findings));
-          html += td(
-            "Estado",
-            '<span class="c360-mpill tone-' + row.status + '">' + statusLabel(row.status) + "</span>"
-          );
-          html += td("Responsable", escapeHtml(row.responsible || "—"));
+          html += '<article class="c360-visit-card tone-' + (row.status || "pending") + '">';
           html +=
-            '<td data-label="Acción"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
+            '<div class="c360-visit-card-top"><div><strong>' +
+            escapeHtml(row.label || formatDateEs(row.date)) +
+            "</strong><p>" +
+            escapeHtml(row.responsible || "Sin responsable") +
+            "</p></div>";
+          html +=
+            '<span class="c360-mpill tone-' +
+            row.status +
+            '">' +
+            statusLabel(row.status) +
+            "</span></div>";
+          html += '<div class="c360-visit-card-metrics">';
+          html +=
+            '<div class="c360-farm-metric"><span>Indicador</span><strong>' +
+            (row.score == null ? "—" : row.score + "%") +
+            "</strong>" +
+            barHtml(row.score, row.status) +
+            "</div>";
+          html +=
+            '<div class="c360-farm-metric"><span>Hallazgos</span><strong>' +
+            row.findings +
+            "</strong></div>";
+          html += "</div>";
+          html +=
+            '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
             escapeHtml(row.farm || state.farm || "") +
             '" data-open-date="' +
             escapeHtml(row.date || "") +
-            '">Abrir</button></td>';
-          html += "</tr>";
+            '">Abrir visita</button>';
+          html += "</article>";
         });
-      html += "</tbody></table></div>";
+      html += "</div>";
     }
     html += "</section>";
 
@@ -2038,35 +2047,66 @@
     );
     html += "</section></div>";
 
-    html += '<section class="c360-metrics-card">';
-    html += cardHead(
-      "Detalle de No cumple",
-      data.lastDate
-        ? "Hallazgos de la visita del " + formatDateEs(data.lastDate) + "."
-        : "Sin hallazgos para mostrar."
-    );
-    if (!data.items.length) {
-      html += '<p class="muted">La última visita no tiene respuestas No cumple.</p>';
-    } else {
-      html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
-      html +=
-        "<th>Ítem</th><th>Capítulo</th><th>Hallazgo</th><th>Recomendación</th><th></th></tr></thead><tbody>";
-      data.items.forEach(function (it) {
-        html += "<tr>";
-        html += td("Ítem", "<strong>" + escapeHtml(it.id) + "</strong>");
-        html += td("Capítulo", escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")));
-        html += td("Hallazgo", escapeHtml(it.observation || "—"), "c360-metrics-wrap");
-        html += td("Recomendación", escapeHtml(it.recommendation || "—"), "c360-metrics-wrap");
-        html +=
-          '<td data-label="Acción"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
-          escapeHtml(state.farm || "") +
-          '" data-open-date="' +
-          escapeHtml(data.lastDate || "") +
-          '">Abrir visita</button></td>';
-        html += "</tr>";
-      });
-      html += "</tbody></table></div>";
+    html += renderNocumpleDetail(data);
+    return html;
+  }
+
+  function renderNocumpleDetail(data) {
+    var count = (data.items && data.items.length) || 0;
+    if (!count) {
+      return (
+        '<section class="c360-metrics-card c360-metrics-section">' +
+        cardHead("Detalle de No cumple", "La última visita no tiene respuestas No cumple.") +
+        "</section>"
+      );
     }
+    if (!state.nocumpleOpen) {
+      return (
+        '<section class="c360-metrics-card c360-metrics-section c360-nocumple-collapsed">' +
+        '<div class="c360-metrics-card-head"><div><h3>Detalle de No cumple</h3><p>' +
+        count +
+        " hallazgo" +
+        (count === 1 ? " oculto" : "s ocultos") +
+        ".</p></div>" +
+        '<button type="button" class="c360-alert-btn primary" data-act="open-nocumple">Ver detalle</button></div>' +
+        "</section>"
+      );
+    }
+    var html = '<section class="c360-metrics-card c360-metrics-section c360-nocumple-detail" id="c360-nocumple-detail">';
+    html +=
+      '<div class="c360-metrics-card-head"><div><h3>Detalle de No cumple</h3><p>' +
+      (data.lastDate
+        ? "Hallazgos de la visita del " + formatDateEs(data.lastDate) + "."
+        : "Hallazgos de la última visita.") +
+      '</p></div><button type="button" class="c360-focus-close" data-act="close-nocumple" aria-label="Cerrar detalle">Cerrar</button></div>';
+    html += '<div class="c360-nocumple-list">';
+    data.items.forEach(function (it) {
+      html += '<article class="c360-nocumple-card">';
+      html +=
+        '<div class="c360-nocumple-card-top"><strong>' +
+        escapeHtml(it.id) +
+        "</strong><p>" +
+        escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")) +
+        "</p></div>";
+      html +=
+        '<div class="c360-nocumple-block"><span>Hallazgo</span><p>' +
+        escapeHtml(it.observation || "Sin observación registrada.") +
+        "</p></div>";
+      html +=
+        '<div class="c360-nocumple-block"><span>Recomendación</span><p>' +
+        escapeHtml(it.recommendation || "Sin recomendación registrada.") +
+        "</p></div>";
+      html +=
+        '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
+        escapeHtml(state.farm || "") +
+        '" data-open-date="' +
+        escapeHtml(data.lastDate || "") +
+        '">Abrir visita</button>';
+      html += "</article>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="c360-nocumple-footer"><button type="button" class="c360-focus-close" data-act="close-nocumple">Cerrar detalle</button></div>';
     html += "</section>";
     return html;
   }
@@ -2319,7 +2359,7 @@
       escapeHtml(focus.title || "Detalle") +
       "</h3><p>" +
       escapeHtml(focus.subtitle || "") +
-      '</p></div><button type="button" class="c360-focus-close" data-act="clear-focus" aria-label="Cerrar detalle">Cerrar</button></div>';
+      '</p></div><button type="button" class="c360-focus-close primary" data-act="clear-focus" aria-label="Cerrar detalle">Cerrar detalle</button></div>';
 
     if (focus.type === "point") {
       var refs = focus.visits || [];
@@ -2372,17 +2412,19 @@
       } else {
         html += '<div class="c360-focus-list">';
         items.forEach(function (it) {
-          html += '<article class="c360-focus-item">';
+          html += '<article class="c360-focus-item c360-nocumple-card">';
           html +=
-            "<div><strong>" +
+            '<div class="c360-nocumple-card-top"><strong>' +
             escapeHtml(it.id) +
-            "</strong><p>" +
-            escapeHtml(it.observation || "Sin observación") +
-            "</p>";
-          if (it.recommendation) {
-            html += "<p class=\"muted\">" + escapeHtml(it.recommendation) + "</p>";
-          }
-          html += "</div>";
+            "</strong></div>";
+          html +=
+            '<div class="c360-nocumple-block"><span>Hallazgo</span><p>' +
+            escapeHtml(it.observation || "Sin observación registrada.") +
+            "</p></div>";
+          html +=
+            '<div class="c360-nocumple-block"><span>Recomendación</span><p>' +
+            escapeHtml(it.recommendation || "Sin recomendación registrada.") +
+            "</p></div>";
           if (it.farm && it.date) {
             html +=
               '<div class="c360-focus-actions"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
@@ -2480,6 +2522,7 @@
       score: score,
       findings: findings,
     };
+    if (state.mode === "farm") state.nocumpleOpen = true;
     render();
     window.setTimeout(function () {
       var el = q("#c360-metrics-focus");
@@ -2581,6 +2624,24 @@
       clearFocus.addEventListener("click", function () {
         state.focus = null;
         render();
+      });
+    }
+    qa('[data-act="close-nocumple"]', root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.nocumpleOpen = false;
+        state.focus = null;
+        render();
+      });
+    });
+    var openNocumple = q('[data-act="open-nocumple"]', root);
+    if (openNocumple) {
+      openNocumple.addEventListener("click", function () {
+        state.nocumpleOpen = true;
+        render();
+        window.setTimeout(function () {
+          var el = q("#c360-nocumple-detail");
+          if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 40);
       });
     }
     var clearNotice = q('[data-act="clear-notice"]', root);

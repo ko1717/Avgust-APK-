@@ -1995,8 +1995,9 @@ html.c360-metrics-lite .metrics-actions {
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
   }
 
+  /* Una columna: evita que gráficos y detalle se compriman hacia el borde */
   .c360-metrics-charts {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .c360-metrics-table-farms .c360-col-optional {
@@ -3461,6 +3462,190 @@ html.c360-metrics-lite .metrics-actions {
   }
 
   .c360-farm-card-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+/* —— Detalle No cumple + visitas sin overflow —— */
+.c360-visit-cards,
+.c360-nocumple-list,
+.c360-focus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.c360-visit-card,
+.c360-nocumple-card,
+.c360-metrics-focus .c360-focus-item.c360-nocumple-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid #e6eef1;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.c360-visit-card {
+  border-left: 4px solid var(--c360-brand, #007fa3);
+}
+
+.c360-visit-card.tone-healthy { border-left-color: #1f8a5b; }
+.c360-visit-card.tone-acceptable { border-left-color: #c98512; }
+.c360-visit-card.tone-critical { border-left-color: #c44b3c; background: #fffaf9; }
+
+.c360-visit-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.c360-nocumple-card-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.c360-visit-card-top strong,
+.c360-nocumple-card-top strong {
+  display: block;
+  font-size: 15px;
+}
+
+.c360-visit-card-top p,
+.c360-nocumple-card-top p {
+  margin: 4px 0 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 12.5px;
+  line-height: 1.35;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.c360-visit-card-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+
+.c360-visit-card .c360-alert-btn,
+.c360-nocumple-card .c360-alert-btn {
+  align-self: flex-start;
+}
+
+.c360-nocumple-block {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.c360-nocumple-block span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-nocumple-block p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--c360-ink, #1c2b32);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.c360-nocumple-detail,
+.c360-metrics-focus,
+.c360-nocumple-collapsed {
+  overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.c360-nocumple-detail .c360-metrics-card-head,
+.c360-metrics-focus .c360-metrics-card-head,
+.c360-nocumple-collapsed .c360-metrics-card-head {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.c360-nocumple-detail .c360-metrics-card-head > div,
+.c360-metrics-focus .c360-metrics-card-head > div,
+.c360-nocumple-collapsed .c360-metrics-card-head > div {
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.c360-nocumple-detail .c360-focus-close,
+.c360-metrics-focus .c360-focus-close,
+.c360-nocumple-collapsed .c360-alert-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.c360-nocumple-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 4px;
+}
+
+.c360-focus-close.primary,
+button.c360-focus-close.primary {
+  border-color: var(--c360-brand, #007fa3);
+  background: var(--c360-brand, #007fa3);
+  color: #fff;
+}
+
+.c360-metrics-focus .c360-focus-item,
+.c360-metrics-focus .c360-focus-item p,
+.c360-metrics-focus .c360-focus-item .muted {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.c360-metrics-focus .c360-focus-item {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.c360-metrics-focus .c360-focus-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+@media (max-width: 700px) {
+  .c360-visit-card-metrics {
     grid-template-columns: 1fr 1fr;
   }
 }
