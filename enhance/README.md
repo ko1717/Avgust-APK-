@@ -12,6 +12,7 @@ modifica ni una línea del código original.
 | `care360-presentation.css` | Estilos de la presentación de bienvenida. |
 | `care360-presentation.js` | Contenido y comportamiento de la presentación, el botón **Guía** de la barra superior y la API `window.Care360Intro`. |
 | `care360-experience.js` | Botón físico de atrás, teclado en pantalla, aviso de cambios sin guardar, estado de conexión, recuperación ante errores y medidas de las barras fijas. |
+| `care360-ops.js` | Briefing de Inicio, panel de calidad de la visita y filtros de la lista de visitas. |
 | `care360-debrand.css` / `care360-debrand.js` | Solo en la APK sin marca: ocultan logos y sustituyen el nombre Avgust en pantalla. |
 
 ## Variables publicadas en tiempo de ejecución
@@ -32,6 +33,8 @@ window.Care360Intro.open(indice);   // abre la presentación en una sección
 window.Care360Intro.close(marcar);  // la cierra; con `true` no vuelve a salir sola
 window.Care360Intro.isOpen();
 window.Care360Experience.toast(mensaje, tono, duracion);
+window.Care360Ops.refresh();        // recalcula briefing, calidad y filtros
+window.Care360Ops.auditVisit();     // auditoría de la visita abierta
 ```
 
 ## Al editar

@@ -151,7 +151,7 @@
         item(
           "05",
           "Informe",
-          "Revisa el documento, márcalo como revisado y descárgalo en Word o PDF."
+          "Revisa el documento, márcalo como revisado y descárgalo en Word o PDF. El panel de calidad te avisa si aún falta un criterio, un hallazgo o una foto."
         ) +
         "</ul>",
     },
@@ -162,11 +162,11 @@
         "La barra de la parte superior reúne las siete funciones del programa. Puedes entrar a cualquiera desde la pantalla de Inicio.",
       html:
         '<ul class="c360-list">' +
-        item(ICONS.home, "Inicio", "Resumen del día, respaldos y accesos directos a cada función.") +
+        item(ICONS.home, "Inicio", "Briefing del día: borradores, compromisos vencidos, agenda y el estado del respaldo.") +
         item(ICONS.users, "Fincas y equipo", "Fincas, contactos que reciben los informes y permisos del equipo.") +
         item(ICONS.search, "Consulta de finca", "El expediente completo de una finca: visitas, indicadores, hallazgos y compromisos.") +
         item(ICONS.calendar, "Solicitudes", "Programación de servicios, fechas propuestas y responsables.") +
-        item(ICONS.file, "Visitas e informes", "Donde registras la visita y preparas el informe técnico.") +
+        item(ICONS.file, "Visitas e informes", "Registra la visita, sigue el avance con el panel de calidad y filtra borradores o revisadas.") +
         item(ICONS.chart, "Métricas", "Tablero claro por finca o consolidado: indicador anual, capítulos y subcapítulos.") +
         item(ICONS.check, "Seguimiento", "Compromisos pendientes, vencidos y cerrados, con su historial por finca.") +
         "</ul>",

@@ -38,6 +38,7 @@ head = (
 body = (
     '<script defer src="/enhance/colombia-geo.js"></script>'
     '<script defer src="/enhance/care360-experience.js"></script>'
+    '<script defer src="/enhance/care360-ops.js"></script>'
     '<script defer src="/enhance/care360-import.js"></script>'
     '<script defer src="/enhance/care360-metrics.js"></script>'
     '<script defer src="/enhance/care360-presentation.js"></script>'

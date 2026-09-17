@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.13-sin-marca-Android.apk` | **Sin marca Avgust.** Mediciones editables en capítulos, mezcla final, cultivo, borrado y diccionario geo. |
+| `CARE-360-1.4.35-sin-marca-Android.apk` | **Sin marca Avgust.** Briefing de Inicio, calidad de visita, filtros en la lista y el tablero de métricas. |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -27,6 +27,18 @@ aplicación, sin tocar el código compilado. Así se añade comportamiento nuevo
 riesgo de romper ninguna función existente.
 
 ---
+
+## Versión 1.4.35 sin marca Avgust
+
+Capa operativa de campo para el técnico que trabaja en la finca:
+
+- **Inicio:** briefing del día con borradores, compromisos vencidos, agenda y estado del respaldo.
+- **Visita:** panel de calidad con avance, pendientes y un botón para ir al siguiente criterio incompleto.
+- **Visitas guardadas:** búsqueda y filtros Todas / Borradores / Revisadas, con indicador de estado.
+
+**[CARE-360-1.4.35-sin-marca-Android.apk](./CARE-360-1.4.35-sin-marca-Android.apk)**
+
+Se instala encima de la 1.4.2 a la 1.4.34 (misma firma).
 
 ## Versión 1.4.13 sin marca Avgust
 
@@ -174,8 +186,8 @@ Parámetros opcionales: `tools/build-apk.sh <apk-base> <version-name> <version-c
 Para generar la APK **sin marca Avgust**:
 
 ```bash
-C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
-  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.9 21
+  C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
+  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.35 47
 ```
 
 El guion extrae del paquete base sólo lo que va a cambiar, añade la capa de
