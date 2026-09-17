@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.14}"
-  VERSION_CODE="${3:-26}"
+  VERSION_NAME="${2:-1.4.15}"
+  VERSION_CODE="${3:-27}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -154,6 +154,7 @@ if [[ "$DEBRAND" == "1" ]]; then
   python3 "$ROOT/tools/debrand_web.py" "$WORK"
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$WORK"
+python3 "$ROOT/tools/patch_report.py" "$WORK"
 python3 "$ROOT/tools/patch_runtime.py" "$WORK"
 python3 "$ROOT/tools/patch_crop.py" "$WORK"
 

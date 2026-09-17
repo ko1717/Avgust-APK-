@@ -745,18 +745,21 @@ html.dark .c360-delete-btn {
   color: #ffb4ab;
 }
 
+.report-paper h2[data-c360-hidden-measures],
 .report-paper table[data-c360-hidden-measures] {
   display: none !important;
 }
 
-.c360-report-measures {
+.c360-report-measures,
+.c360-report-chapter-measures {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin: 8px 0 22px;
+  margin: 14px 0 8px;
 }
 
-.c360-report-measures section h3 {
+.c360-report-measures section h3,
+.c360-report-chapter-measures h3 {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -765,23 +768,62 @@ html.dark .c360-delete-btn {
   font-weight: 800;
 }
 
-.c360-report-measures table {
+.c360-report-measures table,
+.c360-report-chapter-measures table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .c360-report-measures th,
-.c360-report-measures td {
+.c360-report-measures td,
+.c360-report-chapter-measures th,
+.c360-report-chapter-measures td {
   padding: 8px 10px;
   border-bottom: 1px solid var(--c360-line);
   text-align: left;
   vertical-align: top;
 }
 
-.c360-report-measures th {
+.c360-report-measures th,
+.c360-report-chapter-measures th {
   width: 48%;
   color: var(--c360-ink-soft);
   font-weight: 700;
+}
+
+.c360-metric-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 4px 0 28px;
+}
+
+.c360-metric-finding-chapter {
+  border: 1px solid var(--c360-line);
+  border-radius: 14px;
+  background: var(--c360-surface, #fff);
+  padding: 14px 14px 8px;
+}
+
+.c360-metric-finding-chapter h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.c360-metric-finding-chapter .table-scroll {
+  overflow-x: auto;
+}
+
+.c360-metric-finding-chapter table {
+  min-width: 720px;
+}
+
+.c360-metric-finding-chapter th,
+.c360-metric-finding-chapter td {
+  vertical-align: top;
+  font-size: 13px;
 }
 
 @media (max-width: 700px) {

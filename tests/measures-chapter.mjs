@@ -67,6 +67,7 @@ await wait(1200);
 const cap4 = await p.evaluate(() => {
   const groups = [...document.querySelectorAll('.c360-chapter-measure')].map((el) => ({
     group: el.getAttribute('data-group'),
+    badge: el.querySelector('.c360-measure-badge')?.textContent || '',
     title: el.querySelector('h4')?.textContent || '',
     labels: [...el.querySelectorAll('label')].map((l) => (l.childNodes[0]?.textContent || l.textContent || '').trim()),
   }));
@@ -79,13 +80,33 @@ const cap4 = await p.evaluate(() => {
   const q46 = [...document.querySelectorAll('.question')].find((q) => q.querySelector('.question-code')?.textContent.trim() === '4.6');
   const agua = document.querySelector('.c360-chapter-measure[data-group="agua"]');
   const mezcla = document.querySelector('.c360-chapter-measure[data-group="mezcla"]');
-  const aguaAfter =
-    q46 && agua ? q46.compareDocumentPosition(agua) & Node.DOCUMENT_POSITION_FOLLOWING : false;
-  return { groups, sourceHidden, bottomDumpVisible, aguaAfter, hasMezcla: !!mezcla };
+  const aguaAfter = q46 && agua ? q46.compareDocumentPosition(agua) & Node.DOCUMENT_POSITION_FOLLOWING : false;
+  const mezclaAfterAgua =
+    agua && mezcla ? agua.compareDocumentPosition(mezcla) & Node.DOCUMENT_POSITION_FOLLOWING : false;
+  const mezclaLabels = groups.find((g) => g.group === 'mezcla')?.labels || [];
+  const radioLabels = [...document.querySelectorAll('.question label, .question [role=radio], .answer-option')]
+    .map((el) => (el.textContent || '').trim())
+    .filter(Boolean);
+  const hasCumple = radioLabels.some((t) => /^Sí cumple$/i.test(t)) && radioLabels.some((t) => /^No cumple$/i.test(t));
+  return {
+    groups,
+    sourceHidden,
+    bottomDumpVisible,
+    aguaAfter,
+    mezclaAfterAgua,
+    hasMezcla: !!mezcla,
+    mezclaOn46: groups.some((g) => g.group === 'mezcla' && /4\.6/.test(g.badge)),
+    mezclaHasConductivity: mezclaLabels.some((t) => /Conductividad mezcla final/i.test(t)),
+    hasCumple,
+    radioSample: [...new Set(radioLabels)].slice(0, 8),
+  };
 });
 check('En cap. 4 aparecen calidad del agua y mezcla final', cap4.groups.some((g) => g.group === 'agua') && cap4.hasMezcla, JSON.stringify(cap4.groups));
 check('Las mediciones del bloque suelto no se ven en evaluación', !cap4.bottomDumpVisible, JSON.stringify({ bottomDumpVisible: cap4.bottomDumpVisible }));
 check('Calidad del agua queda después del criterio 4.6', !!cap4.aguaAfter);
+check('Mezcla final queda junto a 4.6 debajo del agua', !!cap4.mezclaAfterAgua && !!cap4.mezclaOn46, JSON.stringify({ mezclaAfterAgua: cap4.mezclaAfterAgua, mezclaOn46: cap4.mezclaOn46 }));
+check('Mezcla final usa conductividad', !!cap4.mezclaHasConductivity, JSON.stringify(cap4.groups.find((g) => g.group === 'mezcla')));
+check('Las respuestas dicen Sí cumple / No cumple', !!cap4.hasCumple, JSON.stringify(cap4.radioSample));
 
 // Fill mezcla final and scroll to it
 await p.evaluate(() => {

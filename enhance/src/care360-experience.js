@@ -594,16 +594,19 @@
       badge: "4.6",
       title: "Calidad del agua",
       hint: "Dureza menor a 70 ppm · pH entre 5.5 y 6.5",
-      test: /^(pH del agua|Dureza \(ppm\)|Conductividad)/i,
+      test: /^(pH del agua|Dureza \(ppm\)|Conductividad)$/i,
+      order: [/pH del agua/i, /Dureza/i, /^Conductividad$/i],
     },
     {
       chapter: 4,
-      afterCode: "4.10",
+      afterCode: "4.6",
+      afterGroup: "agua",
       id: "mezcla",
-      badge: "4.10",
+      badge: "4.6",
       title: "Mezcla final",
-      hint: "Dureza y pH de la mezcla final, para corregir si hace falta",
-      test: /^(pH mezcla final|Dureza mezcla final)/i,
+      hint: "pH y conductividad de la mezcla final, para corregir si hace falta",
+      test: /^(pH mezcla final|Conductividad mezcla final|Dureza mezcla final)/i,
+      order: [/pH mezcla/i, /Conductividad mezcla|Dureza mezcla/i],
     },
     {
       chapter: 5,
@@ -804,8 +807,12 @@
         box.appendChild(proxyLabel);
       });
 
-      var question = findQuestion(spec.afterCode);
-      if (question) question.insertAdjacentElement("afterend", box);
+      var anchor = null;
+      if (spec.afterGroup) {
+        anchor = q('.c360-chapter-measure[data-group="' + spec.afterGroup + '"]');
+      }
+      if (!anchor) anchor = findQuestion(spec.afterCode);
+      if (anchor) anchor.insertAdjacentElement("afterend", box);
       else {
         var heading = q(".form-body .chapter-heading");
         if (heading) heading.insertAdjacentElement("afterend", box);
@@ -813,12 +820,38 @@
     });
   }
 
+  function findReportChapterSection(chapterId) {
+    return qa(".report-paper section").find(function (section) {
+      var h2 = q("h2", section);
+      if (!h2) return false;
+      var match = /^Capítulo\s+(\d+)\./i.exec((h2.textContent || "").trim());
+      return match && Number(match[1]) === Number(chapterId);
+    });
+  }
+
+  function buildMeasureTable(items) {
+    var table = document.createElement("table");
+    var body = document.createElement("tbody");
+    items.forEach(function (row) {
+      var tr = document.createElement("tr");
+      var th = document.createElement("th");
+      var td = document.createElement("td");
+      th.textContent = row.label;
+      td.textContent = row.value;
+      tr.appendChild(th);
+      tr.appendChild(td);
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    return table;
+  }
+
   function organizeReportMeasurements() {
     qa(".report-paper h2").forEach(function (heading) {
       if (!/Mediciones de campo|Mediciones por capítulo/i.test(heading.textContent || "")) return;
       var node = heading.nextElementSibling;
       if (!node || node.tagName !== "TABLE") return;
-      if (node.nextElementSibling && node.nextElementSibling.classList.contains("c360-report-measures")) {
+      if (qa(".report-paper .c360-report-chapter-measures, .report-paper .c360-report-measures").length) {
         return;
       }
       var rows = qa("tr", node)
@@ -831,8 +864,7 @@
         .filter(Boolean);
       if (!rows.length) return;
       var used = [];
-      var wrap = document.createElement("div");
-      wrap.className = "c360-report-measures";
+      var movedAny = false;
       MEASURE_PLACEMENTS.forEach(function (group) {
         var items = rows.filter(function (row) {
           return group.test.test(row.label) && used.indexOf(row.label) === -1;
@@ -854,58 +886,41 @@
         items.forEach(function (row) {
           used.push(row.label);
         });
-        var section = document.createElement("section");
+        var section = document.createElement("div");
+        section.className = "c360-report-chapter-measures";
+        section.setAttribute("data-group", group.id);
         var title = document.createElement("h3");
         var badge = document.createElement("span");
         badge.className = "c360-measure-badge";
-        badge.textContent = "Cap. " + group.chapter + " · " + group.badge;
+        badge.textContent = group.badge;
         title.appendChild(badge);
         title.appendChild(document.createTextNode(" " + group.title));
-        var table = document.createElement("table");
-        var body = document.createElement("tbody");
-        items.forEach(function (row) {
-          var tr = document.createElement("tr");
-          var th = document.createElement("th");
-          var td = document.createElement("td");
-          th.textContent = row.label;
-          td.textContent = row.value;
-          tr.appendChild(th);
-          tr.appendChild(td);
-          body.appendChild(tr);
-        });
-        table.appendChild(body);
         section.appendChild(title);
-        section.appendChild(table);
-        wrap.appendChild(section);
+        section.appendChild(buildMeasureTable(items));
+        var chapterSection = findReportChapterSection(group.chapter);
+        if (chapterSection) {
+          chapterSection.appendChild(section);
+          movedAny = true;
+        }
       });
       var leftover = rows.filter(function (row) {
         return used.indexOf(row.label) === -1;
       });
       if (leftover.length) {
+        var wrap = document.createElement("div");
+        wrap.className = "c360-report-measures";
         var extraSection = document.createElement("section");
         var extraTitle = document.createElement("h3");
         extraTitle.textContent = "Otras mediciones";
-        var extraTable = document.createElement("table");
-        var extraBody = document.createElement("tbody");
-        leftover.forEach(function (row) {
-          var tr = document.createElement("tr");
-          var th = document.createElement("th");
-          var td = document.createElement("td");
-          th.textContent = row.label;
-          td.textContent = row.value;
-          tr.appendChild(th);
-          tr.appendChild(td);
-          extraBody.appendChild(tr);
-        });
-        extraTable.appendChild(extraBody);
         extraSection.appendChild(extraTitle);
-        extraSection.appendChild(extraTable);
+        extraSection.appendChild(buildMeasureTable(leftover));
         wrap.appendChild(extraSection);
+        node.insertAdjacentElement("afterend", wrap);
       }
-      if (!wrap.children.length) return;
-      heading.textContent = "Mediciones por capítulo";
-      node.setAttribute("data-c360-hidden-measures", "");
-      node.insertAdjacentElement("afterend", wrap);
+      if (movedAny || leftover.length) {
+        heading.setAttribute("data-c360-hidden-measures", "");
+        node.setAttribute("data-c360-hidden-measures", "");
+      }
     });
   }
 

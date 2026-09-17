@@ -3,7 +3,8 @@
 
 - Amplía el mapa de mediciones (conductividad, implementos, mezcla final,
   presión del implemento).
-- En el Word agrupa por criterio del capítulo (4.6, 4.10, 5.1, 5.3, 5.6).
+- Mezcla final usa conductividad (como en campo) y se agrupa en Cap. 4.6.
+- En el Word agrupa por criterio del capítulo (4.6, 5.1, 5.3, 5.6).
 """
 
 from __future__ import annotations
@@ -28,9 +29,18 @@ MIX_KF = (
     "implement:`Implementos de aplicación`,"
     "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`}"
 )
-NEW_KF = (
+PRESSURE_KF = (
     "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,conductivity:`Conductividad`,"
     "mixPh:`pH mezcla final`,mixHardness:`Dureza mezcla final (ppm)`,"
+    "pressure:`Presión de la bomba (PSI)`,"
+    "implementPressure:`Presión del implemento de aplicación (PSI)`,"
+    "equipment:`Equipo de aplicación`,"
+    "implement:`Implementos de aplicación`,"
+    "volume:`Volumen por cama (L)`,time:`Tiempo por cama (s)`}"
+)
+NEW_KF = (
+    "kf={ph:`pH del agua`,hardness:`Dureza (ppm)`,conductivity:`Conductividad`,"
+    "mixPh:`pH mezcla final`,mixConductivity:`Conductividad mezcla final`,"
     "pressure:`Presión de la bomba (PSI)`,"
     "implementPressure:`Presión del implemento de aplicación (PSI)`,"
     "equipment:`Equipo de aplicación`,"
@@ -60,9 +70,18 @@ MIX_WORD = (
     "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
     "r.length&&(s(t,Iv.HEADING_2),c(r))})"
 )
-NEW_WORD = (
+PRESSURE_WORD = (
     "let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
     "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixHardness`]],"
+    "[`Cap. 5 · 5.1 Presión`,[`pressure`,`implementPressure`]],"
+    "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+    "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+    "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+    "r.length&&(s(t,Iv.HEADING_2),c(r))})"
+)
+NEW_WORD = (
+    "let xf=[[`Cap. 4 · 4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[`Cap. 4 · 4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
     "[`Cap. 5 · 5.1 Presión`,[`pressure`,`implementPressure`]],"
     "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
     "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
@@ -75,7 +94,7 @@ def patch_file(path: Path) -> list[str]:
     source = path.read_text(encoding="utf-8")
     applied = []
 
-    if "implementPressure:`Presión del implemento" not in source:
+    if "mixConductivity:`Conductividad mezcla final`" not in source:
         if OLD_KF in source:
             source = source.replace(OLD_KF, NEW_KF, 1)
             applied.append("mapa de mediciones")
@@ -84,11 +103,25 @@ def patch_file(path: Path) -> list[str]:
             applied.append("mapa de mediciones")
         elif MIX_KF in source:
             source = source.replace(MIX_KF, NEW_KF, 1)
-            applied.append("mapa de mediciones (presión implemento)")
+            applied.append("mapa de mediciones (mezcla + presión)")
+        elif PRESSURE_KF in source:
+            source = source.replace(PRESSURE_KF, NEW_KF, 1)
+            applied.append("mapa de mediciones (conductividad mezcla)")
+        elif "mixHardness:`Dureza mezcla final (ppm)`" in source:
+            source = source.replace(
+                "mixHardness:`Dureza mezcla final (ppm)`",
+                "mixConductivity:`Conductividad mezcla final`",
+                1,
+            )
+            applied.append("mapa de mediciones (conductividad mezcla)")
     else:
         applied.append("mapa de mediciones (ya estaba)")
 
-    if "implementPressure`" not in source or "[`pressure`,`implementPressure`]" not in source:
+    want_groups = (
+        "[`Cap. 4 · 4.6 Mezcla final`,[`mixPh`,`mixConductivity`]]" in source
+        or "xf.filter(([n])=>n===t.id)" in source
+    )
+    if not want_groups:
         if OLD_WORD in source:
             source = source.replace(OLD_WORD, NEW_WORD, 1)
             applied.append("informe Word")
@@ -97,14 +130,31 @@ def patch_file(path: Path) -> list[str]:
             applied.append("informe Word")
         elif MIX_WORD in source:
             source = source.replace(MIX_WORD, NEW_WORD, 1)
-            applied.append("informe Word (presión implemento)")
-        elif "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]]" in source:
+            applied.append("informe Word (mezcla en 4.6)")
+        elif PRESSURE_WORD in source:
+            source = source.replace(PRESSURE_WORD, NEW_WORD, 1)
+            applied.append("informe Word (mezcla en 4.6)")
+        elif "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixHardness`]]" in source:
             source = source.replace(
-                "[`Cap. 5 · 5.1 Presión de la bomba`,[`pressure`]]",
-                "[`Cap. 5 · 5.1 Presión`,[`pressure`,`implementPressure`]]",
+                "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixHardness`]]",
+                "[`Cap. 4 · 4.6 Mezcla final`,[`mixPh`,`mixConductivity`]]",
                 1,
             )
-            applied.append("informe Word (presión implemento)")
+            applied.append("informe Word (mezcla en 4.6)")
+        elif "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixConductivity`]]" in source:
+            source = source.replace(
+                "[`Cap. 4 · 4.10 Mezcla final`,[`mixPh`,`mixConductivity`]]",
+                "[`Cap. 4 · 4.6 Mezcla final`,[`mixPh`,`mixConductivity`]]",
+                1,
+            )
+            applied.append("informe Word (mezcla en 4.6)")
+        elif "[`mixPh`,`mixHardness`]" in source:
+            source = source.replace(
+                "[`mixPh`,`mixHardness`]",
+                "[`mixPh`,`mixConductivity`]",
+                1,
+            )
+            applied.append("informe Word (conductividad mezcla)")
     else:
         applied.append("informe Word (ya estaba)")
 

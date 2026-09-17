@@ -141,7 +141,7 @@
         item(
           "03",
           "Evaluación",
-          'Responde Sí, No o No aplica en cada criterio. Cada "No" pide su hallazgo y su recomendación.'
+          'Responde Sí cumple, No cumple o No aplica en cada criterio. Cada "No cumple" pide su hallazgo y su recomendación.'
         ) +
         item(
           "04",
