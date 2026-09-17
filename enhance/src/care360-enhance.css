@@ -2513,3 +2513,507 @@ html.c360-metrics-lite .metrics-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+
+/* —— Tablero: jerarquía limpia (indicador + evolución primero) —— */
+.c360-metrics-board {
+  gap: 14px;
+  padding: 0 0 32px;
+  background:
+    radial-gradient(120% 80% at 0% -10%, rgb(0 181 226 / 10%), transparent 55%),
+    radial-gradient(90% 60% at 100% 0%, rgb(31 138 91 / 8%), transparent 50%);
+  border-radius: 20px;
+}
+
+.c360-metrics-head {
+  gap: 10px;
+  padding: 6px 2px 0;
+}
+
+.c360-metrics-head-main h2 {
+  font-size: clamp(26px, 5.2vw, 32px);
+  letter-spacing: -0.035em;
+  font-weight: 800;
+}
+
+.c360-metrics-head-main p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-metrics-head-main .eyebrow { display: none; }
+
+.c360-metrics-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgb(219 228 232 / 80%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 2px rgb(28 43 50 / 4%);
+}
+
+.c360-metrics-switch,
+.c360-metrics-range {
+  background: #eef3f5;
+  border-color: transparent;
+  padding: 3px;
+}
+
+.c360-metrics-switch button,
+.c360-metrics-range button,
+.c360-action-btn {
+  padding: 8px 11px;
+  font-size: 12px;
+}
+
+.c360-metrics-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: auto;
+  margin: 0;
+  margin-left: auto;
+}
+
+.c360-action-btn {
+  background: #f7fafb;
+  border: 1px solid #e2eaed;
+  border-radius: 10px;
+  color: var(--c360-ink-soft, #58696d);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.c360-action-btn.active,
+.c360-action-btn.primary {
+  background: var(--c360-brand, #007fa3);
+  border-color: var(--c360-brand, #007fa3);
+  color: #fff;
+}
+
+.c360-action-btn:not(.primary):not(.active):hover {
+  background: #fff;
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-metrics-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  align-items: end;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+  background: rgb(255 255 255 / 55%);
+}
+
+.c360-metrics-filters:not(.has-farm) {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr);
+}
+
+.c360-filter-scope {
+  margin: 0;
+  align-self: center;
+  padding: 4px 2px 10px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.c360-metrics-filters select,
+.c360-metrics-filters input {
+  background: #fff;
+}
+
+.c360-metrics-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: c360-metrics-in 0.45s ease both;
+}
+
+.c360-metrics-kpis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.c360-metrics-kpis-side {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.c360-mkpi {
+  min-height: 0;
+  padding: 14px 16px 16px;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgb(28 43 50 / 4%), 0 10px 24px rgb(28 43 50 / 5%);
+  border-color: #e6eef1;
+  background: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.c360-mkpi.featured {
+  min-height: 128px;
+  padding: 18px 20px 20px;
+  justify-content: space-between;
+  background: linear-gradient(145deg, #ffffff 0%, #f4fbf8 100%);
+  border-color: rgb(31 138 91 / 22%);
+}
+
+.c360-mkpi.featured .c360-mkpi-value {
+  font-size: clamp(40px, 7vw, 52px);
+  letter-spacing: -0.05em;
+  margin-top: 4px;
+}
+
+.c360-mkpi.featured .c360-mkpi-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.c360-mkpi.featured .c360-mkpi-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.c360-metrics-kpis-side .c360-mkpi {
+  min-height: 108px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgb(28 43 50 / 3%);
+}
+
+.c360-metrics-kpis-side .c360-mkpi-value {
+  font-size: clamp(20px, 3.2vw, 26px);
+}
+
+.c360-metrics-kpis-side .c360-mkpi-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.c360-metrics-kpis-side .c360-mkpi-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.c360-mkpi-value {
+  font-size: clamp(26px, 5vw, 34px);
+}
+
+.c360-metrics-hero-chart {
+  padding: 18px 18px 12px;
+  border-radius: 22px;
+  border-color: #e6eef1;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(28 43 50 / 4%), 0 14px 36px rgb(28 43 50 / 6%);
+  animation: c360-metrics-in 0.55s ease 0.06s both;
+}
+
+.c360-metrics-hero-chart .c360-metrics-card-head h3 {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.c360-metrics-hero-chart .c360-linechart {
+  min-height: 220px;
+}
+
+.c360-metrics-hero-chart .c360-linechart svg {
+  min-height: 220px;
+}
+
+.c360-linechart-path {
+  stroke-width: 3.25;
+  filter: drop-shadow(0 2px 4px rgb(31 138 91 / 25%));
+}
+
+.c360-compare-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 2px 2px 0;
+  animation: c360-metrics-in 0.4s ease 0.04s both;
+}
+
+.c360-compare-strip-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c360-ink-soft, #58696d);
+  white-space: nowrap;
+}
+
+.c360-compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.c360-compare-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 90%);
+  border: 1px solid #e6eef1;
+  font-size: 12px;
+}
+
+.c360-compare-chip span {
+  color: var(--c360-ink-soft, #58696d);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+}
+
+.c360-compare-chip strong { font-size: 15px; }
+
+.c360-compare-chip em {
+  font-style: normal;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.c360-compare-chip em.up { color: #146b45; }
+.c360-compare-chip em.down { color: #9b2f22; }
+.c360-compare-chip em.flat { color: #5b6b70; }
+
+.c360-metrics-alerts-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: c360-metrics-in 0.45s ease 0.1s both;
+}
+
+.c360-alerts-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.c360-alerts-head strong { font-size: 14px; }
+
+.c360-alerts-head span {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.c360-alerts-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.c360-alert-chip {
+  flex: 0 0 min(268px, 80vw);
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #e6eef1;
+  background: #fff;
+  border-left: 4px solid #c98512;
+}
+
+.c360-alert-chip.tone-critical { border-left-color: #c44b3c; background: #fffaf9; }
+.c360-alert-chip.tone-warn { border-left-color: #c98512; background: #fffdf8; }
+.c360-alert-chip.tone-healthy { border-left-color: #1f8a5b; background: #f7fcf9; }
+
+.c360-alert-chip strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.c360-alert-chip p {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--c360-ink-soft, #58696d);
+  line-height: 1.35;
+}
+
+.c360-metrics-section {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 4px 2px 0;
+}
+
+.c360-metrics-section .c360-metrics-table-wrap {
+  border: 1px solid #e6eef1;
+  border-radius: 16px;
+  background: #fff;
+  padding: 4px 10px;
+  box-shadow: 0 1px 2px rgb(28 43 50 / 3%);
+}
+
+.c360-metrics-import {
+  margin-top: 4px;
+  border-radius: 16px;
+  background: transparent;
+  border: 1px dashed #c8d6db;
+  padding: 0 12px 10px;
+}
+
+.c360-metrics-import > summary.c360-import-open,
+.c360-import-open {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 4px 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--c360-brand, #007fa3);
+}
+
+.c360-metrics-import > summary::-webkit-details-marker { display: none; }
+
+.c360-metrics-import[open] {
+  border-style: solid;
+  background: #f7fafb;
+}
+
+.c360-metrics-card {
+  border-color: #e6eef1;
+  box-shadow: 0 1px 2px rgb(28 43 50 / 3%);
+}
+
+@keyframes c360-metrics-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c360-metrics-hero,
+  .c360-metrics-hero-chart,
+  .c360-compare-strip,
+  .c360-metrics-alerts-bar {
+    animation: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .c360-metrics-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .c360-metrics-controls {
+    position: sticky;
+    top: calc(var(--c360-topbar-h, 66px) + var(--c360-nav-h, 68px) + 6px);
+    z-index: 5;
+  }
+
+  .c360-metrics-kpis {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr);
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1023px) {
+  .c360-metrics-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .c360-metrics-kpis-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .c360-mkpi.featured {
+    min-height: 112px;
+  }
+}
+
+@media (max-width: 700px) {
+  .c360-metrics-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .c360-metrics-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .c360-action-btn { flex: 1 1 0; }
+
+  .c360-metrics-switch,
+  .c360-metrics-range { width: 100%; }
+
+  .c360-metrics-filters,
+  .c360-metrics-filters:not(.has-farm) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .c360-filter-scope,
+  .c360-filter-farm {
+    grid-column: 1 / -1;
+  }
+
+  .c360-metrics-kpis {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .c360-metrics-kpis-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .c360-mkpi.featured {
+    min-height: 108px;
+    padding: 14px 16px;
+  }
+
+  .c360-mkpi.featured .c360-mkpi-value {
+    font-size: 36px;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi {
+    min-height: 92px;
+    padding: 10px 8px;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-label {
+    font-size: 9px;
+    letter-spacing: 0.03em;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-value {
+    font-size: 18px;
+  }
+
+  .c360-metrics-hero-chart {
+    padding: 14px 12px 8px;
+  }
+}

@@ -477,7 +477,7 @@
 
   function renderCompareStrip(cmp) {
     if (!cmp || !cmp.enabled || !cmp.prevWin) return "";
-    function cell(label, curr, prev, delta, suffix) {
+    function chip(label, curr, prev, delta, suffix) {
       suffix = suffix || "";
       var cls = "flat";
       var sign = "";
@@ -487,36 +487,29 @@
         sign = delta > 0 ? "+" : "";
       }
       return (
-        '<div class="c360-compare-cell"><span class="c360-compare-label">' +
+        '<div class="c360-compare-chip"><span>' +
         escapeHtml(label) +
         '</span><strong>' +
         escapeHtml(String(curr == null ? "—" : curr + suffix)) +
-        '</strong><span class="c360-compare-prev">Antes: ' +
-        escapeHtml(String(prev == null ? "—" : prev + suffix)) +
-        '</span><span class="c360-mkpi-delta ' +
+        '</strong><em class="' +
         cls +
         '">' +
-        (delta == null || isNaN(delta) ? "Sin base" : sign + delta + (suffix === "%" ? " pts" : "")) +
-        "</span></div>"
+        (delta == null || isNaN(delta) ? "—" : sign + delta + (suffix === "%" ? " pts" : "")) +
+        "</em></div>"
       );
     }
-    var html = '<section class="c360-metrics-card c360-metrics-compare">';
-    html += cardHead(
-      "Comparación de periodos",
-      "Actual " +
-        formatDateEs(cmp.win.from) +
-        " → " +
-        formatDateEs(cmp.win.to) +
-        " vs anterior " +
-        formatDateEs(cmp.prevWin.from) +
-        " → " +
-        formatDateEs(cmp.prevWin.to)
-    );
-    html += '<div class="c360-compare-grid">';
-    html += cell("Indicador", cmp.score, cmp.prevScore, cmp.scoreDelta, "%");
-    html += cell("Hallazgos", cmp.findings, cmp.prevFindings, cmp.findingsDelta, "");
-    html += cell("Visitas", cmp.visits, cmp.prevVisits, cmp.visitsDelta, "");
-    html += "</div></section>";
+    var html = '<div class="c360-compare-strip" aria-label="Comparación de periodos">';
+    html +=
+      '<p class="c360-compare-strip-label">vs ' +
+      escapeHtml(formatDateEs(cmp.prevWin.from)) +
+      "–" +
+      escapeHtml(formatDateEs(cmp.prevWin.to)) +
+      "</p>";
+    html += '<div class="c360-compare-chips">';
+    html += chip("Indicador", cmp.score, cmp.prevScore, cmp.scoreDelta, "%");
+    html += chip("Hallazgos", cmp.findings, cmp.prevFindings, cmp.findingsDelta, "");
+    html += chip("Visitas", cmp.visits, cmp.prevVisits, cmp.visitsDelta, "");
+    html += "</div></div>";
     return html;
   }
 
@@ -1177,7 +1170,7 @@
     return html;
   }
 
-  function kpiCard(label, value, tone, icon, delta) {
+  function kpiCard(label, value, tone, icon, delta, featured) {
     var deltaHtml = "";
     if (delta != null && !isNaN(delta)) {
       var cls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
@@ -1196,6 +1189,7 @@
     return (
       '<article class="c360-mkpi tone-' +
       (tone || "brand") +
+      (featured ? " featured" : "") +
       '"><div class="c360-mkpi-top"><span class="c360-mkpi-label">' +
       escapeHtml(label) +
       '</span><span class="c360-mkpi-icon" aria-hidden="true">' +
@@ -1264,10 +1258,10 @@
     error: "",
     openChapter: null,
     focus: null,
-    compare: true,
+    compare: false,
     notice: "",
     noticeError: false,
-    importExpanded: true,
+    importExpanded: false,
     importStatus: "",
     importStatusError: false,
     importPreviewHtml: "",
@@ -1370,68 +1364,68 @@
     var html = "";
     html += '<header class="c360-metrics-head">';
     html += '<div class="c360-metrics-head-main">';
-    html += '<p class="eyebrow">MÉTRICAS MIPE</p>';
-    html += "<h2>Tablero de aseguramientos</h2>";
+    html += "<h2>Métricas</h2>";
     html +=
-      "<p>Indicador por finca y por visita, con fechas completas. Importa un informe y edítalo en Visitas.</p>";
+      "<p>" +
+      (state.mode === "farm" && state.farm
+        ? escapeHtml(state.farm)
+        : "Indicador de aseguramientos por finca y periodo") +
+      "</p>";
     html += "</div>";
-    html += '<div class="c360-metrics-toolbar">';
+    html += '<div class="c360-metrics-controls">';
     html += '<div class="c360-metrics-switch" role="tablist">';
     html +=
       '<button type="button" role="tab" data-mode="all" class="' +
       (state.mode === "all" ? "active" : "") +
-      '"><span class="c360-lbl-full">Todas las fincas</span><span class="c360-lbl-short">Todas</span></button>';
+      '"><span class="c360-lbl-full">Todas</span><span class="c360-lbl-short">Todas</span></button>';
     html +=
       '<button type="button" role="tab" data-mode="farm" class="' +
       (state.mode === "farm" ? "active" : "") +
-      '"><span class="c360-lbl-full">Una finca</span><span class="c360-lbl-short">Finca</span></button>';
+      '"><span class="c360-lbl-full">Por finca</span><span class="c360-lbl-short">Finca</span></button>';
     html += "</div>";
     html += '<div class="c360-metrics-range" role="group" aria-label="Periodo">';
     [
       ["all", "Todo", "Todo"],
-      ["30d", "30 días", "30d"],
-      ["90d", "90 días", "90d"],
-      ["365d", "12 meses", "12m"],
-      ["ytd", "Este año", "Año"],
+      ["30d", "30d", "30d"],
+      ["90d", "90d", "90d"],
+      ["365d", "12m", "12m"],
+      ["ytd", "Año", "Año"],
     ].forEach(function (opt) {
       html +=
         '<button type="button" data-range="' +
         opt[0] +
         '" class="' +
         (state.range === opt[0] ? "active" : "") +
-        '"><span class="c360-lbl-full">' +
+        '">' +
         opt[1] +
-        '</span><span class="c360-lbl-short">' +
-        opt[2] +
-        "</span></button>";
+        "</button>";
     });
     html += "</div>";
-    if (state.compare && (!state.dateFrom || !state.dateTo || state.range === "all")) {
-      html +=
-        '<p class="c360-metrics-range-hint">Comparación activa: últimos 12 meses vs 12 meses previos' +
-        (state.range === "all" ? " (el tablero se acota a esa ventana)" : "") +
-        ".</p>";
-    }
-    if (state.range === "custom" && (state.dateFrom || state.dateTo)) {
-      html +=
-        '<p class="c360-metrics-range-hint">Rango personalizado: ' +
-        escapeHtml(formatDateEs(state.dateFrom) || "…") +
-        " → " +
-        escapeHtml(formatDateEs(state.dateTo) || "…") +
-        "</p>";
-    }
     html += '<div class="c360-metrics-actions">';
     html +=
       '<button type="button" class="c360-action-btn' +
       (state.compare ? " active" : "") +
       '" data-act="toggle-compare" aria-pressed="' +
       (state.compare ? "true" : "false") +
-      '">Comparar periodos</button>';
+      '" title="Comparar con periodo anterior">Comparar</button>';
     html +=
-      '<button type="button" class="c360-action-btn" data-act="export-csv">Exportar Excel</button>';
+      '<button type="button" class="c360-action-btn" data-act="export-csv" title="Exportar Excel">Excel</button>';
     html +=
-      '<button type="button" class="c360-action-btn primary" data-act="export-print">PDF / Imprimir</button>';
-    html += "</div></div></header>";
+      '<button type="button" class="c360-action-btn primary" data-act="export-print" title="Exportar PDF">PDF</button>';
+    html += "</div></div>";
+    if (state.compare && (!state.dateFrom || !state.dateTo || state.range === "all")) {
+      html +=
+        '<p class="c360-metrics-range-hint">Comparando últimos 12 meses vs previos.</p>';
+    }
+    if (state.range === "custom" && (state.dateFrom || state.dateTo)) {
+      html +=
+        '<p class="c360-metrics-range-hint">' +
+        escapeHtml(formatDateEs(state.dateFrom) || "…") +
+        " → " +
+        escapeHtml(formatDateEs(state.dateTo) || "…") +
+        "</p>";
+    }
+    html += "</header>";
 
     if (state.notice) {
       html +=
@@ -1442,30 +1436,19 @@
         '</p><button type="button" data-act="clear-notice" aria-label="Cerrar aviso">×</button></div>';
     }
 
-    html +=
-      '<div class="c360-metrics-import" data-c360-board-import="1">' +
-      '<p class="c360-import-open">Importar finca e informes</p>' +
-      '<div class="c360-import-box">' +
-      '<p class="c360-import-lead">Sube <strong>Excel/CSV</strong>, <strong>Word (.docx)</strong> o <strong>PDF</strong>. Se crea la finca si falta y el informe queda completo para editarlo en Visitas.</p>' +
-      '<label class="c360-import-file"><span>Elegir archivo</span>' +
-      '<input id="c360-board-file" type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
-      "</label>" +
-      '<div class="c360-import-status muted" hidden></div>' +
-      '<div class="c360-import-preview" hidden></div>' +
-      "</div></div>";
-
     if (!usable.length) {
       html +=
-        '<div class="c360-metrics-empty"><p>No hay visitas revisadas en este periodo. Amplía el rango, guarda un informe en Visitas o importa un Word/CSV.</p></div>';
+        '<div class="c360-metrics-empty"><p>No hay visitas revisadas en este periodo. Amplía el rango, guarda un informe en Visitas o importa un archivo abajo.</p></div>';
+      html += renderImportBlock();
       root.innerHTML = html;
       bind(root);
       state.boardMounted = true;
       return;
     }
 
-    html += '<div class="c360-metrics-filters">';
+    html += '<div class="c360-metrics-filters' + (state.mode === "farm" ? " has-farm" : "") + '">';
     if (state.mode === "farm") {
-      html += '<label>Finca<select data-field="farm">';
+      html += '<label class="c360-filter-farm">Finca<select data-field="farm">';
       farms.forEach(function (name) {
         html +=
           '<option value="' +
@@ -1479,9 +1462,11 @@
       html += "</select></label>";
     } else {
       html +=
-        '<label>Alcance<select disabled><option>Todas las fincas (' +
+        '<p class="c360-filter-scope">' +
         farms.length +
-        ")</option></select></label>";
+        " finca" +
+        (farms.length === 1 ? "" : "s") +
+        " · rango personalizado</p>";
     }
     html +=
       '<label>Desde<input data-field="dateFrom" type="date" value="' +
@@ -1502,9 +1487,28 @@
       html += renderAllView(aggregateAll(usable));
     }
 
+    html += renderImportBlock();
+
     root.innerHTML = html;
     bind(root);
     state.boardMounted = true;
+  }
+
+  function renderImportBlock() {
+    return (
+      '<details class="c360-metrics-import" data-c360-board-import="1"' +
+      (state.importExpanded || state.importPreviewHtml || state.importStatus ? " open" : "") +
+      ">" +
+      '<summary class="c360-import-open">Importar finca e informes</summary>' +
+      '<div class="c360-import-box">' +
+      '<p class="c360-import-lead">Excel/CSV, Word o PDF. Se crea la finca si falta y queda editable en Visitas.</p>' +
+      '<label class="c360-import-file"><span>Elegir archivo</span>' +
+      '<input id="c360-board-file" type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
+      "</label>" +
+      '<div class="c360-import-status muted" hidden></div>' +
+      '<div class="c360-import-preview" hidden></div>' +
+      "</div></details>"
+    );
   }
 
   function renderAllView(data) {
@@ -1529,44 +1533,45 @@
     var dose = chapterKpi(data.chapters, 2);
     var alerts = buildAlerts(data, null);
     var html = "";
+    html += '<div class="c360-metrics-hero">';
     html += '<div class="c360-metrics-kpis">';
     html += kpiCard(
       "Indicador",
       data.score == null ? "—" : data.score + "%",
       scoreStatus(data.score),
       ICONS.score,
-      cmp.scoreDelta != null ? cmp.scoreDelta : trend
+      cmp.scoreDelta != null ? cmp.scoreDelta : trend,
+      true
     );
+    html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
     html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
     html += kpiCard("Hallazgos", data.findings, data.findings ? "critical" : "healthy", ICONS.findings);
-    html += "</div>";
+    html += "</div></div>";
     html += renderCompareStrip(cmp);
-    html += renderAlerts(alerts);
-    html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
     html += cardHead(
-      "Evolución del indicador",
+      "Evolución",
       (data.firstDate || data.lastDate
-        ? "De " +
-          formatDateEs(data.firstDate) +
-          " a " +
+        ? formatDateEs(data.firstDate) +
+          " → " +
           formatDateEs(data.lastDate) +
           " · " +
           data.visits +
-          " visita(s) en " +
+          " visitas · " +
           data.farms.length +
-          " finca(s)"
-        : "Sin visitas en el periodo") +
-        (state.compare ? " · Línea gris = periodo anterior" : "") +
-        " · Tocá un punto para ver detalle"
+          " fincas"
+        : "Sin visitas") + (state.compare ? " · gris = anterior" : "")
     );
     html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
-    html += "</section>";
+    html += "</section></div>";
 
-    html += '<section class="c360-metrics-card">';
-    html += cardHead("Resumen por finca", "Toca una finca para ver su detalle con el mismo periodo.");
+    html += renderAlerts(alerts);
+    html += renderFocusPanel();
+
+    html += '<section class="c360-metrics-card c360-metrics-section">';
+    html += cardHead("Resumen por finca", "Toca una finca para ver detalle.");
     html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table c360-metrics-table-farms"><thead><tr>';
     html +=
       "<th>Finca</th><th>Visitas</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Primera visita</th><th>Última visita</th>";
@@ -1665,14 +1670,17 @@
     var dose = chapterKpi(data.chapters, 2);
     var alerts = buildAlerts(null, data);
     var html = "";
+    html += '<div class="c360-metrics-hero">';
     html += '<div class="c360-metrics-kpis">';
     html += kpiCard(
       "Indicador",
       lastScore == null ? "—" : lastScore + "%",
       scoreStatus(lastScore),
       ICONS.score,
-      cmp.scoreDelta != null ? cmp.scoreDelta : trend
+      cmp.scoreDelta != null ? cmp.scoreDelta : trend,
+      true
     );
+    html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
     html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
     html += kpiCard(
@@ -1681,34 +1689,32 @@
       data.findings ? "critical" : "healthy",
       ICONS.findings
     );
-    html += "</div>";
+    html += "</div></div>";
     html += renderCompareStrip(cmp);
-    html += renderAlerts(alerts);
-    html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
     html += cardHead(
-      "Evolución de la finca",
+      "Evolución",
       (data.firstDate || data.lastDate
-        ? "Visitas del " +
-          formatDateEs(data.firstDate) +
-          " al " +
+        ? formatDateEs(data.firstDate) +
+          " → " +
           formatDateEs(data.lastDate) +
           " · " +
           data.visits +
-          " visita(s)"
-        : "Sin visitas en el rango") +
-        (state.compare ? " · Línea gris = periodo anterior" : "") +
-        " · Tocá un punto para abrir detalle"
+          " visitas"
+        : "Sin visitas") + (state.compare ? " · gris = anterior" : "")
     );
     html += chartLine(
       data.chartTimeline || data.timeline,
       state.compare && prevData ? prevData.chartTimeline || prevData.timeline : null
     );
-    html += "</section>";
+    html += "</section></div>";
 
-    html += '<section class="c360-metrics-card">';
-    html += cardHead("Visitas por fecha", "Abrí cualquier visita directamente en Visitas.");
+    html += renderAlerts(alerts);
+    html += renderFocusPanel();
+
+    html += '<section class="c360-metrics-card c360-metrics-section">';
+    html += cardHead("Visitas por fecha", "Abrí la visita en Visitas.");
     if (!data.timeline.length) {
       html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
     } else {
@@ -2004,23 +2010,23 @@
 
   function renderAlerts(alerts) {
     if (!alerts || !alerts.length) return "";
-    var html = '<section class="c360-metrics-card c360-metrics-alerts">';
-    html += cardHead("Qué atender", "Alertas del periodo seleccionado. Tocá una para profundizar.");
-    html += '<ul class="c360-alerts-list">';
-    alerts.forEach(function (a, idx) {
+    var html = '<section class="c360-metrics-alerts-bar" aria-label="Qué atender">';
+    html += '<div class="c360-alerts-head"><strong>Qué atender</strong><span>' + alerts.length + "</span></div>";
+    html += '<div class="c360-alerts-scroll">';
+    alerts.forEach(function (a) {
       html +=
-        '<li class="c360-alert tone-' +
+        '<article class="c360-alert-chip tone-' +
         (a.tone || "warn") +
-        '"><div class="c360-alert-main"><strong>' +
+        '"><strong>' +
         escapeHtml(a.title) +
         "</strong><p>" +
         escapeHtml(a.text || "") +
-        '</p></div><div class="c360-alert-actions">';
+        "</p><div class=\"c360-alert-actions\">";
       if (a.farm && state.mode !== "farm") {
         html +=
           '<button type="button" class="c360-alert-btn" data-open-farm="' +
           escapeHtml(a.farm) +
-          '">Ver finca</button>';
+          '">Finca</button>';
       }
       if (a.chapter != null) {
         html +=
@@ -2034,11 +2040,11 @@
           escapeHtml(a.farm) +
           '" data-open-date="' +
           escapeHtml(a.date) +
-          '">Abrir visita</button>';
+          '">Abrir</button>';
       }
-      html += "</div></li>";
+      html += "</div></article>";
     });
-    html += "</ul></section>";
+    html += "</div></section>";
     return html;
   }
 
@@ -2413,7 +2419,7 @@
     if (input.getAttribute("data-bound") === "1") return;
     input.setAttribute("data-bound", "1");
     var openTitle = q(".c360-import-open", box);
-    if (openTitle) {
+    if (openTitle && openTitle.tagName !== "SUMMARY") {
       openTitle.setAttribute("role", "button");
       openTitle.tabIndex = 0;
       openTitle.addEventListener("click", function (ev) {
@@ -2429,6 +2435,11 @@
             input.click();
           } catch (err) {}
         }
+      });
+    }
+    if (box.tagName === "DETAILS") {
+      box.addEventListener("toggle", function () {
+        state.importExpanded = !!box.open;
       });
     }
     input.addEventListener("change", function () {
