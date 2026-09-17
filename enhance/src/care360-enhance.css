@@ -3188,6 +3188,22 @@ html.c360-metrics-lite .metrics-actions {
     font-size: 36px;
   }
 
+  .c360-metrics-kpis-side .c360-mkpi-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-delta .c360-lbl-full,
+  .c360-metrics-kpis-side .c360-mkpi-meta .c360-lbl-full {
+    display: none;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-delta .c360-lbl-short,
+  .c360-metrics-kpis-side .c360-mkpi-meta .c360-lbl-short {
+    display: inline;
+  }
+
   .c360-metrics-kpis-side .c360-mkpi {
     min-height: 92px;
     padding: 10px 8px;
