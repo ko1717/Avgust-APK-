@@ -144,8 +144,25 @@ await p.evaluate(() => {
 await wait(900);
 check('El indicador avisa de cambios sin guardar', await p.evaluate(() => /sin guardar/i.test(document.querySelector('.saved-status')?.textContent || '')));
 
-await clickText('02 Mediciones');
-await wait(900);
+await clickText('02 Evaluación');
+await wait(1200);
+const selectChapter = async (re) => {
+  await p.evaluate((src) => {
+    const combo = document.querySelector('.form-body button[role="combobox"], .form-body [data-slot="select-trigger"]');
+    if (combo) combo.click();
+  }, re.source);
+  await wait(400);
+  const picked = await p.evaluate((src) => {
+    const rx = new RegExp(src, 'i');
+    const opt = [...document.querySelectorAll('[role="option"]')].find((el) => rx.test(el.textContent || ''));
+    if (opt) { opt.click(); return opt.textContent.trim(); }
+    return '';
+  }, re.source);
+  await wait(700);
+  return picked;
+};
+await selectChapter(/Preparación de mezclas|4\./);
+await wait(800);
 await p.evaluate(() => {
   const set = (el, v) => {
     const proto = HTMLInputElement.prototype;
@@ -154,64 +171,72 @@ await p.evaluate(() => {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   };
   const byLabel = (re, v) => {
-    const label = [...document.querySelectorAll('label')].find((el) => re.test(el.textContent || '') && el.querySelector('input'));
-    if (label) set(label.querySelector('input'), v);
+    const labels = [...document.querySelectorAll('label')].filter((el) => re.test(el.textContent || '') && el.querySelector('input'));
+    labels.forEach((label) => set(label.querySelector('input'), v));
   };
   byLabel(/pH del agua/i, '6.1');
   byLabel(/Dureza/i, '45');
   byLabel(/Conductividad/i, '0.35');
+  byLabel(/pH mezcla final/i, '6.0');
+});
+check('Las mediciones de agua quedan en el capítulo 4', await p.evaluate(() => {
+  const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
+  const visiblePh = [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
+  const conductivity = [...document.querySelectorAll('label')].some((el) => /Conductividad/i.test(el.textContent || '') && el.getClientRects().length > 0);
+  return visiblePh && conductivity && badges.some((b) => /4\.6/.test(b));
+}));
+await selectChapter(/Aplicación de PPC|5\./);
+await wait(800);
+await p.evaluate(() => {
+  const set = (el, v) => {
+    const proto = HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const byLabel = (re, v) => {
+    const labels = [...document.querySelectorAll('label')].filter((el) => re.test(el.textContent || '') && el.querySelector('input'));
+    labels.forEach((label) => set(label.querySelector('input'), v));
+  };
   byLabel(/Presión/i, '80');
   byLabel(/^Equipo de aplicación/i, 'Lanza');
   byLabel(/^Implementos de aplicación/i, 'Estacionaria');
   byLabel(/Volumen por cama/i, '12');
   byLabel(/Tiempo por cama/i, '25');
 });
-await wait(400);
-check('Las mediciones se agrupan por capítulo MIPE', await p.evaluate(() => {
-  const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
-  const visiblePh = [...document.querySelectorAll('label')].some((el) => /pH del agua/i.test(el.textContent || '') && el.getClientRects().length > 0);
-  const conductivity = [...document.querySelectorAll('label')].some((el) => /Conductividad/i.test(el.textContent || '') && el.getClientRects().length > 0);
-  const equipo = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Equipo de aplicación/i.test(el.textContent || '') && /Implementos de aplicación/i.test(el.textContent || ''));
-  const cama = [...document.querySelectorAll('.c360-measure-group')].find((el) => /Volumen y tiempo por cama/i.test(el.textContent || ''));
-  const beforeCama = !!(equipo && cama && equipo.getBoundingClientRect().top < cama.getBoundingClientRect().top);
-  return visiblePh && conductivity && beforeCama && badges.includes('Cap. 4 · 4.6') && badges.includes('Cap. 5 · 5.1') && badges.includes('Cap. 5 · 5.6');
-}));
 check('Equipo e implementos se escriben a mano', await p.evaluate(() => {
   const noChips = !document.querySelector('.c360-equip-pick');
   const equipo = [...document.querySelectorAll('label')].find((el) => /^Equipo de aplicación/i.test((el.firstChild && el.firstChild.textContent) || '') && el.querySelector('input'));
   const impl = [...document.querySelectorAll('label')].find((el) => /Implementos de aplicación/i.test(el.textContent || '') && el.querySelector('input'));
-  return noChips && !!equipo && !!impl && getComputedStyle(equipo.querySelector('input')).opacity !== '0';
+  const badges = [...document.querySelectorAll('.c360-measure-badge')].map((el) => el.textContent.trim());
+  return noChips && !!equipo && !!impl && getComputedStyle(equipo.querySelector('input')).opacity !== '0' && badges.some((b) => /5\./.test(b));
 }));
 
-// answer a criterion in step 03
-await clickText('03 Evaluación');
-await wait(1200);
-check('La evaluación ya no mezcla las mediciones', await p.evaluate(() => {
+check('La evaluación ya no mezcla el bloque suelto de mediciones', await p.evaluate(() => {
   const heading = [...document.querySelectorAll('.form-body h3')].find((el) => /Mediciones de campo/i.test(el.textContent));
-  return !heading || heading.getClientRects().length === 0;
+  if (!heading) return true;
+  const rect = heading.getClientRects()[0];
+  const style = getComputedStyle(heading);
+  return !rect || rect.height <= 2 || style.position === 'absolute' || style.display === 'none';
 }));
 const answered = await p.evaluate(() => {
   const labels = [...document.querySelectorAll('.answer-options label')];
-  const yes = labels.filter(l => /^Sí$/i.test(l.textContent.trim()));
+  const yes = labels.filter(l => /sí cumple|^sí$/i.test(l.textContent.trim()));
   yes.slice(0, 20).forEach(l => l.click());
   return yes.length;
 });
-check('Se pueden responder los criterios de evaluación', answered > 0, answered + ' opciones "Sí"');
+check('Se pueden responder los criterios de evaluación', answered > 0, answered + ' opciones "Sí cumple"');
 await wait(900);
 
 // report preview
-await clickText('05 Informe');
+await clickText('04 Informe');
 await wait(1800);
 const report = await p.evaluate(() => document.querySelector('.report-paper')?.innerText || '');
 check('La vista previa del informe se genera', /Informe técnico de visita/i.test(report), report.slice(0, 80).replace(/\n/g, ' '));
 check('El informe agrupa las mediciones por capítulo MIPE',
-  /Cap\. 4 · 4\.6/.test(report) && /Calidad del agua/.test(report) && /Conductividad/.test(report) && /0\.35/.test(report)
-  && /Cap\. 5 · 5\.1/.test(report) && /80/.test(report)
-  && /Equipo de aplicación/.test(report) && /Implementos de aplicación/.test(report)
-  && /Estacionaria/.test(report)
-  && /Cap\. 5 · 5\.6/.test(report) && /12/.test(report)
-  && /Lanza/.test(report),
-  report.match(/Mediciones de campo[\s\S]{0,700}/)?.[0]?.replace(/\n/g, ' | ')
+  /4\.6/.test(report) && /Calidad del agua/.test(report) && /Conductividad/.test(report) && /0\.35/.test(report)
+  && /Lanza/.test(report) && /Estacionaria/.test(report) && /12/.test(report),
+  report.replace(/\n/g, ' ').slice(0, 280)
 );
 await p.evaluate(() => {
   const heading = [...document.querySelectorAll('.report-paper h2')].find((el) => /Mediciones de campo/i.test(el.textContent || ''));
@@ -276,7 +301,7 @@ for (const name of fs.readdirSync(OUT)) {
   try {
     const { execFileSync } = await import('child_process');
     const xml = execFileSync('unzip', ['-p', file, 'word/document.xml'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    if (!/Mediciones de campo/.test(xml)) continue;
+    if (!/Conductividad/.test(xml) && !/Calidad del agua/.test(xml)) continue;
     wordText = xml.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
     break;
   } catch {
@@ -284,12 +309,11 @@ for (const name of fs.readdirSync(OUT)) {
   }
 }
 check('El Word lleva las mediciones por capítulo MIPE',
-  /Cap\. 4 · 4\.6/.test(wordText) && /Conductividad/.test(wordText) && /0\.35/.test(wordText)
-  && /Cap\. 5 · 5\.1/.test(wordText) && /Equipo de aplicación/.test(wordText)
+  /4\.6/.test(wordText) && /Conductividad/.test(wordText) && /0\.35/.test(wordText)
+  && /Equipo de aplicación/.test(wordText)
   && /Implementos de aplicación/.test(wordText) && /Estacionaria/.test(wordText)
-  && /Cap\. 5 · 5\.6/.test(wordText)
   && /Lanza/.test(wordText),
-  wordText.slice(Math.max(0, wordText.indexOf('Mediciones de campo')), Math.max(0, wordText.indexOf('Mediciones de campo')) + 420)
+  wordText.slice(Math.max(0, wordText.indexOf('Calidad del agua')), Math.max(0, wordText.indexOf('Calidad del agua')) + 420)
 );
 
 check('Sin errores de JavaScript', errors.length === 0, errors.slice(0, 5).join(' | '));

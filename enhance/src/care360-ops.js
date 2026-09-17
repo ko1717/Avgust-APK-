@@ -19,6 +19,8 @@
   var hudExpanded = false;
   var lastHudSig = "";
   var lastBriefSig = "";
+  var lastQuestionAudit = null;
+  var draftVisit = null;
   var pending = false;
 
   function q(sel, root) {
@@ -298,7 +300,11 @@
       root.id = BRIEF_ID;
       root.className = "c360-home-brief no-print";
       root.setAttribute("aria-label", "Briefing operativo de campo");
-      host.insertBefore(root, stats);
+      var tools = q(".desktop-tools");
+      var heading = q(".workspace .module-heading, .workspace h1, .workspace h2");
+      if (tools && tools.parentElement) tools.parentElement.insertBefore(root, tools);
+      else if (heading && heading.parentElement) heading.insertAdjacentElement("afterend", root);
+      else host.insertBefore(root, stats);
     }
     if (sig === lastBriefSig && root.getAttribute("data-ready") === "1") return;
     lastBriefSig = sig;
@@ -395,15 +401,16 @@
     var checked =
       q('.answer-options [data-state="checked"]', question) ||
       q('.answer-options [aria-checked="true"]', question) ||
+      q(".answer-options [data-checked]", question) ||
       q(".answer-options input:checked", question);
     if (checked) {
       var raw = (checked.getAttribute("value") || checked.getAttribute("data-value") || "").toUpperCase();
       if (raw === "SI" || raw === "NO" || raw === "NA") return raw;
       var host = checked.closest("label") || checked;
       var text = String(host.textContent || "").replace(/\s+/g, " ").trim();
-      if (/^Sí$/i.test(text)) return "SI";
-      if (/^No aplica$/i.test(text)) return "NA";
-      if (/^No$/i.test(text)) return "NO";
+      if (/sí cumple|^sí$/i.test(text)) return "SI";
+      if (/no aplica/i.test(text)) return "NA";
+      if (/no cumple|^no$/i.test(text)) return "NO";
     }
     var labels = qa(".answer-options label", question);
     for (var i = 0; i < labels.length; i++) {
@@ -411,12 +418,12 @@
       var on =
         (input && input.checked) ||
         labels[i].getAttribute("data-state") === "checked" ||
-        q('[data-state="checked"], [aria-checked="true"]', labels[i]);
+        q('[data-state="checked"], [aria-checked="true"], [data-checked]', labels[i]);
       if (!on) continue;
       var t = String(labels[i].textContent || "").replace(/\s+/g, " ").trim();
-      if (/^Sí$/i.test(t)) return "SI";
-      if (/^No aplica$/i.test(t)) return "NA";
-      if (/^No$/i.test(t)) return "NO";
+      if (/sí cumple|^sí$/i.test(t)) return "SI";
+      if (/no aplica/i.test(t)) return "NA";
+      if (/no cumple|^no$/i.test(t)) return "NO";
     }
     return "";
   }
@@ -488,7 +495,7 @@
     if (!total) status = "pending";
     else if (!unanswered.length && !incomplete.length && !datosMissing.length) status = "ready";
     else if (answered > 0) status = "progress";
-    return {
+    var audit = {
       total: total,
       answered: answered,
       unanswered: unanswered,
@@ -501,10 +508,38 @@
       score: score,
       status: status,
     };
+    if (questions.length) lastQuestionAudit = audit;
+    else if (lastQuestionAudit && lastQuestionAudit.total) {
+      audit.total = lastQuestionAudit.total;
+      audit.answered = lastQuestionAudit.answered;
+      audit.unanswered = lastQuestionAudit.unanswered;
+      audit.findings = lastQuestionAudit.findings;
+      audit.incomplete = lastQuestionAudit.incomplete;
+      audit.score = lastQuestionAudit.score;
+      if (!audit.unanswered.length && !audit.incomplete.length && !audit.datosMissing.length) audit.status = "ready";
+      else if (audit.answered > 0) audit.status = "progress";
+    }
+    if ((!audit.total || audit.answered === 0) && draftVisit && draftVisit.answers) {
+      var scored = visitScore(draftVisit);
+      if (scored.answered) {
+        audit.answered = scored.answered;
+        audit.findings = new Array(scored.findings);
+        audit.incomplete = new Array(scored.incomplete);
+        audit.score = scored.score;
+        audit.status = scored.incomplete ? "blocked" : "progress";
+        if (!audit.total) audit.total = scored.answered;
+      }
+    }
+    return audit;
   }
 
   function hudStatusCopy(audit) {
-    if (!audit.total) return { title: "Calidad de la visita", lead: "Completa los datos y responde los criterios." };
+    if (!audit.total) {
+      return {
+        title: "Calidad de la visita",
+        lead: "Completa finca y fecha; luego responde los criterios en Evaluación.",
+      };
+    }
     if (audit.status === "ready") {
       return {
         title: "Listo para emitir",
@@ -644,6 +679,7 @@
 
   function goNextGap(audit) {
     if (!audit) return;
+    var questionsMounted = qa(".editor .question").length > 0;
     if (audit.datosMissing.length) {
       goVisitPhase("datos");
       window.setTimeout(function () {
@@ -657,6 +693,11 @@
         var combo = q('button[role="combobox"]', editor);
         if (combo) combo.focus();
       }, 80);
+      return;
+    }
+    if (!questionsMounted && (audit.unanswered.length || !audit.total || audit.incomplete.length)) {
+      goVisitPhase("chequeo");
+      toast("Sigue en Evaluación: ahí se cubren los criterios MIPE.", "info", 2400);
       return;
     }
     if (audit.unanswered.length || audit.incomplete.length) {
@@ -843,24 +884,37 @@
     if (home || list) {
       loadOpsData(false)
         .then(function (data) {
-          if (home) renderBriefing(summarizeHome(data));
+          if (onHome()) renderBriefing(summarizeHome(data));
           else {
             var brief = q("#" + BRIEF_ID);
             if (brief) brief.remove();
             lastBriefSig = "";
           }
-          if (list) enhanceVisitList();
+          if (!visitEditor() && visitsListHost()) enhanceVisitList();
         })
         .catch(function () {
-          if (home) renderBriefing(summarizeHome({ visits: [], requests: [] }));
+          if (onHome()) renderBriefing(summarizeHome({ visits: [], requests: [] }));
         });
     } else {
       var brief = q("#" + BRIEF_ID);
       if (brief) brief.remove();
       lastBriefSig = "";
     }
-    if (editor) renderHud(auditVisitDom());
-    else {
+    if (editor) {
+      if (!refresh._draftAt || Date.now() - refresh._draftAt > 2000) {
+        refresh._draftAt = Date.now();
+        apiJson("/api/draft")
+          .then(function (body) {
+            draftVisit = body && typeof body === "object" ? body : null;
+            lastHudSig = "";
+            renderHud(auditVisitDom());
+          })
+          .catch(function () {});
+      }
+      renderHud(auditVisitDom());
+    } else {
+      lastQuestionAudit = null;
+      draftVisit = null;
       var hud = q("#" + HUD_ID);
       if (hud) hud.remove();
       document.documentElement.style.setProperty("--c360-hud-h", "0px");

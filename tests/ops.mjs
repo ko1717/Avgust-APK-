@@ -86,28 +86,39 @@ await p.evaluate(() => {
   );
   if (tab) tab.click();
 });
-await wait(1200);
-await p.evaluate(() => {
+await wait(1400);
+const yesClicked = await p.evaluate(() => {
   const labels = [...document.querySelectorAll(".answer-options label")];
-  labels
-    .filter((l) => /^Sí$/i.test(l.textContent.trim()))
-    .slice(0, 8)
-    .forEach((l) => l.click());
+  const yes = labels.filter((l) => /sí cumple|^sí$/i.test(l.textContent.trim()));
+  yes.slice(0, 8).forEach((l) => l.click());
+  return yes.length;
 });
 await wait(900);
 const hud2 = await p.evaluate(() => {
-  const hud = document.querySelector("#c360-visit-hud");
-  const meter = hud && hud.querySelector(".c360-hud-meter b");
-  return {
-    text: hud ? hud.innerText.replace(/\s+/g, " ").trim() : "",
-    pct: meter ? meter.textContent.trim() : "",
-    api: window.Care360Ops && window.Care360Ops.auditVisit ? window.Care360Ops.auditVisit() : null,
-  };
+  try {
+    const hud = document.querySelector("#c360-visit-hud");
+    const meter = hud && hud.querySelector(".c360-hud-meter b");
+    const api = window.Care360Ops && window.Care360Ops.auditVisit ? window.Care360Ops.auditVisit() : null;
+    return {
+      text: hud ? hud.innerText.replace(/\s+/g, " ").trim() : "",
+      pct: meter ? meter.textContent.trim() : "",
+      api: api
+        ? { answered: api.answered, total: api.total, status: api.status }
+        : null,
+    };
+  } catch (err) {
+    return { text: String(err && err.message), pct: "", api: null };
+  }
 });
 check(
+  "Se pueden pulsar respuestas Sí en Evaluación",
+  yesClicked > 0,
+  String(yesClicked)
+);
+check(
   "El avance sube al responder criterios",
-  !!(hud2.api && hud2.api.answered >= 1),
-  "answered=" + (hud2.api && hud2.api.answered) + " pct=" + hud2.pct
+  !!(hud2 && hud2.api && hud2.api.answered >= 1),
+  JSON.stringify(hud2)
 );
 
 await p.evaluate(() => {
