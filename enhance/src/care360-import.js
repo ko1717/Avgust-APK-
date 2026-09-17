@@ -7,13 +7,20 @@
 (function () {
   "use strict";
 
+  // Must match the criterion catalog of the app (device-runtime / index).
   var CHAPTER_ITEMS = {
-    1: ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7"],
-    2: ["2.1", "2.2", "2.3", "2.4", "2.5", "2.6"],
-    3: ["3.1", "3.2", "3.3", "3.4", "3.5", "3.6"],
+    1: ["1.1", "1.2", "1.3", "1.4"],
+    2: ["2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8"],
+    3: ["3.1", "3.2", "3.3", "3.4"],
     4: ["4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9", "4.10"],
     5: ["5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "5.7", "5.8", "5.9", "5.10", "5.11"],
   };
+  var ALL_ITEM_IDS = Object.keys(CHAPTER_ITEMS).reduce(function (acc, ch) {
+    CHAPTER_ITEMS[ch].forEach(function (id) {
+      acc[id] = true;
+    });
+    return acc;
+  }, {});
 
   function qa(sel, root) {
     return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -32,12 +39,135 @@
       .trim();
   }
 
+  function clampStr(value, max) {
+    return String(value == null ? "" : value).trim().slice(0, max);
+  }
+
   function normalizeAnswer(raw) {
     var t = norm(raw);
-    if (t === "si" || t === "si cumple" || t === "cumple") return "SI";
+    if (t === "si" || t === "si cumple" || t === "cumple" || t === "yes") return "SI";
     if (t === "no" || t === "no cumple" || t === "incumple") return "NO";
-    if (t === "no aplica" || t === "na" || t === "n a") return "NA";
+    if (t === "no aplica" || t === "na" || t === "n a" || t === "sin evaluar") return "NA";
     return "";
+  }
+
+  function normalizeDate(raw) {
+    var s = String(raw || "").trim();
+    if (!s) return "";
+    var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) {
+      var y = Number(iso[1]);
+      var m = Number(iso[2]);
+      var d = Number(iso[3]);
+      if (m < 1 || m > 12 || d < 1 || d > 31) return "";
+      var check = y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+      // Runtime compares with toISOString().slice(0,10); ISO date-only is UTC-safe.
+      if (new Date(check).toISOString().slice(0, 10) !== check) return "";
+      return check;
+    }
+    var slash = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (slash) {
+      var day = Number(slash[1]);
+      var month = Number(slash[2]);
+      var year = slash[3].length === 2 ? 2000 + Number(slash[3]) : Number(slash[3]);
+      // Prefer D/M/Y (Colombia); if day>12 keep that. If month>12 swap.
+      if (month > 12 && day <= 12) {
+        var tmp = day;
+        day = month;
+        month = tmp;
+      }
+      if (month < 1 || month > 12 || day < 1 || day > 31) return "";
+      return normalizeDate(
+        year + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0")
+      );
+    }
+    return "";
+  }
+
+  /** Align a parsed visit with device-runtime saveVisit validation. */
+  function sanitizeVisit(visit, warnings) {
+    warnings = warnings || [];
+    var farm = clampStr(visit.farm, 300);
+    var responsible = clampStr(visit.responsible || visit.technician || "Histórico importado", 300);
+    var date = normalizeDate(visit.date);
+    if (!farm) throw new Error("Falta el nombre de la finca.");
+    if (!responsible) throw new Error("Falta el responsable técnico.");
+    if (!date) throw new Error("Fecha inválida. Usa formato AAAA-MM-DD.");
+
+    var chapters = [];
+    (Array.isArray(visit.chapters) ? visit.chapters : []).forEach(function (ch) {
+      var n = Number(ch);
+      if (Number.isInteger(n) && n >= 1 && n <= 5 && chapters.indexOf(n) < 0) chapters.push(n);
+    });
+    Object.keys(visit.answers || {}).forEach(function (id) {
+      if (!ALL_ITEM_IDS[id]) return;
+      var ch = Number(String(id).split(".")[0]);
+      if (chapters.indexOf(ch) < 0) chapters.push(ch);
+    });
+    chapters.sort(function (a, b) {
+      return a - b;
+    });
+    if (!chapters.length) throw new Error("No hay capítulos válidos para importar.");
+
+    var answers = {};
+    Object.keys(visit.answers || {}).forEach(function (id) {
+      if (!ALL_ITEM_IDS[id]) {
+        warnings.push("Se omitió el ítem desconocido " + id + ".");
+        return;
+      }
+      var raw = visit.answers[id] || {};
+      var value = normalizeAnswer(raw.value);
+      if (!value && ["SI", "NO", "NA", ""].indexOf(raw.value) >= 0) value = raw.value;
+      if (!value) value = "NA";
+      var observation = clampStr(raw.observation, 12000);
+      var recommendation = clampStr(raw.recommendation, 12000);
+      if (value === "NO") {
+        if (!observation) observation = "Hallazgo importado sin detalle en el documento.";
+        if (!recommendation) recommendation = "Revisar en campo y completar recomendación.";
+      }
+      answers[id] = { value: value, observation: observation, recommendation: recommendation };
+    });
+
+    chapters.forEach(function (ch) {
+      (CHAPTER_ITEMS[ch] || []).forEach(function (id) {
+        if (!answers[id]) {
+          answers[id] = { value: "NA", observation: "", recommendation: "" };
+        }
+      });
+    });
+
+    // Drop any stray keys outside selected chapters.
+    Object.keys(answers).forEach(function (id) {
+      var ch = Number(String(id).split(".")[0]);
+      if (chapters.indexOf(ch) < 0) delete answers[id];
+    });
+
+    var out = {
+      id: "",
+      revision: 0,
+      farm: farm,
+      date: date,
+      city: clampStr(visit.city, 300),
+      zone: clampStr(visit.zone, 300),
+      crop: clampStr(visit.crop, 300),
+      technician: clampStr(visit.technician || responsible, 300),
+      responsible: responsible,
+      rtc: clampStr(visit.rtc, 300),
+      chapters: chapters,
+      answers: answers,
+      notes: {},
+      recommendations: {},
+      measurements: {},
+      delivery: normalizeDate(visit.delivery) || "",
+      followup: normalizeDate(visit.followup) || "",
+      conclusion: clampStr(visit.conclusion || "Informe histórico importado.", 15000),
+      photos: [],
+      reviewed: true,
+      serviceKind: "assurance",
+      actions: {},
+    };
+    if (visit.farmId && /^[a-f0-9-]{36}$/i.test(visit.farmId)) out.farmId = visit.farmId;
+    return out;
   }
 
   function parseCsv(text) {
@@ -132,13 +262,22 @@
         return map[key] >= 0 ? String(row[map[key]] || "").trim() : "";
       };
       var farm = get("finca");
-      var date = get("fecha");
-      var item = get("item");
+      var date = normalizeDate(get("fecha")) || get("fecha");
+      var item = get("item").replace(/\s+/g, "");
       var answer = normalizeAnswer(get("respuesta"));
       var chapter = Number((get("capitulo").match(/^\s*(\d+)/) || ["", "0"])[1]);
       if (!farm && !date && !item) return;
       if (!farm || !date || !item || !answer) {
         errors.push("Fila " + line + ": completa finca, fecha, ítem y respuesta.");
+        return;
+      }
+      if (!normalizeDate(date)) {
+        errors.push("Fila " + line + ": fecha inválida (" + get("fecha") + "). Usa AAAA-MM-DD.");
+        return;
+      }
+      date = normalizeDate(date);
+      if (!ALL_ITEM_IDS[item]) {
+        errors.push("Fila " + line + ": el ítem " + item + " no existe en CARE 360.");
         return;
       }
       if (!chapter || Number(item.split(".")[0]) !== chapter) {
@@ -169,55 +308,55 @@
 
     var visits = [];
     groups.forEach(function (g) {
-      var chapters = Array.from(g.chapters).sort();
+      var chapters = Array.from(g.chapters).sort(function (a, b) {
+        return a - b;
+      });
       var missingItems = [];
       chapters.forEach(function (ch) {
         (CHAPTER_ITEMS[ch] || []).forEach(function (id) {
           if (!g.answers[id]) missingItems.push(id);
         });
       });
+      // Missing items are filled as NA in sanitizeVisit; warn but don't block.
       if (missingItems.length) {
         errors.push(
           g.farm +
             " (" +
             g.date +
-            "): faltan ítems del capítulo: " +
+            "): faltaban ítems y se marcarán No aplica: " +
             missingItems.slice(0, 8).join(", ") +
             (missingItems.length > 8 ? "…" : "")
         );
-        return;
       }
       Object.keys(g.answers).forEach(function (id) {
         if (g.answers[id].value === "NO") {
           if (!g.answers[id].observation || !g.answers[id].recommendation) {
-            errors.push(g.farm + " (" + g.date + "): el No cumple de " + id + " necesita hallazgo y recomendación.");
+            errors.push(
+              g.farm +
+                " (" +
+                g.date +
+                "): el No cumple de " +
+                id +
+                " sin hallazgo/recomendación se completará al importar."
+            );
           }
         }
       });
-      visits.push({
-        id: "",
-        farm: g.farm,
-        date: g.date,
-        revision: 0,
-        responsible: g.responsible,
-        technician: g.responsible,
-        rtc: "",
-        city: "",
-        zone: "",
-        crop: "",
-        chapters: chapters,
-        answers: g.answers,
-        notes: {},
-        recommendations: {},
-        measurements: {},
-        photos: [],
-        delivery: "",
-        followup: "",
-        reviewed: true,
-        serviceKind: "assurance",
-        conclusion: "Informe histórico importado.",
-        actions: {},
-      });
+      try {
+        visits.push(
+          sanitizeVisit({
+            farm: g.farm,
+            date: g.date,
+            responsible: g.responsible,
+            technician: g.responsible,
+            chapters: chapters,
+            answers: g.answers,
+            conclusion: "Informe histórico importado.",
+          }, errors)
+        );
+      } catch (err) {
+        errors.push(g.farm + " (" + g.date + "): " + (err.message || String(err)));
+      }
     });
     return { visits: visits, errors: errors, rows: rows.length - 1 };
   }
@@ -312,13 +451,10 @@
         text.match(/Nombre de la finca\s*[:|]?\s*([^\n]+)/i) ||
         [])[1] || "";
     farm = farm.replace(/\s+/g, " ").trim();
-    var date =
-      (text.match(/Fecha\s*[:|]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i) || [])[1] || "";
-    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(date)) {
-      var bits = date.split(/[\/\-]/);
-      var y = bits[2].length === 2 ? "20" + bits[2] : bits[2];
-      date = y + "-" + bits[1].padStart(2, "0") + "-" + bits[0].padStart(2, "0");
-    }
+    var dateRaw =
+      (text.match(/Fecha\s*[:|]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.\s]\d{1,2}[\/\-.\s]\d{2,4})/i) ||
+        [])[1] || "";
+    var date = normalizeDate(dateRaw);
     var responsible =
       (text.match(/Responsable t[eé]cnico\s*[:|]?\s*([^\n|]+)/i) ||
         text.match(/Representante t[eé]cnico\s*[:|]?\s*([^\n|]+)/i) ||
@@ -326,17 +462,18 @@
     responsible = responsible.replace(/\s+/g, " ").trim();
 
     var answers = {};
-    var chapters = new Set();
-    var re = /(\d+\.\d+)\s*·\s*(Sí cumple|No cumple|No aplica|Sí|No|Sin evaluar)/gi;
+    var re =
+      /(\d+\.\d+)\s*(?:·|-|:)?\s*(Sí cumple|No cumple|No aplica|Sin evaluar|Sí|No)/gi;
     var match;
     var matches = [];
     while ((match = re.exec(text))) {
       matches.push({ id: match[1], answer: match[2], index: match.index, end: re.lastIndex });
     }
     matches.forEach(function (m, i) {
+      if (!ALL_ITEM_IDS[m.id]) return;
       var value = normalizeAnswer(m.answer);
       if (!value) return;
-      var chunk = text.slice(m.end, matches[i + 1] ? matches[i + 1].index : m.end + 500);
+      var chunk = text.slice(m.end, matches[i + 1] ? matches[i + 1].index : m.end + 800);
       var observation = (chunk.match(/Hallazgo\s*\/?\s*observaci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
       var recommendation = (chunk.match(/Recomendaci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
       answers[m.id] = {
@@ -344,52 +481,34 @@
         observation: observation.trim(),
         recommendation: recommendation.trim(),
       };
-      chapters.add(Number(m.id.split(".")[0]));
     });
 
     if (!farm || !date) {
-      throw new Error("No se encontró finca o fecha en el informe. Revisa el encabezado del Word/PDF.");
+      throw new Error(
+        "No se encontró finca o fecha válida en el informe. Revisa el encabezado (fecha AAAA-MM-DD)."
+      );
     }
     if (!Object.keys(answers).length) {
       throw new Error("No se encontraron criterios con Sí cumple / No cumple en el documento.");
     }
 
-    // Fill missing chapter items as NA so the visit can be imported.
-    Array.from(chapters).forEach(function (ch) {
-      (CHAPTER_ITEMS[ch] || []).forEach(function (id) {
-        if (!answers[id]) answers[id] = { value: "NA", observation: "", recommendation: "" };
-      });
-    });
+    var warnings = [];
+    var visit = sanitizeVisit(
+      {
+        farm: farm,
+        date: date,
+        responsible: responsible,
+        technician: responsible,
+        answers: answers,
+        conclusion: "Informe importado desde documento.",
+      },
+      warnings
+    );
 
     return {
-      visits: [
-        {
-          id: "",
-          farm: farm,
-          date: date,
-          revision: 0,
-          responsible: responsible,
-          technician: responsible,
-          rtc: "",
-          city: "",
-          zone: "",
-          crop: "",
-          chapters: Array.from(chapters).sort(),
-          answers: answers,
-          notes: {},
-          recommendations: {},
-          measurements: {},
-          photos: [],
-          delivery: "",
-          followup: "",
-          reviewed: true,
-          serviceKind: "assurance",
-          conclusion: "Informe importado desde documento.",
-          actions: {},
-        },
-      ],
-      errors: [],
-      rows: Object.keys(answers).length,
+      visits: [visit],
+      errors: warnings,
+      rows: Object.keys(visit.answers).length,
     };
   }
 
@@ -399,10 +518,10 @@
     if (!teamRes.ok) throw new Error(team.error || "No se pudo leer el equipo");
     var farms = team.farms || team || [];
     if (!Array.isArray(farms)) farms = farms.farms || [];
-    var exists = farms.some(function (f) {
+    var existing = farms.find(function (f) {
       return norm(f.name || f.farm || "") === norm(name);
     });
-    if (exists) return;
+    if (existing) return existing.id || existing.farmId || null;
 
     var manager = String(responsible || "").trim() || "Responsable importado";
     var create = await fetch("/api/team", {
@@ -433,7 +552,9 @@
       if (!/ya existe|duplicate|unique/i.test(body.error || "")) {
         throw new Error(String(body.error || "No se pudo crear la finca " + name).replace(/^400:/, ""));
       }
+      return body.id || null;
     }
+    return body.id || null;
   }
 
   async function saveVisits(visits) {
@@ -446,21 +567,41 @@
         return norm(v.farm) + "|" + v.date;
       })
     );
-    var todo = visits.filter(function (v) {
+    var prepared = [];
+    var prepErrors = [];
+    (visits || []).forEach(function (v, idx) {
+      try {
+        prepared.push(sanitizeVisit(v, prepErrors));
+      } catch (err) {
+        prepErrors.push("Visita " + (idx + 1) + ": " + (err.message || String(err)));
+      }
+    });
+    if (!prepared.length) {
+      throw new Error(prepErrors.slice(0, 3).join(" · ") || "No hay visitas válidas para importar.");
+    }
+    var todo = prepared.filter(function (v) {
       return !seen.has(norm(v.farm) + "|" + v.date);
     });
     if (!todo.length) throw new Error("Todos los aseguramientos ya aparecen con la misma finca y fecha.");
     var saved = [];
     for (var i = 0; i < todo.length; i++) {
-      await ensureFarm(todo[i].farm, todo[i].responsible || todo[i].technician);
+      var farmId = await ensureFarm(todo[i].farm, todo[i].responsible || todo[i].technician);
+      var payload = Object.assign({}, todo[i]);
+      if (farmId) payload.farmId = farmId;
       var res = await fetch("/api/visits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(todo[i]),
+        body: JSON.stringify(payload),
       });
-      var body = await res.json();
+      var body = await res.json().catch(function () {
+        return {};
+      });
       if (!res.ok) {
-        throw new Error(String(body.error || "Error al guardar visita de " + todo[i].farm).replace(/^400:/, ""));
+        throw new Error(
+          String(body.error || "Error al guardar visita de " + todo[i].farm)
+            .replace(/^400:/, "")
+            .replace(/^422:/, "")
+        );
       }
       saved.push(body);
     }
@@ -588,6 +729,8 @@
     saveVisits: saveVisits,
     rowsToVisits: rowsToVisits,
     parseReportText: parseReportText,
+    sanitizeVisit: sanitizeVisit,
+    CHAPTER_ITEMS: CHAPTER_ITEMS,
   };
 
   function tick() {
