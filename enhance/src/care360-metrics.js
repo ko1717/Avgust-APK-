@@ -1980,7 +1980,8 @@
     var prevDose = prevData ? chapterKpi(prevData.chapters, 2) : { score: null };
     var mixDelta = deltaPts(mix.score, prevMix.score);
     var doseDelta = deltaPts(dose.score, prevDose.score);
-    var findingsDelta = prevData ? data.findings - (prevData.findings || 0) : null;
+    var findingsDelta =
+      prevData && prevData.visits > 0 ? data.findings - (prevData.findings || 0) : null;
     var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
     var periodNote =
       data.visits != null
@@ -2051,7 +2052,8 @@
           data.visits +
           " visitas · " +
           data.farms.length +
-          " fincas"
+          " finca" +
+          (data.farms.length === 1 ? "" : "s")
         : "Sin visitas") +
         " · meta " +
         META_TARGET +
@@ -2142,7 +2144,8 @@
     var prevDose = prevData ? chapterKpi(prevData.chapters, 2) : { score: null };
     var mixDelta = deltaPts(mix.score, prevMix.score);
     var doseDelta = deltaPts(dose.score, prevDose.score);
-    var findingsDelta = prevData ? data.findings - (prevData.findings || 0) : null;
+    var findingsDelta =
+      prevData && prevData.visits > 0 ? data.findings - (prevData.findings || 0) : null;
     var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
     var periodNote =
       data.visits != null
