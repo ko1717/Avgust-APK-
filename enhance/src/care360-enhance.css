@@ -1370,67 +1370,100 @@ html.c360-metrics-lite .metrics-actions {
 .c360-metrics-board {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   margin: 0 0 22px;
-  padding: 4px 2px 8px;
+  padding: 2px 0 10px;
+  color: var(--c360-ink, #1c2b32);
 }
 
 .c360-metrics-head {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  padding: 4px 2px 2px;
 }
 
-.c360-metrics-head .eyebrow {
+.c360-metrics-head-main .eyebrow {
   margin: 0 0 4px;
   color: var(--c360-brand, #007fa3);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.c360-metrics-head h2 {
+.c360-metrics-head-main h2 {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.2;
+  font-size: clamp(22px, 4.2vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 800;
 }
 
-.c360-metrics-head p {
+.c360-metrics-head-main p {
   margin: 6px 0 0;
-  color: var(--c360-ink-soft, #5b6b70);
+  max-width: 46rem;
+  color: var(--c360-ink-soft, #58696d);
   font-size: 14px;
+  line-height: 1.45;
 }
 
-.c360-metrics-switch {
+.c360-metrics-toolbar {
   display: flex;
-  gap: 8px;
-  padding: 4px;
-  border: 1px solid var(--c360-line, #d7e2e5);
-  border-radius: 12px;
-  background: #f3f7f8;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.c360-metrics-switch button {
-  flex: 1;
+.c360-metrics-switch,
+.c360-metrics-range {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f7fbfc, #eef4f6);
+}
+
+.c360-metrics-switch button,
+.c360-metrics-range button {
   border: 0;
   border-radius: 9px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   background: transparent;
-  color: var(--c360-ink-soft, #5b6b70);
+  color: var(--c360-ink-soft, #58696d);
+  font: inherit;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.c360-metrics-switch button.active {
+.c360-metrics-switch button.active,
+.c360-metrics-range button.active {
   background: #fff;
   color: var(--c360-brand, #007fa3);
-  box-shadow: 0 1px 3px rgb(0 40 50 / 10%);
+  box-shadow: 0 1px 2px rgb(28 43 50 / 8%), 0 4px 12px rgb(28 43 50 / 6%);
+}
+
+.c360-metrics-range-hint {
+  margin: 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .c360-metrics-filters {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 0.8fr;
+  grid-template-columns: 1.5fr 0.9fr 0.9fr;
   gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--c360-shadow-1);
 }
 
 .c360-metrics-filters label {
@@ -1439,67 +1472,224 @@ html.c360-metrics-lite .metrics-actions {
   gap: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--c360-ink-soft, #5b6b70);
+  color: var(--c360-ink-soft, #58696d);
 }
 
 .c360-metrics-filters select,
 .c360-metrics-filters input {
-  border: 1px solid var(--c360-line, #d7e2e5);
+  border: 1px solid var(--c360-line, #dbe4e8);
   border-radius: 10px;
   padding: 10px 12px;
   font: inherit;
-  background: #fff;
+  background: #f8fbfc;
+  color: var(--c360-ink, #1c2b32);
 }
 
 .c360-metrics-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .c360-mkpi {
-  border: 1px solid var(--c360-line, #d7e2e5);
-  border-radius: 14px;
-  background: #fff;
-  padding: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 108px;
+  padding: 14px 14px 16px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+  box-shadow: var(--c360-shadow-1);
+  overflow: hidden;
 }
 
-.c360-mkpi span {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--c360-ink-soft, #5b6b70);
+.c360-mkpi::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: var(--c360-brand, #007fa3);
+  opacity: 0.85;
+}
+
+.c360-mkpi.tone-healthy::after { background: #1f8a5b; }
+.c360-mkpi.tone-acceptable::after { background: #c98512; }
+.c360-mkpi.tone-critical::after { background: #c44b3c; }
+.c360-mkpi.tone-pending::after { background: #8aa0a6; }
+
+.c360-mkpi-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.c360-mkpi-label {
+  color: var(--c360-ink-soft, #58696d);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  line-height: 1.3;
 }
 
-.c360-mkpi strong {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+.c360-mkpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #e8f5f9;
+  color: var(--c360-brand, #007fa3);
+  flex-shrink: 0;
 }
+
+.c360-mkpi.tone-healthy .c360-mkpi-icon {
+  background: #e5f6ee;
+  color: #146b45;
+}
+
+.c360-mkpi.tone-acceptable .c360-mkpi-icon {
+  background: #fff1d6;
+  color: #8a5a00;
+}
+
+.c360-mkpi.tone-critical .c360-mkpi-icon {
+  background: #fde8e4;
+  color: #9b2f22;
+}
+
+.c360-mkpi.tone-pending .c360-mkpi-icon {
+  background: #eef2f3;
+  color: #5b6b70;
+}
+
+.c360-mkpi-value {
+  display: block;
+  font-size: clamp(24px, 4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-mkpi-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: -2px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.c360-mkpi-delta.up { color: #146b45; }
+.c360-mkpi-delta.down { color: #9b2f22; }
+.c360-mkpi-delta.flat { color: var(--c360-ink-soft, #58696d); }
 
 .c360-metrics-card {
-  border: 1px solid var(--c360-line, #d7e2e5);
-  border-radius: 16px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 18px;
   background: #fff;
-  padding: 14px;
+  padding: 16px;
+  box-shadow: var(--c360-shadow-1);
+}
+
+.c360-metrics-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .c360-metrics-card-head h3 {
   margin: 0;
   font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .c360-metrics-card-head p {
-  margin: 4px 0 12px;
-  color: var(--c360-ink-soft, #5b6b70);
+  margin: 4px 0 0;
+  color: var(--c360-ink-soft, #58696d);
   font-size: 13px;
+  line-height: 1.4;
+}
+
+.c360-metrics-hero-chart {
+  padding-bottom: 8px;
+}
+
+.c360-linechart {
+  width: 100%;
+  min-height: 220px;
+  margin-top: 4px;
+}
+
+.c360-linechart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 220px;
+  overflow: visible;
+}
+
+.c360-linechart-grid {
+  stroke: #e7eef1;
+  stroke-width: 1;
+}
+
+.c360-linechart-area {
+  fill: rgb(31 138 91 / 12%);
+}
+
+.c360-linechart-path {
+  fill: none;
+  stroke: #1f8a5b;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.c360-linechart-dot {
+  fill: #fff;
+  stroke: #1f8a5b;
+  stroke-width: 2.5;
+}
+
+.c360-linechart-val {
+  fill: #1c2b32;
+  font-size: 11px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.c360-linechart-xlabel {
+  fill: #5b6b70;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.c360-linechart-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  border: 1px dashed var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: #f7fbfc;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 14px;
 }
 
 .c360-metrics-table-wrap {
   overflow-x: auto;
+  margin-top: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .c360-metrics-table {
@@ -1510,10 +1700,10 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-metrics-table th,
 .c360-metrics-table td {
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--c360-line, #d7e2e5);
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--c360-line, #dbe4e8);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   font-size: 13px;
   line-height: 1.35;
 }
@@ -1526,18 +1716,22 @@ html.c360-metrics-lite .metrics-actions {
 }
 
 .c360-metrics-table th {
-  color: var(--c360-ink-soft, #5b6b70);
+  color: var(--c360-ink-soft, #58696d);
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-weight: 800;
 }
 
 .c360-metrics-table tbody tr[data-open-farm] {
   cursor: pointer;
+  transition: background 0.12s ease;
 }
 
-.c360-metrics-table tbody tr[data-open-farm]:hover {
+.c360-metrics-table tbody tr[data-open-farm]:hover,
+.c360-metrics-table tbody tr[data-open-farm]:focus-visible {
   background: rgb(0 127 163 / 6%);
+  outline: none;
 }
 
 .c360-metrics-inline {
@@ -1545,6 +1739,7 @@ html.c360-metrics-lite .metrics-actions {
   align-items: center;
   gap: 8px;
   min-width: 110px;
+  font-weight: 700;
 }
 
 .c360-mbar {
@@ -1622,10 +1817,27 @@ html.c360-metrics-lite .metrics-actions {
   min-height: 4px;
 }
 
+.c360-mchart-bar.tone-healthy {
+  background: linear-gradient(180deg, #3cb87f, #1f8a5b);
+}
+
+.c360-mchart-bar.tone-acceptable {
+  background: linear-gradient(180deg, #e0a63a, #c98512);
+}
+
+.c360-mchart-bar.tone-critical,
+.c360-mchart-bar.tone-warn {
+  background: linear-gradient(180deg, #e06b5c, #c44b3c);
+}
+
+.c360-mchart-bar.tone-pending {
+  background: linear-gradient(180deg, #a8b7bc, #8aa0a6);
+}
+
 .c360-mchart-val {
   font-size: 11px;
   font-weight: 800;
-  color: var(--c360-ink-soft, #5b6b70);
+  color: var(--c360-ink-soft, #58696d);
 }
 
 .c360-mchart-label {
@@ -1639,32 +1851,24 @@ html.c360-metrics-lite .metrics-actions {
   max-width: 72px;
 }
 
-.c360-mchart-avg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1.5px dashed #7a9096;
-  pointer-events: none;
-}
-
-.c360-mchart-avg span {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #5b6b70;
-  background: #fff;
-  padding: 0 4px;
-}
-
 .c360-metrics-empty,
 .c360-metrics-error,
 .c360-metrics-loading {
-  border: 1px dashed var(--c360-line, #d7e2e5);
+  border: 1px dashed var(--c360-line, #dbe4e8);
   border-radius: 14px;
   padding: 18px;
   background: #f7fbfc;
+}
+
+.c360-metrics-error button {
+  margin-top: 10px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--c360-brand, #007fa3);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .c360-import-box {
@@ -1673,7 +1877,7 @@ html.c360-metrics-lite .metrics-actions {
   gap: 10px;
   margin: 8px 0 14px;
   padding: 12px;
-  border: 1px solid var(--c360-line, #d7e2e5);
+  border: 1px solid var(--c360-line, #dbe4e8);
   border-radius: 14px;
   background: #f7fbfc;
 }
@@ -1731,7 +1935,33 @@ html.c360-metrics-lite .metrics-actions {
   margin-top: 8px;
 }
 
+.c360-metrics-import {
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f9fcfd, #f3f8f9);
+  padding: 0 12px 12px;
+  margin: 0;
+}
+
+.c360-metrics-import .c360-import-box {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 @media (min-width: 900px) {
+  .c360-metrics-head {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .c360-metrics-toolbar {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
   .c360-metrics-charts {
     grid-template-columns: 1fr 1fr;
   }
@@ -1741,22 +1971,29 @@ html.c360-metrics-lite .metrics-actions {
   .c360-metrics-kpis {
     grid-template-columns: 1fr 1fr;
   }
+
   .c360-metrics-filters {
     grid-template-columns: 1fr;
   }
+
+  .c360-metrics-switch,
+  .c360-metrics-range {
+    width: 100%;
+  }
+
+  .c360-metrics-switch button,
+  .c360-metrics-range button {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .c360-mkpi-value {
+    font-size: 22px;
+  }
 }
 
-.c360-metrics-import {
-  border: 1px solid var(--c360-line, #d7e2e5);
-  border-radius: 14px;
-  background: #f7fbfc;
-  padding: 0 12px 12px;
-  margin: 0 0 14px;
-}
-
-.c360-metrics-import .c360-import-box {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
+@media (max-width: 420px) {
+  .c360-metrics-kpis {
+    grid-template-columns: 1fr;
+  }
 }
