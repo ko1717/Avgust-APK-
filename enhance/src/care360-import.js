@@ -393,7 +393,7 @@
     };
   }
 
-  async function ensureFarm(name) {
+  async function ensureFarm(name, responsible) {
     var teamRes = await fetch("/api/team");
     var team = await teamRes.json();
     if (!teamRes.ok) throw new Error(team.error || "No se pudo leer el equipo");
@@ -403,6 +403,8 @@
       return norm(f.name || f.farm || "") === norm(name);
     });
     if (exists) return;
+
+    var manager = String(responsible || "").trim() || "Responsable importado";
     var create = await fetch("/api/team", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -410,7 +412,17 @@
         op: "create",
         name: name,
         zone: "Importado",
-        managerName: "Responsable importado",
+        managerName: manager,
+        // Runtime exige al menos 1 contacto con nombre, cargo, teléfono y correo.
+        contacts: [
+          {
+            name: manager,
+            role: "Responsable local",
+            phone: "0000000000",
+            email: "importado@care360.local",
+            receiveReports: false,
+          },
+        ],
       }),
     });
     var body = await create.json().catch(function () {
@@ -419,7 +431,7 @@
     if (!create.ok) {
       // Idempotent: ignore if already exists under another code path.
       if (!/ya existe|duplicate|unique/i.test(body.error || "")) {
-        throw new Error(body.error || "No se pudo crear la finca " + name);
+        throw new Error(String(body.error || "No se pudo crear la finca " + name).replace(/^400:/, ""));
       }
     }
   }
@@ -440,14 +452,16 @@
     if (!todo.length) throw new Error("Todos los aseguramientos ya aparecen con la misma finca y fecha.");
     var saved = [];
     for (var i = 0; i < todo.length; i++) {
-      await ensureFarm(todo[i].farm);
+      await ensureFarm(todo[i].farm, todo[i].responsible || todo[i].technician);
       var res = await fetch("/api/visits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(todo[i]),
       });
       var body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Error al guardar visita de " + todo[i].farm);
+      if (!res.ok) {
+        throw new Error(String(body.error || "Error al guardar visita de " + todo[i].farm).replace(/^400:/, ""));
+      }
       saved.push(body);
     }
     return saved;
@@ -558,11 +572,13 @@
       var url = String(input && input.url ? input.url : input || "");
       if (/\/api\/visits\/?$/.test(url) && init && String(init.method || "GET").toUpperCase() === "POST" && init.body) {
         var payload = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
-        if (payload && payload.farm) await ensureFarm(payload.farm);
+        if (payload && payload.farm) {
+          await ensureFarm(payload.farm, payload.responsible || payload.technician);
+        }
       }
     } catch (err) {
       // Don't block native flow on ensureFarm preview errors; rethrow only if create failed hard.
-      if (err && /No se pudo crear la finca/.test(err.message || "")) throw err;
+      if (err && /No se pudo crear la finca|Contactos inválidos|Completa nombre/i.test(err.message || "")) throw err;
     }
     return nativeFetch(input, init);
   };
