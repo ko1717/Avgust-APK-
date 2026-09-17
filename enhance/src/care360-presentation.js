@@ -167,7 +167,7 @@
         item(ICONS.search, "Consulta de finca", "El expediente completo de una finca: visitas, indicadores, hallazgos y compromisos.") +
         item(ICONS.calendar, "Solicitudes", "Programación de servicios, fechas propuestas y responsables.") +
         item(ICONS.file, "Visitas e informes", "Donde registras la visita y preparas el informe técnico.") +
-        item(ICONS.chart, "Métricas", "Indicadores por finca, evolución en el tiempo y consolidado de aseguramientos.") +
+        item(ICONS.chart, "Métricas", "Tablero claro por finca o consolidado: indicador anual, capítulos y subcapítulos.") +
         item(ICONS.check, "Seguimiento", "Compromisos pendientes, vencidos y cerrados, con su historial por finca.") +
         "</ul>",
     },

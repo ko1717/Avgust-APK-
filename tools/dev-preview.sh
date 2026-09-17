@@ -38,6 +38,8 @@ head = (
 body = (
     '<script defer src="/enhance/colombia-geo.js"></script>'
     '<script defer src="/enhance/care360-experience.js"></script>'
+    '<script defer src="/enhance/care360-import.js"></script>'
+    '<script defer src="/enhance/care360-metrics.js"></script>'
     '<script defer src="/enhance/care360-presentation.js"></script>'
 )
 if debrand:
@@ -61,6 +63,7 @@ if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$OUT"
 python3 "$ROOT/tools/patch_report.py" "$OUT"
+python3 "$ROOT/tools/patch_import.py" "$OUT"
 python3 "$ROOT/tools/patch_runtime.py" "$OUT"
 python3 "$ROOT/tools/patch_crop.py" "$OUT"
 

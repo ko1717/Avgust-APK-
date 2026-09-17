@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.15}"
-  VERSION_CODE="${3:-27}"
+  VERSION_NAME="${2:-1.4.16}"
+  VERSION_CODE="${3:-28}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -74,15 +74,8 @@ fi
 # 2. Copiar la capa de mejoras y sellar la versión
 # --------------------------------------------------------------------------
 mkdir -p assets/public/enhance
-cp "$ROOT/enhance/src/care360-enhance.css" assets/public/enhance/
-cp "$ROOT/enhance/src/care360-presentation.css" assets/public/enhance/
-cp "$ROOT/enhance/src/care360-presentation.js" assets/public/enhance/
-cp "$ROOT/enhance/src/care360-experience.js" assets/public/enhance/
-cp "$ROOT/enhance/src/colombia-geo.js" assets/public/enhance/
-if [[ "$DEBRAND" == "1" ]]; then
-  cp "$ROOT/enhance/src/care360-debrand.css" assets/public/enhance/
-  cp "$ROOT/enhance/src/care360-debrand.js" assets/public/enhance/
-fi
+cp "$ROOT"/enhance/src/*.css assets/public/enhance/
+cp "$ROOT"/enhance/src/*.js assets/public/enhance/
 sed -i "s/__C360_VERSION__/$VERSION_NAME/g" assets/public/enhance/care360-presentation.js
 
 # --------------------------------------------------------------------------
@@ -107,7 +100,9 @@ head = (
 body = (
     '<script defer src="/enhance/colombia-geo.js?v=%s"></script>'
     '<script defer src="/enhance/care360-experience.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version, version)
+    '<script defer src="/enhance/care360-import.js?v=%s"></script>'
+    '<script defer src="/enhance/care360-metrics.js?v=%s"></script>'
+    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version, version, version, version)
 )
 if __import__("os").environ.get("C360_DEBRAND") == "1":
     head += '<link rel="stylesheet" href="/enhance/care360-debrand.css?v=%s">' % version
@@ -155,6 +150,7 @@ if [[ "$DEBRAND" == "1" ]]; then
 fi
 python3 "$ROOT/tools/patch_measurements.py" "$WORK"
 python3 "$ROOT/tools/patch_report.py" "$WORK"
+python3 "$ROOT/tools/patch_import.py" "$WORK"
 python3 "$ROOT/tools/patch_runtime.py" "$WORK"
 python3 "$ROOT/tools/patch_crop.py" "$WORK"
 
