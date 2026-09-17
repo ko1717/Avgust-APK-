@@ -3002,11 +3002,13 @@ html.c360-metrics-lite .metrics-actions {
   .c360-metrics-kpis-side .c360-mkpi {
     min-height: 92px;
     padding: 10px 8px;
+    overflow: visible;
   }
 
   .c360-metrics-kpis-side .c360-mkpi-label {
-    font-size: 9px;
-    letter-spacing: 0.03em;
+    font-size: 11px;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   .c360-metrics-kpis-side .c360-mkpi-value {
@@ -3017,3 +3019,107 @@ html.c360-metrics-lite .metrics-actions {
     padding: 14px 12px 8px;
   }
 }
+
+
+/* —— Teléfono: controles en una línea, KPIs legibles —— */
+@media (max-width: 700px) {
+  .c360-metrics-controls {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .c360-metrics-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+  }
+
+  .c360-action-btn {
+    flex: none;
+    width: 100%;
+    padding: 8px 6px;
+    font-size: 11.5px;
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  .c360-metrics-filters,
+  .c360-metrics-filters:not(.has-farm) {
+    padding: 6px 8px 8px;
+    gap: 8px;
+  }
+
+  .c360-filter-scope {
+    padding: 0 2px 2px;
+    font-size: 12px;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi {
+    overflow: visible;
+    padding: 10px 8px 12px;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-label {
+    font-size: 11px;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.2;
+    max-width: 100%;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-top {
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .c360-metrics-kpis-side .c360-mkpi-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .c360-metrics-head-main p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+.c360-metrics-filters.hide-dates .c360-filter-date { display: none; }
+.c360-metrics-filters.hide-dates:not(.has-farm) {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.c360-metrics-filters.hide-dates.has-farm {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.c360-filter-dates-toggle {
+  border: 1px solid #dbe4e8;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: #fff;
+  color: var(--c360-brand, #007fa3);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  justify-self: end;
+}
+
+.c360-metrics-kpis-side .c360-mkpi {
+  overflow: visible;
+}
+.c360-metrics-kpis-side .c360-mkpi-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.2;
+}
+

@@ -1446,7 +1446,12 @@
       return;
     }
 
-    html += '<div class="c360-metrics-filters' + (state.mode === "farm" ? " has-farm" : "") + '">';
+    var showDates = state.range === "custom" || !!state._showDates;
+    html +=
+      '<div class="c360-metrics-filters' +
+      (state.mode === "farm" ? " has-farm" : "") +
+      (showDates ? " show-dates" : " hide-dates") +
+      '">';
     if (state.mode === "farm") {
       html += '<label class="c360-filter-farm">Finca<select data-field="farm">';
       farms.forEach(function (name) {
@@ -1466,16 +1471,20 @@
         farms.length +
         " finca" +
         (farms.length === 1 ? "" : "s") +
-        " · rango personalizado</p>";
+        " en el periodo</p>";
     }
     html +=
-      '<label>Desde<input data-field="dateFrom" type="date" value="' +
+      '<label class="c360-filter-date">Desde<input data-field="dateFrom" type="date" value="' +
       escapeHtml(state.dateFrom) +
       '"></label>';
     html +=
-      '<label>Hasta<input data-field="dateTo" type="date" value="' +
+      '<label class="c360-filter-date">Hasta<input data-field="dateTo" type="date" value="' +
       escapeHtml(state.dateTo) +
       '"></label>';
+    if (!showDates) {
+      html +=
+        '<button type="button" class="c360-filter-dates-toggle" data-act="show-dates">Fechas</button>';
+    }
     html += "</div>";
 
     if (state.mode === "farm") {
@@ -1545,7 +1554,7 @@
     );
     html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
-    html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
+    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water);
     html += kpiCard("Hallazgos", data.findings, data.findings ? "critical" : "healthy", ICONS.findings);
     html += "</div></div>";
     html += renderCompareStrip(cmp);
@@ -1682,7 +1691,7 @@
     );
     html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
-    html += kpiCard("Dosificación", dose.value, dose.tone, ICONS.water);
+    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water);
     html += kpiCard(
       "Hallazgos",
       data.findings,
@@ -2236,6 +2245,7 @@
     qa("[data-range]", root).forEach(function (btn) {
       btn.addEventListener("click", function () {
         applyRangePreset(btn.getAttribute("data-range") || "all");
+        state._showDates = false;
         state.focus = null;
         render();
       });
@@ -2245,6 +2255,7 @@
         state[el.getAttribute("data-field")] = el.value;
         if (el.getAttribute("data-field") === "dateFrom" || el.getAttribute("data-field") === "dateTo") {
           state.range = "custom";
+          state._showDates = true;
         }
         state.focus = null;
         render();
@@ -2331,6 +2342,13 @@
     if (toggleCompare) {
       toggleCompare.addEventListener("click", function () {
         state.compare = !state.compare;
+        render();
+      });
+    }
+    var showDatesBtn = q('[data-act="show-dates"]', root);
+    if (showDatesBtn) {
+      showDatesBtn.addEventListener("click", function () {
+        state._showDates = true;
         render();
       });
     }
