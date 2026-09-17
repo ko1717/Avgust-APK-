@@ -111,10 +111,17 @@
     conn = conn || q(".c360-pro-conn");
     if (!conn) return;
     var online = window.navigator.onLine !== false;
-    conn.setAttribute("data-state", online ? "online" : "offline");
+    var state = online ? "online" : "offline";
+    // Solo se escribe si cambió: si no, cada pase generaría una mutación
+    // nueva y el observador no descansaría nunca.
+    if (conn.getAttribute("data-state") !== state) {
+      conn.setAttribute("data-state", state);
+    }
     var label = q("span", conn);
-    if (label) label.textContent = online ? "En línea" : "Sin conexión";
-    conn.title = online ? "Hay conexión" : "Trabajando sin conexión: todo se guarda en el equipo";
+    var text = online ? "En línea" : "Sin conexión";
+    if (label && label.textContent !== text) label.textContent = text;
+    var tip = online ? "Hay conexión" : "Trabajando sin conexión: todo se guarda en el equipo";
+    if (conn.title !== tip) conn.title = tip;
   }
 
   /* ------------------------------------------------------------------ *
@@ -301,10 +308,10 @@
         }
         if (!target) return;
         var empty = !(target.value || "").toString().trim();
+        // Solo clases: nunca se reescribe innerHTML porque rompería los
+        // controles de React y dispararía un bucle de mutaciones.
         target.classList.toggle("c360-pro-missing", empty);
-        if (!q(".c360-pro-req", label)) {
-          label.innerHTML = label.innerHTML.replace("*", '<span class="c360-pro-req" aria-hidden="true">*</span>');
-        }
+        label.classList.toggle("c360-pro-req-label", empty);
       });
     } catch (err) {
       /* formulario no disponible todavía */

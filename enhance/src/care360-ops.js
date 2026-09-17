@@ -398,11 +398,13 @@
   }
 
   function questionAnswer(question) {
+    // El input nativo manda: lleva value="SI|NO|NA" y es la fuente de verdad
+    // de Base UI. Los atributos visuales (aria/data) quedan como respaldo.
     var checked =
-      q('.answer-options [data-state="checked"]', question) ||
+      q(".answer-options input:checked", question) ||
       q('.answer-options [aria-checked="true"]', question) ||
       q(".answer-options [data-checked]", question) ||
-      q(".answer-options input:checked", question);
+      q('.answer-options [data-state="checked"]', question);
     if (checked) {
       var raw = (checked.getAttribute("value") || checked.getAttribute("data-value") || "").toUpperCase();
       if (raw === "SI" || raw === "NO" || raw === "NA") return raw;

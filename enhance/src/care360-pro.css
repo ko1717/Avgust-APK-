@@ -296,7 +296,12 @@ html.dark .c360-pro-missing {
   background: #2b1a17;
 }
 
-.c360-pro-req {
+/* Etiqueta de campo obligatorio vacío (el asterisco lo pone la app). */
+.c360-pro-req-label {
+  color: var(--c360-danger);
+}
+
+.c360-pro-req-label .c360-pro-req {
   color: var(--c360-danger);
   font-weight: 800;
 }
