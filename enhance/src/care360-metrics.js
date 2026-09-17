@@ -1296,6 +1296,49 @@
     return html;
   }
 
+  function legendHtml(kind) {
+    if (kind === "score") {
+      return (
+        '<div class="c360-metrics-legend" role="list" aria-label="Leyenda de indicador">' +
+        '<span class="c360-leg-item tone-healthy" role="listitem"><i></i>Saludable ≥80%</span>' +
+        '<span class="c360-leg-item tone-acceptable" role="listitem"><i></i>Aceptable 50–79%</span>' +
+        '<span class="c360-leg-item tone-critical" role="listitem"><i></i>Crítico &lt;50%</span>' +
+        '<span class="c360-leg-item target" role="listitem"><i></i>Meta 80%</span>' +
+        "</div>"
+      );
+    }
+    if (kind === "findings") {
+      return (
+        '<div class="c360-metrics-legend" role="list" aria-label="Leyenda de hallazgos">' +
+        '<span class="c360-leg-item tone-healthy" role="listitem"><i></i>Sin hallazgos</span>' +
+        '<span class="c360-leg-item tone-warn" role="listitem"><i></i>Prioridad media</span>' +
+        '<span class="c360-leg-item tone-critical" role="listitem"><i></i>Prioridad alta</span>' +
+        '<span class="c360-leg-item hint" role="listitem"><i></i>Barra más larga = más urgente</span>' +
+        "</div>"
+      );
+    }
+    if (kind === "status") {
+      return (
+        '<div class="c360-metrics-legend c360-status-legend" role="list" aria-label="Leyenda de estado">' +
+        '<span class="c360-leg-item tone-healthy" role="listitem"><i></i>Saludable</span>' +
+        '<span class="c360-leg-item tone-acceptable" role="listitem"><i></i>Aceptable</span>' +
+        '<span class="c360-leg-item tone-critical" role="listitem"><i></i>Crítico</span>' +
+        '<span class="c360-leg-item tone-pending" role="listitem"><i></i>Sin medición</span>' +
+        "</div>"
+      );
+    }
+    if (kind === "alerts") {
+      return (
+        '<div class="c360-metrics-legend c360-alerts-legend" role="list" aria-label="Leyenda Qué atender">' +
+        '<span class="c360-leg-item tone-critical" role="listitem"><i></i>Urgente</span>' +
+        '<span class="c360-leg-item tone-warn" role="listitem"><i></i>Atención</span>' +
+        '<span class="c360-leg-item tone-healthy" role="listitem"><i></i>Sin hallazgos</span>' +
+        "</div>"
+      );
+    }
+    return "";
+  }
+
   function chartBars(rows, valueKey) {
     var max = valueKey === "score" ? 100 : 1;
     var any = false;
@@ -1312,13 +1355,7 @@
       );
     }
     var html = '<div class="c360-hbar-chart" role="list">';
-    if (valueKey === "score") {
-      html +=
-        '<div class="c360-hbar-legend"><span class="c360-hbar-leg tone-healthy">≥80% saludable</span><span class="c360-hbar-leg tone-acceptable">50–79%</span><span class="c360-hbar-leg tone-critical">&lt;50% crítico</span><span class="c360-hbar-leg target">Meta 80%</span></div>';
-    } else {
-      html +=
-        '<div class="c360-hbar-legend"><span class="c360-hbar-leg tone-warn">Más hallazgos = más prioridad</span></div>';
-    }
+    html += legendHtml(valueKey === "score" ? "score" : "findings");
     rows.forEach(function (r) {
       var v = r[valueKey];
       var pct =
@@ -1848,6 +1885,7 @@
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead("Resumen por finca", "Toca una finca para ver detalle.");
+    html += legendHtml("status");
     html += renderFarmCards(data.farms, data.findings);
     html += "</section>";
 
@@ -1965,7 +2003,8 @@
     html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
-    html += cardHead("Visitas por fecha", "Abrí la visita en Visitas.");
+    html += cardHead("Visitas por fecha", "Abrí la visita en Visitas para ver el informe completo.");
+    html += legendHtml("status");
     if (!data.timeline.length) {
       html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
     } else {
@@ -2051,19 +2090,37 @@
     return html;
   }
 
+  function groupItemsByChapter(items) {
+    var groups = [];
+    var map = {};
+    (items || []).forEach(function (it) {
+      var ch = Number(it.chapter);
+      if (!map[ch]) {
+        map[ch] = {
+          id: ch,
+          title: CHAPTER_TITLES[ch] || "Capítulo " + ch,
+          items: [],
+        };
+        groups.push(map[ch]);
+      }
+      map[ch].items.push(it);
+    });
+    return groups;
+  }
+
   function renderNocumpleDetail(data) {
     var count = (data.items && data.items.length) || 0;
     if (!count) {
       return (
         '<section class="c360-metrics-card c360-metrics-section">' +
-        cardHead("Detalle de No cumple", "La última visita no tiene respuestas No cumple.") +
+        cardHead("Detalle del informe · No cumple", "La última visita no tiene respuestas No cumple.") +
         "</section>"
       );
     }
     if (!state.nocumpleOpen) {
       return (
         '<section class="c360-metrics-card c360-metrics-section c360-nocumple-collapsed">' +
-        '<div class="c360-metrics-card-head"><div><h3>Detalle de No cumple</h3><p>' +
+        '<div class="c360-metrics-card-head"><div><h3>Detalle del informe · No cumple</h3><p>' +
         count +
         " hallazgo" +
         (count === 1 ? " oculto" : "s ocultos") +
@@ -2074,35 +2131,45 @@
     }
     var html = '<section class="c360-metrics-card c360-metrics-section c360-nocumple-detail" id="c360-nocumple-detail">';
     html +=
-      '<div class="c360-metrics-card-head"><div><h3>Detalle de No cumple</h3><p>' +
+      '<div class="c360-metrics-card-head"><div><h3>Detalle del informe · No cumple</h3><p>' +
       (data.lastDate
-        ? "Hallazgos de la visita del " + formatDateEs(data.lastDate) + "."
-        : "Hallazgos de la última visita.") +
+        ? "Hallazgos y recomendaciones de la visita del " + formatDateEs(data.lastDate) + "."
+        : "Hallazgos y recomendaciones de la última visita.") +
       '</p></div><button type="button" class="c360-focus-close primary" data-act="close-nocumple" aria-label="Cerrar detalle">Cerrar detalle</button></div>';
+    html +=
+      '<div class="c360-nocumple-toolbar"><button type="button" class="c360-alert-btn primary" data-open-visit="' +
+      escapeHtml(state.farm || "") +
+      '" data-open-date="' +
+      escapeHtml(data.lastDate || "") +
+      '">Abrir informe en Visitas</button></div>';
     html += '<div class="c360-nocumple-list">';
-    data.items.forEach(function (it) {
-      html += '<article class="c360-nocumple-card">';
+    groupItemsByChapter(data.items).forEach(function (group) {
+      html += '<div class="c360-nocumple-group">';
       html +=
-        '<div class="c360-nocumple-card-top"><strong>' +
-        escapeHtml(it.id) +
-        "</strong><p>" +
-        escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")) +
-        "</p></div>";
-      html +=
-        '<div class="c360-nocumple-block"><span>Hallazgo</span><p>' +
-        escapeHtml(it.observation || "Sin observación registrada.") +
-        "</p></div>";
-      html +=
-        '<div class="c360-nocumple-block"><span>Recomendación</span><p>' +
-        escapeHtml(it.recommendation || "Sin recomendación registrada.") +
-        "</p></div>";
-      html +=
-        '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
-        escapeHtml(state.farm || "") +
-        '" data-open-date="' +
-        escapeHtml(data.lastDate || "") +
-        '">Abrir visita</button>';
-      html += "</article>";
+        '<header class="c360-nocumple-group-head"><strong>' +
+        escapeHtml(group.id + ". " + group.title) +
+        "</strong><span>" +
+        group.items.length +
+        " hallazgo" +
+        (group.items.length === 1 ? "" : "s") +
+        "</span></header>";
+      group.items.forEach(function (it) {
+        html += '<article class="c360-nocumple-card">';
+        html +=
+          '<div class="c360-nocumple-card-top"><strong class="c360-nocumple-id">' +
+          escapeHtml(it.id) +
+          '</strong><span class="c360-mpill tone-warn">No cumple</span></div>';
+        html +=
+          '<div class="c360-nocumple-block"><span>Hallazgo</span><p>' +
+          escapeHtml(it.observation || "Sin observación registrada.") +
+          "</p></div>";
+        html +=
+          '<div class="c360-nocumple-block rec"><span>Recomendación</span><p>' +
+          escapeHtml(it.recommendation || "Sin recomendación registrada.") +
+          "</p></div>";
+        html += "</article>";
+      });
+      html += "</div>";
     });
     html += "</div>";
     html +=
@@ -2313,8 +2380,13 @@
   function renderAlerts(alerts) {
     if (!alerts || !alerts.length) return "";
     var html = '<section class="c360-metrics-alerts-bar" aria-label="Qué atender">';
-    html += '<div class="c360-alerts-head"><strong>Qué atender</strong><span>' + alerts.length + "</span></div>";
-    html += '<div class="c360-alerts-scroll">';
+    html +=
+      '<div class="c360-alerts-head"><div><strong>Qué atender</strong><span>' +
+      alerts.length +
+      "</span></div>" +
+      legendHtml("alerts") +
+      "</div>";
+    html += '<div class="c360-alerts-grid">';
     alerts.forEach(function (a) {
       html +=
         '<article class="c360-alert-chip tone-' +
@@ -2323,7 +2395,7 @@
         escapeHtml(a.title) +
         "</strong><p>" +
         escapeHtml(a.text || "") +
-        "</p><div class=\"c360-alert-actions\">";
+        '</p><div class="c360-alert-actions">';
       if (a.farm && state.mode !== "farm") {
         html +=
           '<button type="button" class="c360-alert-btn" data-open-farm="' +
@@ -2371,12 +2443,12 @@
           var st = visitScore(v);
           html += '<article class="c360-focus-item">';
           html +=
-            "<div><strong>" +
+            '<div class="c360-focus-item-main"><strong>' +
             escapeHtml(v.farm || state.farm || "Finca") +
             "</strong><p>" +
             escapeHtml(formatDateEs(v.date)) +
             (v.responsible || v.technician ? " · " + escapeHtml(v.responsible || v.technician) : "") +
-            "</p><p class=\"c360-focus-meta\">Indicador " +
+            '</p><p class="c360-focus-meta">Indicador ' +
             (st.score == null ? "—" : st.score + "%") +
             " · " +
             st.findings +
@@ -2393,20 +2465,26 @@
             escapeHtml(v.farm || state.farm || "") +
             '" data-open-date="' +
             escapeHtml(v.date || "") +
-            '">Abrir en Visitas</button>';
+            '">Abrir informe</button>';
           html += "</div></article>";
         });
         html += "</div>";
       }
     } else if (focus.type === "chapter") {
-      var chId = focus.chapter;
       var items = focus.items || [];
+      var chTone = scoreStatus(focus.score);
       html +=
-        '<p class="c360-focus-meta">Indicador del capítulo: <strong>' +
+        '<div class="c360-focus-summary"><span class="c360-mpill tone-' +
+        chTone +
+        '">' +
+        statusLabel(chTone) +
+        '</span><p>Indicador <strong>' +
         (focus.score == null ? "—" : focus.score + "%") +
-        "</strong> · Hallazgos: <strong>" +
+        "</strong> · <strong>" +
         (focus.findings || 0) +
-        "</strong></p>";
+        "</strong> hallazgo" +
+        ((focus.findings || 0) === 1 ? "" : "s") +
+        "</p></div>";
       if (!items.length) {
         html += '<p class="muted">Sin respuestas No cumple en este capítulo para el corte actual.</p>';
       } else {
@@ -2414,15 +2492,15 @@
         items.forEach(function (it) {
           html += '<article class="c360-focus-item c360-nocumple-card">';
           html +=
-            '<div class="c360-nocumple-card-top"><strong>' +
+            '<div class="c360-nocumple-card-top"><strong class="c360-nocumple-id">' +
             escapeHtml(it.id) +
-            "</strong></div>";
+            '</strong><span class="c360-mpill tone-warn">No cumple</span></div>';
           html +=
             '<div class="c360-nocumple-block"><span>Hallazgo</span><p>' +
             escapeHtml(it.observation || "Sin observación registrada.") +
             "</p></div>";
           html +=
-            '<div class="c360-nocumple-block"><span>Recomendación</span><p>' +
+            '<div class="c360-nocumple-block rec"><span>Recomendación</span><p>' +
             escapeHtml(it.recommendation || "Sin recomendación registrada.") +
             "</p></div>";
           if (it.farm && it.date) {
@@ -2431,13 +2509,15 @@
               escapeHtml(it.farm) +
               '" data-open-date="' +
               escapeHtml(it.date) +
-              '">Abrir visita</button></div>';
+              '">Abrir informe</button></div>';
           }
           html += "</article>";
         });
         html += "</div>";
       }
     }
+    html +=
+      '<div class="c360-nocumple-footer"><button type="button" class="c360-focus-close primary" data-act="clear-focus">Cerrar detalle</button></div>';
     html += "</section>";
     return html;
   }
