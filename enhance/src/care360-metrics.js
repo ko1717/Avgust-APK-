@@ -1184,24 +1184,34 @@
       return (
         '<div class="c360-linechart c360-linechart-empty">' +
         "<p><strong>Sin datos de indicador</strong></p>" +
-        "<p>Cuando haya visitas revisadas en el periodo, verás la tendencia frente a la meta del 80%.</p>" +
-        "</div>"
+        "<p>Cuando haya visitas revisadas en el periodo, verás la tendencia frente a la meta del " +
+        META_TARGET +
+        "%.</p>" +
+        '<div class="c360-linechart-exec" role="list" aria-label="Referencia de evolución">' +
+        '<span class="c360-linechart-chip target" role="listitem"><i></i>Meta ' +
+        META_TARGET +
+        "%</span>" +
+        '<span class="c360-linechart-chip muted" role="listitem">Sin puntos aún</span>' +
+        "</div></div>"
       );
     }
     var W = 720;
-    var H = 280;
-    var padL = 28;
-    var padR = 16;
-    var padT = 40;
-    var padB = 42;
+    var H = 320;
+    var padL = 36;
+    var padR = 24;
+    var padT = 34;
+    var padB = 48;
     var innerW = W - padL - padR;
     var innerH = H - padT - padB;
-    var metaY = padT + innerH - (META_TARGET / 100) * innerH;
+    function yAt(pct) {
+      return padT + innerH - (Math.max(0, Math.min(100, pct)) / 100) * innerH;
+    }
+    var metaY = yAt(META_TARGET);
     function toCoords(list) {
       return list.map(function (p, i) {
-        var x = padL + (list.length === 1 ? innerW / 2 : (i / (list.length - 1)) * innerW);
-        var y = padT + innerH - (Math.max(0, Math.min(100, p.score)) / 100) * innerH;
-        return { x: x, y: y, p: p };
+        var x =
+          padL + (list.length === 1 ? innerW / 2 : (i / (list.length - 1)) * innerW);
+        return { x: x, y: yAt(p.score), p: p };
       });
     }
     function smoothPath(list) {
@@ -1224,18 +1234,98 @@
     var coords = toCoords(points);
     var compareCoords = toCoords(compare);
     var sparse = points.length > 0 && points.length < 3;
+    var last = points.length ? points[points.length - 1] : null;
+    var prev = points.length > 1 ? points[points.length - 2] : null;
+    var stepDelta = last && prev ? deltaPts(last.score, prev.score) : null;
+    var lastStatus = last ? scoreStatus(last.score) : "pending";
+    var lastVsMeta = last ? vsMetaPts(last.score) : null;
+
+    var exec =
+      '<div class="c360-linechart-exec" role="list" aria-label="Resumen de evolución">' +
+      '<span class="c360-linechart-chip target" role="listitem"><i></i>Meta ' +
+      META_TARGET +
+      "%</span>";
+    if (last) {
+      exec +=
+        '<span class="c360-linechart-chip tone-' +
+        lastStatus +
+        '" role="listitem"><i></i>Último ' +
+        scoreLabel(last.score) +
+        " · " +
+        escapeHtml(statusLabel(lastStatus)) +
+        "</span>";
+    }
+    if (stepDelta != null && !isNaN(stepDelta)) {
+      exec +=
+        '<span class="c360-linechart-chip delta ' +
+        deltaToneClass(stepDelta, false) +
+        '" role="listitem">' +
+        escapeHtml(formatSignedPts(stepDelta)) +
+        " vs visita anterior</span>";
+    }
+    if (lastVsMeta != null && !isNaN(lastVsMeta)) {
+      exec +=
+        '<span class="c360-linechart-chip delta ' +
+        deltaToneClass(lastVsMeta, false) +
+        '" role="listitem">' +
+        escapeHtml(formatSignedPts(lastVsMeta)) +
+        " vs meta</span>";
+    }
+    if (compareCoords.length) {
+      exec +=
+        '<span class="c360-linechart-chip muted" role="listitem"><i class="compare"></i>Gris = periodo anterior</span>';
+    }
+    exec += "</div>";
+
     var html =
       '<div class="c360-linechart' +
       (sparse ? " c360-linechart-sparse" : "") +
-      '"><svg viewBox="0 0 ' +
+      (points.length >= 4 ? " c360-linechart-dense" : "") +
+      '">' +
+      exec +
+      '<svg viewBox="0 0 ' +
       W +
       " " +
       H +
       '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Evolución del indicador vs meta ' +
       META_TARGET +
       '%">';
+
+    // Soft zone bands: crítico <50, aceptable 50–meta, saludable ≥meta
+    html +=
+      '<rect class="c360-linechart-zone zone-critical" x="' +
+      padL +
+      '" y="' +
+      yAt(50) +
+      '" width="' +
+      innerW +
+      '" height="' +
+      (yAt(0) - yAt(50)) +
+      '" />';
+    html +=
+      '<rect class="c360-linechart-zone zone-acceptable" x="' +
+      padL +
+      '" y="' +
+      metaY +
+      '" width="' +
+      innerW +
+      '" height="' +
+      (yAt(50) - metaY) +
+      '" />';
+    html +=
+      '<rect class="c360-linechart-zone zone-healthy" x="' +
+      padL +
+      '" y="' +
+      padT +
+      '" width="' +
+      innerW +
+      '" height="' +
+      (metaY - padT) +
+      '" />';
+
     for (var g = 0; g <= 4; g++) {
       var gy = padT + (innerH * g) / 4;
+      var gPct = 100 - g * 25;
       html +=
         '<line class="c360-linechart-grid" x1="' +
         padL +
@@ -1246,7 +1336,16 @@
         '" y2="' +
         gy +
         '" />';
+      html +=
+        '<text class="c360-linechart-ylabel" x="' +
+        (padL - 8) +
+        '" y="' +
+        (gy + 3) +
+        '" text-anchor="end">' +
+        gPct +
+        "</text>";
     }
+
     html +=
       '<line class="c360-linechart-meta" x1="' +
       padL +
@@ -1257,14 +1356,16 @@
       '" y2="' +
       metaY +
       '" />';
+    // Meta label inside the plot (right of the left edge) — never clipped
     html +=
       '<text class="c360-linechart-meta-label" x="' +
-      (padL - 4) +
+      (padL + 8) +
       '" y="' +
-      (metaY - 4) +
-      '">Meta ' +
+      (metaY - 6) +
+      '" text-anchor="start">meta ' +
       META_TARGET +
       "%</text>";
+
     if (compareCoords.length) {
       html += '<path class="c360-linechart-path compare" d="' + smoothPath(compareCoords) + '" />';
       compareCoords.forEach(function (c) {
@@ -1291,29 +1392,60 @@
         " Z";
       html += '<path class="c360-linechart-area" d="' + area + '" />';
       html += '<path class="c360-linechart-path" d="' + line + '" />';
+
+      var placedLabels = [];
+      var xStep = coords.length > 1 ? innerW / (coords.length - 1) : innerW;
       coords.forEach(function (c, idx) {
-        var labelY = c.y - 14;
-        if (labelY < padT + 12) labelY = c.y + 22;
-        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 18) {
-          labelY = c.y + 22;
+        var preferAbove = true;
+        var labelY = c.y - 16;
+        if (labelY < padT + 14) {
+          preferAbove = false;
+          labelY = c.y + 24;
         }
-        if (idx > 0 && Math.abs(labelY - (coords[idx - 1].y - 14)) < 12) {
-          labelY = c.y + 22;
+        // Prefer below when near meta line from above (avoids collision with meta label)
+        if (preferAbove && Math.abs(c.y - metaY) < 14 && c.y <= metaY) {
+          preferAbove = false;
+          labelY = c.y + 24;
         }
+        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 20) {
+          preferAbove = !preferAbove;
+          labelY = preferAbove ? c.y - 16 : c.y + 24;
+        }
+        for (var pi = 0; pi < placedLabels.length; pi++) {
+          var prevL = placedLabels[pi];
+          if (Math.abs(prevL.y - labelY) < 13 && Math.abs(prevL.x - c.x) < xStep * 0.7) {
+            preferAbove = !preferAbove;
+            labelY = preferAbove ? c.y - 16 : c.y + 24;
+            break;
+          }
+        }
+        if (labelY > padT + innerH - 6) labelY = c.y - 16;
+        if (labelY < padT + 10) labelY = c.y + 24;
+        placedLabels.push({ x: c.x, y: labelY });
+
+        var isLast = idx === coords.length - 1;
         var focusDate = escapeHtml(c.p.date || "");
         var focusLabel = escapeHtml(c.p.label || c.p.shortLabel || "");
         var xLabel = c.p.shortLabel || c.p.label || "";
         var xAnchor = "middle";
         var xPos = c.x;
+        var valAnchor = "middle";
+        var valX = c.x;
         if (coords.length >= 2 && idx === 0) {
           xAnchor = "start";
           xPos = Math.max(padL, c.x - 2);
-        } else if (coords.length >= 2 && idx === coords.length - 1) {
+          valAnchor = "start";
+          valX = Math.max(padL + 2, c.x - 2);
+        } else if (coords.length >= 2 && isLast) {
           xAnchor = "end";
           xPos = Math.min(W - padR, c.x + 2);
+          valAnchor = "end";
+          valX = Math.min(W - padR - 2, c.x + 2);
         }
         html +=
-          '<g class="c360-linechart-hit" data-focus-date="' +
+          '<g class="c360-linechart-hit' +
+          (isLast ? " is-last" : "") +
+          '" data-focus-date="' +
           focusDate +
           '" data-focus-label="' +
           focusLabel +
@@ -1323,20 +1455,28 @@
           focusLabel +
           '">';
         html +=
-          '<circle class="c360-linechart-dot" cx="' +
+          '<circle class="c360-linechart-dot' +
+          (isLast ? " is-last" : "") +
+          '" cx="' +
           c.x +
           '" cy="' +
           c.y +
-          '" r="7" />';
+          '" r="' +
+          (isLast ? 8 : 6.5) +
+          '" />';
         html +=
           '<circle class="c360-linechart-hitarea" cx="' +
           c.x +
           '" cy="' +
           c.y +
-          '" r="16" />';
+          '" r="18" />';
         html +=
-          '<text class="c360-linechart-val" x="' +
-          c.x +
+          '<text class="c360-linechart-val' +
+          (isLast ? " is-last" : "") +
+          '" text-anchor="' +
+          valAnchor +
+          '" x="' +
+          valX +
           '" y="' +
           labelY +
           '">' +
@@ -1348,26 +1488,19 @@
           '" x="' +
           xPos +
           '" y="' +
-          (H - 10) +
+          (H - 12) +
           '">' +
           escapeHtml(xLabel) +
           "</text></g>";
       });
     }
-    if (compareCoords.length) {
-      html +=
-        '<text class="c360-linechart-legend" x="' +
-        padL +
-        '" y="' +
-        (H - 2) +
-        '">Teal: periodo actual · Gris: anterior · Punteado: meta ' +
-        META_TARGET +
-        "%</text>";
-    }
     html += "</svg>";
     if (sparse) {
       html +=
         '<p class="c360-linechart-sparse-note">Pocas visitas en el periodo · la tendencia se aclara con más aseguramientos.</p>';
+    } else if (points.length === 1) {
+      html +=
+        '<p class="c360-linechart-sparse-note">Una sola visita en el corte · sumá aseguramientos para ver evolución.</p>';
     }
     html += "</div>";
     return html;
@@ -2044,7 +2177,7 @@
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
     html += cardHead(
       "Evolución",
-      (data.firstDate || data.lastDate
+      data.firstDate || data.lastDate
         ? formatDateEs(data.firstDate) +
           " → " +
           formatDateEs(data.lastDate) +
@@ -2054,11 +2187,7 @@
           data.farms.length +
           " finca" +
           (data.farms.length === 1 ? "" : "s")
-        : "Sin visitas") +
-        " · meta " +
-        META_TARGET +
-        "%" +
-        (state.compare ? " · gris = anterior" : "")
+        : "Sin visitas en el periodo"
     );
     html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
     html += "</section></div>";
@@ -2203,18 +2332,14 @@
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
     html += cardHead(
       "Evolución",
-      (data.firstDate || data.lastDate
+      data.firstDate || data.lastDate
         ? formatDateEs(data.firstDate) +
           " → " +
           formatDateEs(data.lastDate) +
           " · " +
           data.visits +
           " visitas"
-        : "Sin visitas") +
-        " · meta " +
-        META_TARGET +
-        "%" +
-        (state.compare ? " · gris = anterior" : "")
+        : "Sin visitas en el periodo"
     );
     html += chartLine(
       data.chartTimeline || data.timeline,
