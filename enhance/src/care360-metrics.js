@@ -955,11 +955,10 @@
 
       if (fileBridge()) {
         await saveOrDownloadBlob(blob, name);
-        await printHtmlDocument(html);
         setNotice(
           "Informe listo para Guardar / Compartir (" +
             name +
-            "). En Imprimir elige Guardar como PDF.",
+            "). Ábrelo y usa Imprimir → Guardar como PDF.",
           false
         );
       } else {
