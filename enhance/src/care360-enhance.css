@@ -3496,13 +3496,32 @@ html.c360-metrics-lite .metrics-actions {
   align-items: stretch;
 }
 
-/* Importación en Fincas */
+.c360-farms-tools {
+  margin: 8px 0 12px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.c360-farms-tools-title {
+  margin: 0 0 8px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+/* Importación y acciones en Fincas */
 .c360-farms-import {
   margin: 12px 0 16px;
   border: 1px solid #dbe4e8;
   border-radius: 16px;
   background: linear-gradient(180deg, #f9fcfd, #f3f8f9);
   padding: 0 14px 14px;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .c360-farms-import > summary {
@@ -3519,6 +3538,95 @@ html.c360-metrics-lite .metrics-actions {
 .c360-farms-import[open] {
   background: #fff;
   box-shadow: 0 1px 2px rgb(28 43 50 / 4%);
+}
+
+.c360-farm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid #e6eef1;
+  border-radius: 16px;
+  background: #fff;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.c360-farm-actions-copy {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.c360-farm-actions-copy strong {
+  display: block;
+  font-size: 14px;
+  color: var(--c360-ink, #1c2b32);
+  margin-bottom: 4px;
+}
+
+.c360-farm-actions-copy p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--c360-ink-soft, #58696d);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.c360-farm-actions-name {
+  font-weight: 700;
+  color: var(--c360-brand, #007fa3);
+}
+
+.c360-farm-delete-btn {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.page-heading .actions,
+.followup-panel .page-heading,
+.followup-panel .actions {
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.followup-panel .contact-list,
+.followup-panel .visit-row,
+.followup-panel .notice.farm-last-visit {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.followup-panel .notice.farm-last-visit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 900px) {
+  .c360-farm-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .c360-farm-delete-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .page-heading,
+  .page-heading .actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 @media (max-width: 700px) {
@@ -3817,6 +3925,28 @@ button.c360-focus-close.primary {
   .c360-leg-item,
   .c360-hbar-leg {
     font-size: 10.5px;
+  }
+}
+
+@media (max-width: 900px) and (min-width: 701px) {
+  .followup-panel,
+  .metrics-panel,
+  .c360-metrics-board,
+  .c360-farms-tools,
+  .c360-farm-actions {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .c360-metrics-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .c360-focus-close,
+  .c360-alert-btn,
+  .c360-farm-delete-btn {
+    max-width: 100%;
   }
 }
 

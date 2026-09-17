@@ -1384,10 +1384,10 @@
             invalidateDeleteCache();
           }
         }
-        if (method === "POST" && /\/api\/(visits|requests|reports)(?:\/|$)/.test(path)) {
+        if (method === "POST" && /\/api\/(visits|requests|reports|team)(?:\/|$)/.test(path)) {
           invalidateDeleteCache();
         }
-        if (method === "DELETE" && /\/api\/(visits|requests|reports)\//.test(path)) {
+        if (method === "DELETE" && /\/api\/(visits|requests|reports|farms)\//.test(path)) {
           invalidateDeleteCache();
           if (/\/api\/visits\//.test(path)) window.__C360_CURRENT_VISIT = "";
         }
@@ -1407,7 +1407,7 @@
    * borrar visitas, informes y solicitudes
    * ------------------------------------------------------------------ */
 
-  var deleteCache = { visits: null, requests: null, reports: {}, at: 0 };
+  var deleteCache = { visits: null, requests: null, reports: {}, farms: null, at: 0 };
   var UUID_RE = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
   function normalizeText(value) {
@@ -1427,7 +1427,7 @@
   }
 
   function invalidateDeleteCache() {
-    deleteCache = { visits: null, requests: null, reports: {}, at: 0 };
+    deleteCache = { visits: null, requests: null, reports: {}, farms: null, at: 0 };
   }
 
   function loadVisits() {
@@ -1526,7 +1526,8 @@
 
   function deleteByUrl(url, label) {
     return apiJson(url, { method: "DELETE" }).then(function () {
-      toast(label + " eliminado.", "ok");
+      var gender = /finca/i.test(label || "") ? "eliminada" : "eliminado";
+      toast((label || "Registro") + " " + gender + ".", "ok");
       refreshAfterDelete();
     });
   }
@@ -1675,6 +1676,181 @@
     enhanceVisitRequestDelete();
     enhanceReportDelete();
     enhanceEditorDelete();
+    enhanceFarmDelete();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * borrar finca (Directorio de fincas)
+   * ------------------------------------------------------------------ */
+
+  function onFarmsModuleTab() {
+    var tabs = qa('.module-nav [role="tab"], .module-nav [data-slot="tabs-trigger"]');
+    for (var i = 0; i < tabs.length; i++) {
+      var el = tabs[i];
+      if (!/Fincas/i.test(el.textContent || "")) continue;
+      return (
+        el.getAttribute("aria-selected") === "true" ||
+        el.getAttribute("data-state") === "active" ||
+        !!el.hasAttribute("data-active")
+      );
+    }
+    return /Directorio de fincas/i.test((q("h2") && q("h2").textContent) || "");
+  }
+
+  function findFarmWorkSelectHost() {
+    var labels = qa("label");
+    for (var i = 0; i < labels.length; i++) {
+      if (/Finca de trabajo/i.test(labels[i].textContent || "")) return labels[i];
+    }
+    var headings = qa("h2, h3");
+    for (var j = 0; j < headings.length; j++) {
+      if (/Directorio de fincas/i.test(headings[j].textContent || "")) {
+        return headings[j].closest("section, article, .panel, .followup-panel, main") || headings[j].parentElement;
+      }
+    }
+    return null;
+  }
+
+  function readSelectedFarmLabel() {
+    var host = findFarmWorkSelectHost();
+    if (!host) return "";
+    var valueNode =
+      q('[data-slot="select-value"]', host) ||
+      q("[data-placeholder]", host) ||
+      q('button[role="combobox"]', host) ||
+      q("select", host);
+    if (!valueNode) {
+      var parent = host.parentElement || host;
+      valueNode =
+        q('[data-slot="select-value"]', parent) ||
+        q('button[role="combobox"]', parent) ||
+        q("select", parent);
+    }
+    if (!valueNode) return "";
+    if (valueNode.tagName === "SELECT") {
+      var opt = valueNode.options[valueNode.selectedIndex];
+      return ((opt && opt.textContent) || "").trim();
+    }
+    return String(valueNode.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function loadTeamFarms() {
+    if (deleteCache.farms && Date.now() - deleteCache.at < 8000) {
+      return Promise.resolve(deleteCache.farms);
+    }
+    return apiJson("/api/team").then(function (team) {
+      var farms = (team && team.farms) || [];
+      deleteCache.farms = Array.isArray(farms) ? farms : [];
+      deleteCache.at = Date.now();
+      return deleteCache.farms;
+    });
+  }
+
+  function resolveSelectedFarm() {
+    return loadTeamFarms().then(function (farms) {
+      if (!farms || !farms.length) return null;
+      var label = readSelectedFarmLabel();
+      if (label && !/Selecciona una finca|^none$/i.test(label)) {
+        var hit = farms.find(function (farm) {
+          return normalizeText(farm.name) === normalizeText(label);
+        });
+        if (hit) return hit;
+        hit = farms.find(function (farm) {
+          return normalizeText(label).indexOf(normalizeText(farm.name)) !== -1;
+        });
+        if (hit) return hit;
+      }
+      var detailOpen = qa("h3").some(function (h) {
+        return /Contactos e informes|Participantes/i.test(h.textContent || "");
+      });
+      if (!detailOpen) return null;
+      if (farms.length === 1) return farms[0];
+      var panelText = normalizeText((q(".followup-panel") || document.body).innerText || "");
+      var matches = farms.filter(function (farm) {
+        return panelText.indexOf(normalizeText(farm.name)) !== -1;
+      });
+      return matches.length === 1 ? matches[0] : null;
+    });
+  }
+
+  function mountFarmActionsBar(farm) {
+    var existing = q("#c360-farm-actions");
+    if (!onFarmsModuleTab()) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    var host = findFarmWorkSelectHost();
+    var mountParent =
+      (host && (host.closest(".section-gap") || host.parentElement)) ||
+      (q(".page-heading") && q(".page-heading").parentElement) ||
+      q(".followup-panel") ||
+      q("main");
+    if (!mountParent) return;
+
+    if (!farm) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (!existing) {
+      existing = document.createElement("div");
+      existing.id = "c360-farm-actions";
+      existing.className = "c360-farm-actions no-print";
+      existing.setAttribute("data-c360-farm-actions", "1");
+      if (host && host.parentElement) {
+        host.parentElement.insertAdjacentElement("afterend", existing);
+      } else {
+        var importPanel = q("#c360-farms-import");
+        if (importPanel) importPanel.insertAdjacentElement("afterend", existing);
+        else mountParent.insertAdjacentElement("afterbegin", existing);
+      }
+    }
+
+    if (existing.getAttribute("data-farm-id") === farm.id) return;
+    existing.setAttribute("data-farm-id", farm.id);
+    existing.innerHTML =
+      '<div class="c360-farm-actions-copy">' +
+      "<strong>Acciones de la finca</strong>" +
+      "<p>Finca seleccionada: <span class=\"c360-farm-actions-name\"></span>. " +
+      "Al borrar también se eliminan visitas, informes y solicitudes vinculadas.</p>" +
+      "</div>" +
+      '<button type="button" class="c360-delete-btn c360-farm-delete-btn" aria-label="Borrar finca">Borrar finca</button>';
+    q(".c360-farm-actions-name", existing).textContent = farm.name || "Finca";
+
+    q(".c360-farm-delete-btn", existing).addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      var button = event.currentTarget;
+      if (button.disabled) return;
+      var name = farm.name || "esta finca";
+      var message =
+        '¿Borrar la finca «' +
+        name +
+        '»?\n\nSe eliminarán también sus visitas, informes y solicitudes vinculadas. Esta acción no se puede deshacer.';
+      if (!confirmDelete(message)) return;
+      button.disabled = true;
+      deleteByUrl("/api/farms/" + farm.id, "Finca")
+        .catch(function (err) {
+          button.disabled = false;
+          toast((err && err.message) || "No se pudo borrar la finca.", "info", 3600);
+        });
+    });
+  }
+
+  function enhanceFarmDelete() {
+    if (!onFarmsModuleTab()) {
+      var stale = q("#c360-farm-actions");
+      if (stale) stale.remove();
+      return;
+    }
+    resolveSelectedFarm()
+      .then(function (farm) {
+        mountFarmActionsBar(farm);
+      })
+      .catch(function () {
+        mountFarmActionsBar(null);
+      });
   }
 
   /* ------------------------------------------------------------------ *

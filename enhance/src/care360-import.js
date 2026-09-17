@@ -793,6 +793,8 @@
     var existing = q("#c360-farms-import");
     if (!onFarmsTab()) {
       if (existing) existing.remove();
+      var tools = q("#c360-farms-tools");
+      if (tools) tools.remove();
       return;
     }
     if (existing) return;
@@ -820,11 +822,19 @@
         break;
       }
     }
-    if (heading && heading.parentElement) {
-      heading.parentElement.insertAdjacentElement("afterend", details);
-    } else {
-      host.insertAdjacentElement("afterbegin", details);
+    var tools = q("#c360-farms-tools");
+    if (!tools) {
+      tools = document.createElement("div");
+      tools.id = "c360-farms-tools";
+      tools.className = "c360-farms-tools no-print";
+      tools.innerHTML = "<p class=\"c360-farms-tools-title\">Herramientas de finca</p>";
+      if (heading && heading.parentElement) {
+        heading.parentElement.insertAdjacentElement("afterend", tools);
+      } else {
+        host.insertAdjacentElement("afterbegin", tools);
+      }
     }
+    tools.appendChild(details);
     wireImportUi(details);
   }
 

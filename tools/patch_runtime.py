@@ -3,7 +3,7 @@
 
 - Al crear una finca acepta `managerName` en lugar de fijar «Responsable local».
 - Permite renombrar al responsable local con la operación `renameLocal`.
-- Expone DELETE para visitas, versiones de informe y solicitudes.
+- Expone DELETE para visitas, versiones de informe, solicitudes y fincas.
 """
 
 from __future__ import annotations
@@ -39,6 +39,32 @@ OLD_CLEAR = (
     "clearDraft(){return this.db.prepare(`DELETE FROM drafts WHERE id = ?`)"
     ".run(`current`),this.save(),{ok:!0}}"
 )
+DELETE_FARM_METHOD = (
+    "deleteFarm(e){let t=typeof e==`string`?e:g(e,`id`,36);"
+    "let n=this.db.prepare(`SELECT * FROM farms WHERE id = ?`).get(t);"
+    "if(!n)throw Error(`404:Finca no encontrada.`);"
+    "return this.transaction(()=>{"
+    "let e=this.db.prepare(`SELECT id FROM visits WHERE farm_id = ?`).all(t);"
+    "for(let n of e){"
+    "let r=this.db.prepare(`SELECT id FROM report_versions WHERE visit_id = ?`).all(n.id);"
+    "for(let e of r)this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(e.id);"
+    "this.db.prepare(`DELETE FROM report_versions WHERE visit_id = ?`).run(n.id);"
+    "let i;try{i=JSON.parse(String(this.db.prepare(`SELECT payload FROM visits WHERE id = ?`).get(n.id)?.payload||`{}`))}catch{i={}}"
+    "let a=Array.isArray(i.photos)?i.photos.map(e=>e&&e.id).filter(Boolean):[];"
+    "this.db.prepare(`DELETE FROM visits WHERE id = ?`).run(n.id);"
+    "for(let e of a)this.db.prepare(`DELETE FROM photos WHERE id = ?`).run(e)"
+    "}"
+    "let r=this.db.prepare(`SELECT id FROM report_versions WHERE farm_id = ?`).all(t);"
+    "for(let e of r)this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(e.id);"
+    "this.db.prepare(`DELETE FROM report_versions WHERE farm_id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM report_events WHERE farm_id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM service_requests WHERE farm_id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM photos WHERE farm_id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM farm_contacts WHERE farm_id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM farm_members WHERE farm_id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM farms WHERE id = ?`).run(t)"
+    "}),this.save(),{ok:!0,id:t,name:n.name}}"
+)
 DELETE_METHODS = (
     "deleteVisit(e){let t=typeof e==`string`?e:g(e,`id`,36);"
     "let n=this.db.prepare(`SELECT * FROM visits WHERE id = ?`).get(t);"
@@ -64,6 +90,7 @@ DELETE_METHODS = (
     "throw Error(`404:Solicitud no encontrada.`);"
     "return this.db.prepare(`DELETE FROM service_requests WHERE id = ?`).run(t),"
     "this.save(),{ok:!0,id:t}}"
+    + DELETE_FARM_METHOD
 )
 NEW_CLEAR = OLD_CLEAR + DELETE_METHODS
 
@@ -74,7 +101,27 @@ NEW_DELETE_ROUTE = (
     "if(r.startsWith(`/api/visits/`))return M(e.deleteVisit(r.slice(12).split(`?`)[0]));"
     "if(r.startsWith(`/api/reports/`))return M(e.deleteReport(r.slice(13).split(`?`)[0]));"
     "if(r.startsWith(`/api/requests/`))return M(e.deleteRequest(r.slice(14).split(`?`)[0]));"
+    "if(r.startsWith(`/api/farms/`))return M(e.deleteFarm(r.slice(11).split(/[/?]/)[0]));"
     "}"
+)
+
+# Prior builds already have visit/report/request DELETE without farms.
+OLD_DELETE_ROUTE_PARTIAL = (
+    "if(i===`DELETE`){"
+    "if(r===`/api/draft`)return M(e.clearDraft());"
+    "if(r.startsWith(`/api/visits/`))return M(e.deleteVisit(r.slice(12).split(`?`)[0]));"
+    "if(r.startsWith(`/api/reports/`))return M(e.deleteReport(r.slice(13).split(`?`)[0]));"
+    "if(r.startsWith(`/api/requests/`))return M(e.deleteRequest(r.slice(14).split(`?`)[0]));"
+    "}"
+)
+
+REQUIRED = (
+    "crear finca con nombre de responsable",
+    "renombrar responsable local",
+    "borrar visitas informes y solicitudes",
+    "borrar finca",
+    "rutas DELETE de visitas informes y solicitudes",
+    "ruta DELETE de fincas",
 )
 
 
@@ -85,8 +132,12 @@ def already_has(name: str, source: str) -> bool:
         return "renameLocal" in source
     if name == "borrar visitas informes y solicitudes":
         return "deleteVisit(" in source and "deleteReport(" in source and "deleteRequest(" in source
+    if name == "borrar finca":
+        return "deleteFarm(" in source
     if name == "rutas DELETE de visitas informes y solicitudes":
         return "e.deleteVisit(" in source and "e.deleteReport(" in source and "e.deleteRequest(" in source
+    if name == "ruta DELETE de fincas":
+        return "e.deleteFarm(" in source and "/api/farms/" in source
     return False
 
 
@@ -108,6 +159,39 @@ def patch_file(path: Path) -> list[str]:
             continue
         source = source.replace(old, new, 1)
         applied.append(name)
+
+    # Incremental: prior builds already have visit/report/request delete.
+    if not already_has("borrar finca", source):
+        if "deleteRequest(" in source and "deleteFarm(" not in source:
+            marker = (
+                "return this.db.prepare(`DELETE FROM service_requests WHERE id = ?`).run(t),"
+                "this.save(),{ok:!0,id:t}}"
+            )
+            if marker in source:
+                source = source.replace(marker, marker + DELETE_FARM_METHOD, 1)
+                applied.append("borrar finca")
+            elif "inspect(e,t){" in source:
+                source = source.replace("inspect(e,t){", DELETE_FARM_METHOD + "inspect(e,t){", 1)
+                applied.append("borrar finca")
+
+    if not already_has("ruta DELETE de fincas", source):
+        if OLD_DELETE_ROUTE_PARTIAL in source:
+            source = source.replace(OLD_DELETE_ROUTE_PARTIAL, NEW_DELETE_ROUTE, 1)
+            applied.append("ruta DELETE de fincas")
+        elif (
+            "e.deleteRequest(r.slice(14).split(`?`)[0]));" in source
+            and "e.deleteFarm(" not in source
+        ):
+            source = source.replace(
+                "if(r.startsWith(`/api/requests/`))return M(e.deleteRequest(r.slice(14).split(`?`)[0]));"
+                "}",
+                "if(r.startsWith(`/api/requests/`))return M(e.deleteRequest(r.slice(14).split(`?`)[0]));"
+                "if(r.startsWith(`/api/farms/`))return M(e.deleteFarm(r.slice(11).split(/[/?]/)[0]));"
+                "}",
+                1,
+            )
+            applied.append("ruta DELETE de fincas")
+
     if applied:
         path.write_text(source, encoding="utf-8")
     return applied
@@ -133,10 +217,11 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(args.root)
     changed = []
-    missing = {name for name, _, _ in PATCHES}
+    missing = set(REQUIRED)
     for path in runtime_paths(root):
         applied = patch_file(path)
-        present = {name for name, _, _ in PATCHES if already_has(name, path.read_text(encoding="utf-8"))}
+        text = path.read_text(encoding="utf-8")
+        present = {name for name in REQUIRED if already_has(name, text)}
         if applied:
             changed.append((str(path), "aplicado", applied))
         elif present:
