@@ -222,12 +222,54 @@
     return { visits: visits, errors: errors, rows: rows.length - 1 };
   }
 
+  async function readZipEntries(buffer) {
+    var bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    var map = new Map();
+    var i;
+    for (i = 0; i <= bytes.length - 46; i++) {
+      if (bytes[i] !== 0x50 || bytes[i + 1] !== 0x4b || bytes[i + 2] !== 1 || bytes[i + 3] !== 2) continue;
+      var method = bytes[i + 10] | (bytes[i + 11] << 8);
+      var compSize =
+        bytes[i + 20] |
+        (bytes[i + 21] << 8) |
+        (bytes[i + 22] << 16) |
+        (bytes[i + 23] << 24);
+      var nameLen = bytes[i + 28] | (bytes[i + 29] << 8);
+      var extraLen = bytes[i + 30] | (bytes[i + 31] << 8);
+      var commentLen = bytes[i + 32] | (bytes[i + 33] << 8);
+      var localOffset =
+        bytes[i + 42] |
+        (bytes[i + 43] << 8) |
+        (bytes[i + 44] << 16) |
+        (bytes[i + 45] << 24);
+      var name = new TextDecoder().decode(bytes.slice(i + 46, i + 46 + nameLen));
+      var localNameLen = bytes[localOffset + 26] | (bytes[localOffset + 27] << 8);
+      var localExtraLen = bytes[localOffset + 28] | (bytes[localOffset + 29] << 8);
+      var data = bytes.slice(
+        localOffset + 30 + localNameLen + localExtraLen,
+        localOffset + 30 + localNameLen + localExtraLen + compSize
+      );
+      if (method === 0) {
+        map.set(name, data);
+      } else if (method === 8 && typeof DecompressionStream !== "undefined") {
+        var blob = new Blob([data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)]);
+        var stream = blob.stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        map.set(name, new Uint8Array(await new Response(stream).arrayBuffer()));
+      } else {
+        throw new Error(
+          "Este Word usa una compresión no compatible en el equipo. Guárdalo otra vez como .docx o exporta a PDF/CSV."
+        );
+      }
+      i += 46 + nameLen + extraLen + commentLen - 1;
+    }
+    return map;
+  }
+
   async function docxToText(file) {
-    if (!window.JSZip) throw new Error("JSZip no está disponible todavía. Abre Métricas e inténtalo de nuevo.");
-    var zip = await window.JSZip.loadAsync(await file.arrayBuffer());
-    var doc = zip.file("word/document.xml");
-    if (!doc) throw new Error("El Word no tiene document.xml válido.");
-    var xml = await doc.async("text");
+    var entries = await readZipEntries(await file.arrayBuffer());
+    var docBytes = entries.get("word/document.xml");
+    if (!docBytes) throw new Error("El Word no tiene document.xml válido.");
+    var xml = new TextDecoder("utf-8").decode(docBytes);
     return xml
       .replace(/<w:tab\/>/g, "\t")
       .replace(/<\/w:p>/g, "\n")
