@@ -18,8 +18,8 @@ if [[ "$BASE_APK" != /* ]]; then
 fi
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.32}"
-  VERSION_CODE="${3:-44}"
+  VERSION_NAME="${2:-1.4.33}"
+  VERSION_CODE="${3:-45}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"

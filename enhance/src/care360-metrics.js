@@ -366,13 +366,31 @@
     return last - prev;
   }
 
+  var META_TARGET = 80;
+
   function chapterKpi(chapters, id) {
     var ch = null;
     (chapters || []).forEach(function (c) {
       if (c.id === id) ch = c;
     });
-    if (!ch || ch.score == null) return { value: "—", tone: "pending" };
-    return { value: ch.score + "%", tone: scoreStatus(ch.score) };
+    if (!ch || ch.score == null) return { value: "—", tone: "pending", score: null };
+    return { value: ch.score + "%", tone: scoreStatus(ch.score), score: ch.score };
+  }
+
+  function vsMetaPts(score) {
+    if (score == null || isNaN(score)) return null;
+    return score - META_TARGET;
+  }
+
+  function formatSignedPts(delta) {
+    if (delta == null || isNaN(delta)) return "";
+    return (delta > 0 ? "+" : "") + delta + " pts";
+  }
+
+  function deltaToneClass(delta, invert) {
+    if (delta == null || isNaN(delta) || delta === 0) return "flat";
+    if (invert) return delta > 0 ? "down" : "up";
+    return delta > 0 ? "up" : "down";
   }
 
   function applyRangePreset(preset) {
@@ -1163,16 +1181,22 @@
       return r && r.score != null;
     });
     if (!points.length && !compare.length) {
-      return '<div class="c360-linechart c360-linechart-empty"><p>Sin datos de indicador en este periodo.</p></div>';
+      return (
+        '<div class="c360-linechart c360-linechart-empty">' +
+        "<p><strong>Sin datos de indicador</strong></p>" +
+        "<p>Cuando haya visitas revisadas en el periodo, verás la tendencia frente a la meta del 80%.</p>" +
+        "</div>"
+      );
     }
     var W = 720;
     var H = 280;
-    var padL = 12;
-    var padR = 12;
+    var padL = 28;
+    var padR = 16;
     var padT = 40;
     var padB = 42;
     var innerW = W - padL - padR;
     var innerH = H - padT - padB;
+    var metaY = padT + innerH - (META_TARGET / 100) * innerH;
     function toCoords(list) {
       return list.map(function (p, i) {
         var x = padL + (list.length === 1 ? innerW / 2 : (i / (list.length - 1)) * innerW);
@@ -1192,14 +1216,24 @@
       }
       return d;
     }
+    function scoreLabel(score) {
+      var n = Number(score);
+      if (isNaN(n)) return "—";
+      return (Math.round(n * 10) / 10).toFixed(n % 1 === 0 ? 0 : 1) + "%";
+    }
     var coords = toCoords(points);
     var compareCoords = toCoords(compare);
+    var sparse = points.length > 0 && points.length < 3;
     var html =
-      '<div class="c360-linechart"><svg viewBox="0 0 ' +
+      '<div class="c360-linechart' +
+      (sparse ? " c360-linechart-sparse" : "") +
+      '"><svg viewBox="0 0 ' +
       W +
       " " +
       H +
-      '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Evolución del indicador">';
+      '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Evolución del indicador vs meta ' +
+      META_TARGET +
+      '%">';
     for (var g = 0; g <= 4; g++) {
       var gy = padT + (innerH * g) / 4;
       html +=
@@ -1213,6 +1247,24 @@
         gy +
         '" />';
     }
+    html +=
+      '<line class="c360-linechart-meta" x1="' +
+      padL +
+      '" y1="' +
+      metaY +
+      '" x2="' +
+      (W - padR) +
+      '" y2="' +
+      metaY +
+      '" />';
+    html +=
+      '<text class="c360-linechart-meta-label" x="' +
+      (padL - 4) +
+      '" y="' +
+      (metaY - 4) +
+      '">Meta ' +
+      META_TARGET +
+      "%</text>";
     if (compareCoords.length) {
       html += '<path class="c360-linechart-path compare" d="' + smoothPath(compareCoords) + '" />';
       compareCoords.forEach(function (c) {
@@ -1241,9 +1293,25 @@
       html += '<path class="c360-linechart-path" d="' + line + '" />';
       coords.forEach(function (c, idx) {
         var labelY = c.y - 14;
-        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 16) labelY = c.y + 22;
+        if (labelY < padT + 12) labelY = c.y + 22;
+        if (idx > 0 && Math.abs(coords[idx - 1].y - c.y) < 18) {
+          labelY = c.y + 22;
+        }
+        if (idx > 0 && Math.abs(labelY - (coords[idx - 1].y - 14)) < 12) {
+          labelY = c.y + 22;
+        }
         var focusDate = escapeHtml(c.p.date || "");
         var focusLabel = escapeHtml(c.p.label || c.p.shortLabel || "");
+        var xLabel = c.p.shortLabel || c.p.label || "";
+        var xAnchor = "middle";
+        var xPos = c.x;
+        if (coords.length >= 2 && idx === 0) {
+          xAnchor = "start";
+          xPos = Math.max(padL, c.x - 2);
+        } else if (coords.length >= 2 && idx === coords.length - 1) {
+          xAnchor = "end";
+          xPos = Math.min(W - padR, c.x + 2);
+        }
         html +=
           '<g class="c360-linechart-hit" data-focus-date="' +
           focusDate +
@@ -1272,15 +1340,17 @@
           '" y="' +
           labelY +
           '">' +
-          c.p.score.toFixed(2).replace(/\.00$/, ".00") +
-          "%</text>";
+          scoreLabel(c.p.score) +
+          "</text>";
         html +=
-          '<text class="c360-linechart-xlabel" x="' +
-          c.x +
+          '<text class="c360-linechart-xlabel" text-anchor="' +
+          xAnchor +
+          '" x="' +
+          xPos +
           '" y="' +
           (H - 10) +
           '">' +
-          escapeHtml(c.p.shortLabel || c.p.label || "") +
+          escapeHtml(xLabel) +
           "</text></g>";
       });
     }
@@ -1290,9 +1360,16 @@
         padL +
         '" y="' +
         (H - 2) +
-        '">Verde: periodo actual · Gris: periodo anterior</text>';
+        '">Teal: periodo actual · Gris: anterior · Punteado: meta ' +
+        META_TARGET +
+        "%</text>";
     }
-    html += "</svg></div>";
+    html += "</svg>";
+    if (sparse) {
+      html +=
+        '<p class="c360-linechart-sparse-note">Pocas visitas en el periodo · la tendencia se aclara con más aseguramientos.</p>';
+    }
+    html += "</div>";
     return html;
   }
 
@@ -1489,22 +1566,77 @@
     return html;
   }
 
-  function kpiCard(label, value, tone, icon, delta, featured) {
-    var deltaHtml = "";
-    if (delta != null && !isNaN(delta)) {
-      var cls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
-      var sign = delta > 0 ? "+" : "";
-      deltaHtml =
-        '<span class="c360-mkpi-delta ' +
-        cls +
-        '"><span class="c360-lbl-full">' +
-        sign +
-        delta +
-        ' pts vs anterior</span><span class="c360-lbl-short">' +
-        sign +
-        delta +
-        " pts</span></span>";
+  function kpiCard(label, value, tone, icon, deltaOrOpts, featuredMaybe) {
+    var opts = {};
+    if (deltaOrOpts && typeof deltaOrOpts === "object" && !Array.isArray(deltaOrOpts)) {
+      opts = deltaOrOpts;
+    } else {
+      opts = { delta: deltaOrOpts, featured: featuredMaybe };
     }
+    var featured = !!opts.featured;
+    var delta = opts.delta;
+    var invertDelta = !!opts.invertDelta;
+    var showStatus = opts.showStatus !== false && featured;
+    var scoreForMeta = opts.score != null ? opts.score : null;
+    var metaDelta = opts.vsMeta != null ? opts.vsMeta : vsMetaPts(scoreForMeta);
+    var note = opts.note || "";
+    var status = opts.status || tone || "pending";
+    var unit = opts.unit || "pts";
+
+    var bits = [];
+    if (delta != null && !isNaN(delta)) {
+      var cls = deltaToneClass(delta, invertDelta);
+      var sign = delta > 0 ? "+" : "";
+      var deltaFull =
+        unit === "count"
+          ? sign + delta + " vs anterior"
+          : sign + delta + " pts vs anterior";
+      var deltaShort = unit === "count" ? sign + delta : sign + delta + " pts";
+      bits.push(
+        '<span class="c360-mkpi-delta ' +
+          cls +
+          '"><span class="c360-lbl-full">' +
+          escapeHtml(deltaFull) +
+          '</span><span class="c360-lbl-short">' +
+          escapeHtml(deltaShort) +
+          "</span></span>"
+      );
+    }
+    if (metaDelta != null && !isNaN(metaDelta) && opts.hideMeta !== true) {
+      var metaCls = deltaToneClass(metaDelta, false);
+      var metaFull = formatSignedPts(metaDelta) + " vs meta " + META_TARGET + "%";
+      var metaShort = formatSignedPts(metaDelta) + " vs meta";
+      bits.push(
+        '<span class="c360-mkpi-meta ' +
+          metaCls +
+          '"><span class="c360-lbl-full">' +
+          escapeHtml(metaFull) +
+          '</span><span class="c360-lbl-short">' +
+          escapeHtml(metaShort) +
+          "</span></span>"
+      );
+    }
+    if (note) {
+      bits.push('<span class="c360-mkpi-note">' + escapeHtml(note) + "</span>");
+    }
+
+    var statusHtml = "";
+    if (showStatus && status && status !== "pending") {
+      statusHtml =
+        '<span class="c360-mkpi-status tone-' +
+        status +
+        '">' +
+        escapeHtml(statusLabel(status)) +
+        "</span>";
+    } else if (showStatus && status === "pending") {
+      statusHtml = '<span class="c360-mkpi-status tone-pending">Sin medición</span>';
+    }
+
+    var foot =
+      bits.length || statusHtml
+        ? '<div class="c360-mkpi-foot">' + statusHtml + bits.join("") + "</div>"
+        : "";
+
     return (
       '<article class="c360-mkpi tone-' +
       (tone || "brand") +
@@ -1516,7 +1648,7 @@
       '</span></div><strong class="c360-mkpi-value">' +
       escapeHtml(String(value)) +
       "</strong>" +
-      deltaHtml +
+      foot +
       "</article>"
     );
   }
@@ -1844,6 +1976,25 @@
     var trend = timelineTrend(data.timeline);
     var mix = chapterKpi(data.chapters, 4);
     var dose = chapterKpi(data.chapters, 2);
+    var prevMix = prevData ? chapterKpi(prevData.chapters, 4) : { score: null };
+    var prevDose = prevData ? chapterKpi(prevData.chapters, 2) : { score: null };
+    var mixDelta = deltaPts(mix.score, prevMix.score);
+    var doseDelta = deltaPts(dose.score, prevDose.score);
+    var findingsDelta = prevData ? data.findings - (prevData.findings || 0) : null;
+    var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
+    var periodNote =
+      data.visits != null
+        ? data.visits +
+          " visita" +
+          (data.visits === 1 ? "" : "s") +
+          (data.farms && data.farms.length
+            ? " · " + data.farms.length + " finca" + (data.farms.length === 1 ? "" : "s")
+            : "")
+        : "";
+    var findingsNote =
+      data.visits != null
+        ? "en " + data.visits + " visita" + (data.visits === 1 ? "" : "s")
+        : "";
     var alerts = buildAlerts(data, null);
     var html = "";
     html += '<div class="c360-metrics-hero">';
@@ -1853,13 +2004,39 @@
       data.score == null ? "—" : data.score + "%",
       scoreStatus(data.score),
       ICONS.score,
-      cmp.scoreDelta != null ? cmp.scoreDelta : trend,
-      true
+      {
+        featured: true,
+        score: data.score,
+        delta: heroDelta,
+        status: scoreStatus(data.score),
+        note: periodNote,
+      }
     );
     html += '<div class="c360-metrics-kpis-side">';
-    html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
-    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water);
-    html += kpiCard("Hallazgos", data.findings, data.findings ? "critical" : "healthy", ICONS.findings);
+    html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
+      score: mix.score,
+      delta: mixDelta,
+      showStatus: false,
+    });
+    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
+      score: dose.score,
+      delta: doseDelta,
+      showStatus: false,
+    });
+    html += kpiCard(
+      "Hallazgos",
+      data.findings,
+      data.findings ? "critical" : "healthy",
+      ICONS.findings,
+      {
+        delta: findingsDelta,
+        invertDelta: true,
+        unit: "count",
+        hideMeta: true,
+        showStatus: false,
+        note: findingsNote,
+      }
+    );
     html += "</div></div>";
     html += renderCompareStrip(cmp);
 
@@ -1875,7 +2052,11 @@
           " visitas · " +
           data.farms.length +
           " fincas"
-        : "Sin visitas") + (state.compare ? " · gris = anterior" : "")
+        : "Sin visitas") +
+        " · meta " +
+        META_TARGET +
+        "%" +
+        (state.compare ? " · gris = anterior" : "")
     );
     html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
     html += "</section></div>";
@@ -1957,6 +2138,20 @@
     var trend = timelineTrend(data.timeline);
     var mix = chapterKpi(data.chapters, 4);
     var dose = chapterKpi(data.chapters, 2);
+    var prevMix = prevData ? chapterKpi(prevData.chapters, 4) : { score: null };
+    var prevDose = prevData ? chapterKpi(prevData.chapters, 2) : { score: null };
+    var mixDelta = deltaPts(mix.score, prevMix.score);
+    var doseDelta = deltaPts(dose.score, prevDose.score);
+    var findingsDelta = prevData ? data.findings - (prevData.findings || 0) : null;
+    var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
+    var periodNote =
+      data.visits != null
+        ? data.visits + " visita" + (data.visits === 1 ? "" : "s")
+        : "";
+    var findingsNote =
+      data.visits != null
+        ? "en " + data.visits + " visita" + (data.visits === 1 ? "" : "s")
+        : "";
     var alerts = buildAlerts(null, data);
     var html = "";
     html += '<div class="c360-metrics-hero">';
@@ -1966,17 +2161,38 @@
       lastScore == null ? "—" : lastScore + "%",
       scoreStatus(lastScore),
       ICONS.score,
-      cmp.scoreDelta != null ? cmp.scoreDelta : trend,
-      true
+      {
+        featured: true,
+        score: lastScore,
+        delta: heroDelta,
+        status: scoreStatus(lastScore),
+        note: periodNote,
+      }
     );
     html += '<div class="c360-metrics-kpis-side">';
-    html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix);
-    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water);
+    html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
+      score: mix.score,
+      delta: mixDelta,
+      showStatus: false,
+    });
+    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
+      score: dose.score,
+      delta: doseDelta,
+      showStatus: false,
+    });
     html += kpiCard(
       "Hallazgos",
       data.findings,
       data.findings ? "critical" : "healthy",
-      ICONS.findings
+      ICONS.findings,
+      {
+        delta: findingsDelta,
+        invertDelta: true,
+        unit: "count",
+        hideMeta: true,
+        showStatus: false,
+        note: findingsNote,
+      }
     );
     html += "</div></div>";
     html += renderCompareStrip(cmp);
@@ -1991,7 +2207,11 @@
           " · " +
           data.visits +
           " visitas"
-        : "Sin visitas") + (state.compare ? " · gris = anterior" : "")
+        : "Sin visitas") +
+        " · meta " +
+        META_TARGET +
+        "%" +
+        (state.compare ? " · gris = anterior" : "")
     );
     html += chartLine(
       data.chartTimeline || data.timeline,

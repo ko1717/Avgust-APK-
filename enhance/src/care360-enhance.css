@@ -1669,6 +1669,67 @@ html.c360-metrics-lite .metrics-actions {
 .c360-mkpi-delta.down { color: var(--c360-tone-crit-fg); }
 .c360-mkpi-delta.flat { color: var(--c360-ink-soft, #58696d); }
 
+.c360-mkpi-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.c360-mkpi-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.c360-mkpi-status.tone-healthy {
+  background: var(--c360-tone-ok-bg);
+  color: var(--c360-tone-ok-fg);
+}
+
+.c360-mkpi-status.tone-acceptable {
+  background: var(--c360-tone-warn-bg);
+  color: var(--c360-tone-warn-fg);
+}
+
+.c360-mkpi-status.tone-critical {
+  background: var(--c360-tone-crit-bg);
+  color: var(--c360-tone-crit-fg);
+}
+
+.c360-mkpi-status.tone-pending {
+  background: var(--c360-tone-pend-bg);
+  color: var(--c360-tone-pend-fg);
+}
+
+.c360-mkpi-meta,
+.c360-mkpi-note {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--c360-ink-soft, #58696d);
+  min-width: 0;
+}
+
+.c360-mkpi-meta.up { color: var(--c360-tone-ok-fg); }
+.c360-mkpi-meta.down { color: var(--c360-tone-crit-fg); }
+.c360-mkpi-meta.flat { color: var(--c360-ink-soft, #58696d); }
+
+.c360-mkpi-note {
+  font-weight: 600;
+  opacity: 0.92;
+}
+
 .c360-metrics-card {
   border: 1px solid var(--c360-line, #dbe4e8);
   border-radius: 18px;
@@ -1745,6 +1806,26 @@ html.c360-metrics-lite .metrics-actions {
   font-weight: 700;
   text-anchor: middle;
 }
+.c360-linechart-meta {
+  stroke: var(--c360-brand, #007fa3);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.55;
+}
+.c360-linechart-meta-label {
+  fill: var(--c360-brand, #007fa3);
+  font-size: 10px;
+  font-weight: 800;
+  text-anchor: end;
+  opacity: 0.85;
+}
+.c360-linechart-sparse-note {
+  margin: 8px 2px 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
 .c360-linechart-empty {
   display: grid;
   place-items: center;
@@ -1756,6 +1837,15 @@ html.c360-metrics-lite .metrics-actions {
   font-size: 14px;
   padding: 16px;
   text-align: center;
+}
+.c360-linechart-empty p {
+  margin: 0;
+  max-width: 28rem;
+}
+.c360-linechart-empty p + p {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .c360-metrics-table-wrap {
@@ -2722,6 +2812,16 @@ html.c360-metrics-lite .metrics-actions {
   border-color: rgb(31 138 91 / 22%);
 }
 
+.c360-mkpi.featured.tone-critical {
+  background: linear-gradient(145deg, var(--c360-surface) 0%, var(--c360-tone-crit-card, var(--c360-tone-crit-bg)) 100%);
+  border-color: rgb(196 75 60 / 22%);
+}
+
+.c360-mkpi.featured.tone-acceptable {
+  background: linear-gradient(145deg, var(--c360-surface) 0%, var(--c360-tone-warn-card, var(--c360-tone-warn-bg)) 100%);
+  border-color: rgb(201 133 18 / 22%);
+}
+
 .c360-mkpi.featured .c360-mkpi-value {
   font-size: clamp(40px, 7vw, 52px);
   letter-spacing: -0.05em;
@@ -2739,6 +2839,15 @@ html.c360-metrics-lite .metrics-actions {
   border-radius: 12px;
 }
 
+.c360-mkpi.featured .c360-mkpi-foot {
+  margin-top: 6px;
+  gap: 6px 12px;
+}
+
+.c360-mkpi.featured .c360-mkpi-delta {
+  font-size: 13px;
+}
+
 .c360-metrics-kpis-side .c360-mkpi {
   min-height: 108px;
   padding: 12px;
@@ -2747,6 +2856,16 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-metrics-kpis-side .c360-mkpi-value {
   font-size: clamp(20px, 3.2vw, 26px);
+}
+
+.c360-metrics-kpis-side .c360-mkpi-foot {
+  gap: 4px 8px;
+}
+
+.c360-metrics-kpis-side .c360-mkpi-delta,
+.c360-metrics-kpis-side .c360-mkpi-meta,
+.c360-metrics-kpis-side .c360-mkpi-note {
+  font-size: 10px;
 }
 
 .c360-metrics-kpis-side .c360-mkpi-icon {
@@ -4052,13 +4171,33 @@ html.dark .c360-metrics-notice.error {
 }
 
 html.dark .c360-mkpi-delta.up,
+html.dark .c360-mkpi-meta.up,
 html.dark .c360-compare-chip em.up {
   color: var(--c360-tone-ok-fg);
 }
 
 html.dark .c360-mkpi-delta.down,
+html.dark .c360-mkpi-meta.down,
 html.dark .c360-compare-chip em.down {
   color: var(--c360-tone-crit-fg);
+}
+
+html.dark .c360-mkpi-meta.flat,
+html.dark .c360-mkpi-note {
+  color: var(--c360-ink-soft);
+}
+
+html.dark .c360-linechart-meta {
+  stroke: var(--c360-accent, #00b5e2);
+  opacity: 0.65;
+}
+
+html.dark .c360-linechart-meta-label {
+  fill: var(--c360-accent, #00b5e2);
+}
+
+html.dark .c360-linechart-sparse-note {
+  color: var(--c360-ink-soft);
 }
 
 html.dark .c360-compare-chip em.flat {
