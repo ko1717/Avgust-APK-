@@ -56,6 +56,9 @@ INDEX_PATCHES: list[tuple[str, str, str]] = [
 ]
 
 # Trailing measurement blocks that patch_measurements may leave before relocation.
+# Important: after the chapter `for` closes, the original continues as a comma
+# expression (`xf.forEach(...),e.conclusion&&...`). When xf moves inside the
+# loop we must drop that leading comma so `e.conclusion` starts a statement.
 WORD_TRAILING_VARIANTS = [
     (
         "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
@@ -66,7 +69,7 @@ WORD_TRAILING_VARIANTS = [
         "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
         "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
         "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
-        "r.length&&(s(t,Iv.HEADING_2),c(r))})"
+        "r.length&&(s(t,Iv.HEADING_2),c(r))}),e.conclusion&&"
     ),
     (
         "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
@@ -77,7 +80,7 @@ WORD_TRAILING_VARIANTS = [
         "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
         "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
         "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
-        "r.length&&(s(t,Iv.HEADING_2),c(r))})"
+        "r.length&&(s(t,Iv.HEADING_2),c(r))}),e.conclusion&&"
     ),
     (
         "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
@@ -88,7 +91,7 @@ WORD_TRAILING_VARIANTS = [
         "[`Cap. 5 · 5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
         "[`Cap. 5 · 5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
         "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
-        "r.length&&(s(t,Iv.HEADING_2),c(r))})"
+        "r.length&&(s(t,Iv.HEADING_2),c(r))}),e.conclusion&&"
     ),
 ]
 
@@ -102,6 +105,7 @@ WORD_MEASURE_NEW = (
     "[5,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
     "xf.filter(([n])=>n===t.id).forEach(([,a,o])=>{let r=o.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
     "r.length&&(s(a,Iv.HEADING_2),c(r))})}"
+    "e.conclusion&&"
 )
 
 K6_OLD = (
@@ -119,7 +123,7 @@ K6_NEW = (
     "e.score===null?`Sin medición`:`${e.score}%`,String(e.farms)])]),"
     "e.chapters.forEach(t=>{let n=e.matrix.filter(e=>e.answer===`No cumple`&&e.chapter.startsWith(`${t.id}.`));"
     "n.length&&(i(`${t.id}. ${t.title} · detalle`),a([[`Finca`,`Fecha`,`Ítem`,`Criterio`,`Hallazgo / observación`,`Recomendación`],"
-    "...n.map(e=>[e.farm,e.date,e.item,e.text,e.observation||`—`,e.recommendation||`—`])])}),"
+    "...n.map(e=>[e.farm,e.date,e.item,e.text,e.observation||`—`,e.recommendation||`—`])]));}),"
     "i(`Ítems prioritarios`)"
 )
 
@@ -198,11 +202,16 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(args.root)
     changed = []
+    seen: set[str] = set()
     for path in list(root.rglob("index-*.js")) + list(root.glob("assets/*.js")):
         if not path.is_file():
             continue
         if "device-runtime" in path.name:
             continue
+        key = str(path.resolve())
+        if key in seen:
+            continue
+        seen.add(key)
         applied = patch_file(path)
         if applied:
             changed.append((str(path), applied))

@@ -820,13 +820,45 @@
     });
   }
 
-  function findReportChapterSection(chapterId) {
-    return qa(".report-paper section").find(function (section) {
+  function findReportChapterSection(paper, chapterId) {
+    return qa("section", paper).find(function (section) {
       var h2 = q("h2", section);
       if (!h2) return false;
       var match = /^Capítulo\s+(\d+)\./i.exec((h2.textContent || "").trim());
       return match && Number(match[1]) === Number(chapterId);
     });
+  }
+
+  function findReportCriterionAnchor(chapterSection, code) {
+    if (!chapterSection || !code) return null;
+    var heading = qa("h3", chapterSection).find(function (node) {
+      return new RegExp("^" + code.replace(".", "\\.") + "\\s*·", "i").test((node.textContent || "").trim());
+    });
+    if (!heading) return null;
+    var anchor = heading;
+    var node = heading.nextElementSibling;
+    while (node && node.tagName !== "H3" && !node.classList.contains("c360-report-chapter-measures")) {
+      anchor = node;
+      node = node.nextElementSibling;
+    }
+    return anchor;
+  }
+
+  function insertReportMeasureBlock(chapterSection, group, section) {
+    if (!chapterSection) return false;
+    var existing = q('.c360-report-chapter-measures[data-group="' + group.id + '"]', chapterSection);
+    if (existing) existing.remove();
+    var anchor = null;
+    if (group.afterGroup) {
+      anchor = q('.c360-report-chapter-measures[data-group="' + group.afterGroup + '"]', chapterSection);
+    }
+    if (!anchor) anchor = findReportCriterionAnchor(chapterSection, group.badge || group.afterCode);
+    if (anchor) {
+      anchor.insertAdjacentElement("afterend", section);
+      return true;
+    }
+    chapterSection.appendChild(section);
+    return true;
   }
 
   function buildMeasureTable(items) {
@@ -846,14 +878,14 @@
     return table;
   }
 
-  function organizeReportMeasurements() {
-    qa(".report-paper h2").forEach(function (heading) {
+  function organizeOneReportPaper(paper) {
+    if (qa(".c360-report-chapter-measures, .c360-report-measures", paper).length) {
+      return;
+    }
+    qa("h2", paper).forEach(function (heading) {
       if (!/Mediciones de campo|Mediciones por capítulo/i.test(heading.textContent || "")) return;
       var node = heading.nextElementSibling;
       if (!node || node.tagName !== "TABLE") return;
-      if (qa(".report-paper .c360-report-chapter-measures, .report-paper .c360-report-measures").length) {
-        return;
-      }
       var rows = qa("tr", node)
         .map(function (tr) {
           var th = q("th", tr);
@@ -897,9 +929,8 @@
         title.appendChild(document.createTextNode(" " + group.title));
         section.appendChild(title);
         section.appendChild(buildMeasureTable(items));
-        var chapterSection = findReportChapterSection(group.chapter);
-        if (chapterSection) {
-          chapterSection.appendChild(section);
+        var chapterSection = findReportChapterSection(paper, group.chapter);
+        if (insertReportMeasureBlock(chapterSection, group, section)) {
           movedAny = true;
         }
       });
@@ -922,6 +953,10 @@
         node.setAttribute("data-c360-hidden-measures", "");
       }
     });
+  }
+
+  function organizeReportMeasurements() {
+    qa(".report-paper").forEach(organizeOneReportPaper);
   }
 
   function syncPhaseFromNative() {

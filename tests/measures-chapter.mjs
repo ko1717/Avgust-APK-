@@ -23,7 +23,11 @@ await wait(2800);
 await p.evaluate(() => document.querySelector('.c360-intro [data-act="skip"]')?.click());
 await wait(800);
 
-await p.evaluate((i) => document.querySelectorAll('.module-nav [role=tab]')[i].click(), 4);
+await p.evaluate(() => {
+  const tabs = [...document.querySelectorAll('.module-nav [role=tab], .module-nav button, nav [role=tab]')];
+  const visitas = tabs.find((t) => /Visitas/i.test(t.textContent || '')) || tabs[4];
+  visitas?.click();
+});
 await wait(1000);
 await p.evaluate(() => [...document.querySelectorAll('button')].find((b) => /Nueva visita/i.test(b.textContent || ''))?.click());
 await wait(1600);
