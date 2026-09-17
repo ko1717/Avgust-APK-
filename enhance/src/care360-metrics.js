@@ -692,10 +692,13 @@
       deltaHtml =
         '<span class="c360-mkpi-delta ' +
         cls +
-        '">' +
+        '"><span class="c360-lbl-full">' +
         sign +
         delta +
-        " pts vs visita anterior</span>";
+        ' pts vs visita anterior</span><span class="c360-lbl-short">' +
+        sign +
+        delta +
+        " pts</span></span>";
     }
     return (
       '<article class="c360-mkpi tone-' +
@@ -709,6 +712,28 @@
       "</strong>" +
       deltaHtml +
       "</article>"
+    );
+  }
+
+  function cardHead(title, subtitle) {
+    return (
+      '<div class="c360-metrics-card-head"><div><h3>' +
+      title +
+      "</h3>" +
+      (subtitle ? "<p>" + subtitle + "</p>" : "") +
+      "</div></div>"
+    );
+  }
+
+  function td(label, content, extraClass) {
+    return (
+      '<td data-label="' +
+      escapeHtml(label) +
+      '"' +
+      (extraClass ? ' class="' + extraClass + '"' : "") +
+      ">" +
+      content +
+      "</td>"
     );
   }
 
@@ -852,28 +877,30 @@
     html +=
       '<button type="button" role="tab" data-mode="all" class="' +
       (state.mode === "all" ? "active" : "") +
-      '">Todas las fincas</button>';
+      '"><span class="c360-lbl-full">Todas las fincas</span><span class="c360-lbl-short">Todas</span></button>';
     html +=
       '<button type="button" role="tab" data-mode="farm" class="' +
       (state.mode === "farm" ? "active" : "") +
-      '">Una finca</button>';
+      '"><span class="c360-lbl-full">Una finca</span><span class="c360-lbl-short">Finca</span></button>';
     html += "</div>";
     html += '<div class="c360-metrics-range" role="group" aria-label="Periodo">';
     [
-      ["all", "Todo"],
-      ["30d", "30 días"],
-      ["90d", "90 días"],
-      ["365d", "12 meses"],
-      ["ytd", "Este año"],
+      ["all", "Todo", "Todo"],
+      ["30d", "30 días", "30d"],
+      ["90d", "90 días", "90d"],
+      ["365d", "12 meses", "12m"],
+      ["ytd", "Este año", "Año"],
     ].forEach(function (opt) {
       html +=
         '<button type="button" data-range="' +
         opt[0] +
         '" class="' +
         (state.range === opt[0] ? "active" : "") +
-        '">' +
+        '"><span class="c360-lbl-full">' +
         opt[1] +
-        "</button>";
+        '</span><span class="c360-lbl-short">' +
+        opt[2] +
+        "</span></button>";
     });
     html += "</div>";
     if (state.range === "custom" && (state.dateFrom || state.dateTo)) {
@@ -967,55 +994,57 @@
     html += "</div>";
 
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
-    html += '<div class="c360-metrics-card-head"><div>';
-    html += "<h3>Evolución del indicador</h3>";
-    html +=
-      "<p>" +
-      (data.firstDate || data.lastDate
+    html += cardHead(
+      "Evolución del indicador",
+      data.firstDate || data.lastDate
         ? "De " +
-          formatDateEs(data.firstDate) +
-          " a " +
-          formatDateEs(data.lastDate) +
-          " · " +
-          data.visits +
-          " visita(s) en " +
-          data.farms.length +
-          " finca(s)"
-        : "Sin visitas en el periodo") +
-      "</p></div></div>";
+            formatDateEs(data.firstDate) +
+            " a " +
+            formatDateEs(data.lastDate) +
+            " · " +
+            data.visits +
+            " visita(s) en " +
+            data.farms.length +
+            " finca(s)"
+        : "Sin visitas en el periodo"
+    );
     html += chartLine(data.timeline);
     html += "</section>";
 
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Resumen por finca</h3>';
-    html += "<p>Toca una finca para ver su detalle por fecha con el mismo periodo.</p></div>";
-    html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table"><thead><tr>';
+    html += '<section class="c360-metrics-card">';
+    html += cardHead("Resumen por finca", "Toca una finca para ver su detalle con el mismo periodo.");
+    html += '<div class="c360-metrics-table-wrap"><table class="c360-metrics-table c360-metrics-table-farms"><thead><tr>';
     html +=
       "<th>Finca</th><th>Visitas</th><th>Indicador</th><th>Hallazgos</th><th>Estado</th><th>Primera visita</th><th>Última visita</th>";
     html += "</tr></thead><tbody>";
     data.farms.forEach(function (f) {
       html += '<tr data-open-farm="' + escapeHtml(f.name) + '" tabindex="0">';
-      html += "<td><strong>" + escapeHtml(f.name) + "</strong></td>";
-      html += "<td>" + f.visits + "</td>";
-      html +=
-        '<td><div class="c360-metrics-inline">' +
-        (f.score == null ? "—" : f.score + "%") +
-        barHtml(f.score, f.status) +
-        "</div></td>";
-      html +=
-        '<td><div class="c360-metrics-inline">' +
-        f.findings +
-        barHtml(data.findings ? (f.findings / data.findings) * 100 : 0, "warn") +
-        "</div></td>";
-      html += '<td><span class="c360-mpill tone-' + f.status + '">' + statusLabel(f.status) + "</span></td>";
-      html += "<td>" + escapeHtml(formatDateEs(f.firstDate)) + "</td>";
-      html += "<td>" + escapeHtml(formatDateEs(f.lastDate)) + "</td>";
+      html += td("Finca", "<strong>" + escapeHtml(f.name) + "</strong>");
+      html += td("Visitas", String(f.visits));
+      html += td(
+        "Indicador",
+        '<div class="c360-metrics-inline">' +
+          (f.score == null ? "—" : f.score + "%") +
+          barHtml(f.score, f.status) +
+          "</div>"
+      );
+      html += td(
+        "Hallazgos",
+        '<div class="c360-metrics-inline">' +
+          f.findings +
+          barHtml(data.findings ? (f.findings / data.findings) * 100 : 0, "warn") +
+          "</div>"
+      );
+      html += td("Estado", '<span class="c360-mpill tone-' + f.status + '">' + statusLabel(f.status) + "</span>");
+      html += td("Primera visita", escapeHtml(formatDateEs(f.firstDate)), "c360-col-optional");
+      html += td("Última visita", escapeHtml(formatDateEs(f.lastDate)), "c360-col-optional");
       html += "</tr>";
     });
     html += "</tbody></table></div></section>";
 
     html += '<div class="c360-metrics-charts">';
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Indicador por capítulo</h3>';
-    html += "<p>Promedio de cumplimiento global.</p></div>";
+    html += '<section class="c360-metrics-card">';
+    html += cardHead("Indicador por capítulo", "Promedio de cumplimiento global.");
     html += chartBars(
       data.chapters.map(function (c) {
         return { label: c.id + ". " + shortTitle(c.title), score: c.score };
@@ -1023,8 +1052,8 @@
       "score"
     );
     html += "</section>";
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Hallazgos por capítulo</h3>';
-    html += "<p>Cantidad de No cumple.</p></div>";
+    html += '<section class="c360-metrics-card">';
+    html += cardHead("Hallazgos por capítulo", "Cantidad de No cumple.");
     html += chartBars(
       data.chapters.map(function (c) {
         return { label: c.id + ". " + shortTitle(c.title), findings: c.findings };
@@ -1033,8 +1062,8 @@
     );
     html += "</section></div>";
 
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Subcapítulos con más hallazgos</h3>';
-    html += "<p>Criterios que más se incumplen.</p></div>";
+    html += '<section class="c360-metrics-card">';
+    html += cardHead("Subcapítulos con más hallazgos", "Criterios que más se incumplen.");
     if (!data.items.length) {
       html += '<p class="muted">Sin hallazgos de No cumple en el periodo.</p>';
     } else {
@@ -1042,15 +1071,14 @@
       html += "<th>Ítem</th><th>Capítulo</th><th>Hallazgos</th><th>Frecuencia</th></tr></thead><tbody>";
       data.items.slice(0, 12).forEach(function (it) {
         html += "<tr>";
-        html += "<td><strong>" + escapeHtml(it.id) + "</strong></td>";
-        html += "<td>" + escapeHtml(it.chapter + ". " + it.chapterTitle) + "</td>";
-        html += "<td>" + it.findings + "</td>";
-        html +=
-          '<td><div class="c360-metrics-inline">' +
-          it.rate +
-          "%" +
-          barHtml(it.rate, "warn") +
-          "</div></td></tr>";
+        html += td("Ítem", "<strong>" + escapeHtml(it.id) + "</strong>");
+        html += td("Capítulo", escapeHtml(it.chapter + ". " + it.chapterTitle));
+        html += td("Hallazgos", String(it.findings));
+        html += td(
+          "Frecuencia",
+          '<div class="c360-metrics-inline">' + it.rate + "%" + barHtml(it.rate, "warn") + "</div>"
+        );
+        html += "</tr>";
       });
       html += "</tbody></table></div>";
     }
@@ -1083,25 +1111,23 @@
     html += "</div>";
 
     html += '<section class="c360-metrics-card c360-metrics-hero-chart">';
-    html += '<div class="c360-metrics-card-head"><div>';
-    html += "<h3>Evolución de la finca</h3>";
-    html +=
-      "<p>" +
-      (data.firstDate || data.lastDate
+    html += cardHead(
+      "Evolución de la finca",
+      data.firstDate || data.lastDate
         ? "Visitas del " +
-          formatDateEs(data.firstDate) +
-          " al " +
-          formatDateEs(data.lastDate) +
-          " · " +
-          data.visits +
-          " visita(s)"
-        : "Sin visitas en el rango") +
-      "</p></div></div>";
+            formatDateEs(data.firstDate) +
+            " al " +
+            formatDateEs(data.lastDate) +
+            " · " +
+            data.visits +
+            " visita(s)"
+        : "Sin visitas en el rango"
+    );
     html += chartLine(data.chartTimeline || data.timeline);
     html += "</section>";
 
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Visitas por fecha</h3>';
-    html += "<p>Detalle de cada aseguramiento.</p></div>";
+    html += '<section class="c360-metrics-card">';
+    html += cardHead("Visitas por fecha", "Detalle de cada aseguramiento.");
     if (!data.timeline.length) {
       html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
     } else {
@@ -1112,31 +1138,32 @@
         .reverse()
         .forEach(function (row) {
           html += "<tr>";
-          html += "<td><strong>" + escapeHtml(row.label) + "</strong></td>";
-          html +=
-            '<td><div class="c360-metrics-inline">' +
-            (row.score == null ? "—" : row.score + "%") +
-            barHtml(row.score, row.status) +
-            "</div></td>";
-          html += "<td>" + row.findings + "</td>";
-          html +=
-            '<td><span class="c360-mpill tone-' +
-            row.status +
-            '">' +
-            statusLabel(row.status) +
-            "</span></td>";
-          html += "<td>" + escapeHtml(row.responsible || "—") + "</td></tr>";
+          html += td("Fecha", "<strong>" + escapeHtml(row.label) + "</strong>");
+          html += td(
+            "Indicador",
+            '<div class="c360-metrics-inline">' +
+              (row.score == null ? "—" : row.score + "%") +
+              barHtml(row.score, row.status) +
+              "</div>"
+          );
+          html += td("Hallazgos", String(row.findings));
+          html += td(
+            "Estado",
+            '<span class="c360-mpill tone-' + row.status + '">' + statusLabel(row.status) + "</span>"
+          );
+          html += td("Responsable", escapeHtml(row.responsible || "—"));
+          html += "</tr>";
         });
       html += "</tbody></table></div>";
     }
     html += "</section>";
 
     html += '<div class="c360-metrics-charts">';
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Capítulos · última visita</h3>';
-    html +=
-      "<p>" +
-      (data.lastDate ? "Visita del " + formatDateEs(data.lastDate) + "." : "Sin visita reciente.") +
-      "</p></div>";
+    html += '<section class="c360-metrics-card">';
+    html += cardHead(
+      "Capítulos · última visita",
+      data.lastDate ? "Visita del " + formatDateEs(data.lastDate) + "." : "Sin visita reciente."
+    );
     html += chartBars(
       data.chapters.map(function (c) {
         return { label: c.id + ". " + shortTitle(c.title), score: c.score };
@@ -1144,8 +1171,8 @@
       "score"
     );
     html += "</section>";
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Hallazgos por capítulo</h3>';
-    html += "<p>No cumple en la última visita.</p></div>";
+    html += '<section class="c360-metrics-card">';
+    html += cardHead("Hallazgos por capítulo", "No cumple en la última visita.");
     html += chartBars(
       data.chapters.map(function (c) {
         return { label: c.id + ". " + shortTitle(c.title), findings: c.findings };
@@ -1154,13 +1181,13 @@
     );
     html += "</section></div>";
 
-    html += '<section class="c360-metrics-card"><div class="c360-metrics-card-head"><h3>Detalle de No cumple</h3>';
-    html +=
-      "<p>" +
-      (data.lastDate
+    html += '<section class="c360-metrics-card">';
+    html += cardHead(
+      "Detalle de No cumple",
+      data.lastDate
         ? "Hallazgos de la visita del " + formatDateEs(data.lastDate) + "."
-        : "Sin hallazgos para mostrar.") +
-      "</p></div>";
+        : "Sin hallazgos para mostrar."
+    );
     if (!data.items.length) {
       html += '<p class="muted">La última visita no tiene respuestas No cumple.</p>';
     } else {
@@ -1168,11 +1195,11 @@
       html += "<th>Ítem</th><th>Capítulo</th><th>Hallazgo</th><th>Recomendación</th></tr></thead><tbody>";
       data.items.forEach(function (it) {
         html += "<tr>";
-        html += "<td><strong>" + escapeHtml(it.id) + "</strong></td>";
-        html +=
-          "<td>" + escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")) + "</td>";
-        html += '<td class="c360-metrics-wrap">' + escapeHtml(it.observation || "—") + "</td>";
-        html += '<td class="c360-metrics-wrap">' + escapeHtml(it.recommendation || "—") + "</td></tr>";
+        html += td("Ítem", "<strong>" + escapeHtml(it.id) + "</strong>");
+        html += td("Capítulo", escapeHtml(it.chapter + ". " + (CHAPTER_TITLES[it.chapter] || "")));
+        html += td("Hallazgo", escapeHtml(it.observation || "—"), "c360-metrics-wrap");
+        html += td("Recomendación", escapeHtml(it.recommendation || "—"), "c360-metrics-wrap");
+        html += "</tr>";
       });
       html += "</tbody></table></div>";
     }

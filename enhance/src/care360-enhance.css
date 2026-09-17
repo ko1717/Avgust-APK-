@@ -1372,8 +1372,22 @@ html.c360-metrics-lite .metrics-actions {
   flex-direction: column;
   gap: 14px;
   margin: 0 0 22px;
-  padding: 2px 0 10px;
+  padding: 2px 0 18px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   color: var(--c360-ink, #1c2b32);
+  overflow-x: clip;
+}
+
+.c360-metrics-board *,
+.c360-metrics-board *::before,
+.c360-metrics-board *::after {
+  box-sizing: border-box;
+}
+
+.c360-lbl-short {
+  display: none;
 }
 
 .c360-metrics-head {
@@ -1394,7 +1408,7 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-metrics-head-main h2 {
   margin: 0;
-  font-size: clamp(22px, 4.2vw, 28px);
+  font-size: clamp(20px, 4.2vw, 28px);
   line-height: 1.15;
   letter-spacing: -0.02em;
   font-weight: 800;
@@ -1411,20 +1425,30 @@ html.c360-metrics-lite .metrics-actions {
 .c360-metrics-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: 10px;
+  width: 100%;
 }
 
 .c360-metrics-switch,
 .c360-metrics-range {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--c360-line, #dbe4e8);
   border-radius: 12px;
   background: linear-gradient(180deg, #f7fbfc, #eef4f6);
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.c360-metrics-switch::-webkit-scrollbar,
+.c360-metrics-range::-webkit-scrollbar {
+  display: none;
 }
 
 .c360-metrics-switch button,
@@ -1438,6 +1462,8 @@ html.c360-metrics-lite .metrics-actions {
   font-weight: 700;
   font-size: 12.5px;
   cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
   transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -1450,6 +1476,7 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-metrics-range-hint {
   margin: 0;
+  width: 100%;
   color: var(--c360-ink-soft, #58696d);
   font-size: 12px;
   font-weight: 600;
@@ -1457,7 +1484,7 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-metrics-filters {
   display: grid;
-  grid-template-columns: 1.5fr 0.9fr 0.9fr;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--c360-line, #dbe4e8);
@@ -1470,6 +1497,7 @@ html.c360-metrics-lite .metrics-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--c360-ink-soft, #58696d);
@@ -1477,10 +1505,13 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-metrics-filters select,
 .c360-metrics-filters input {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--c360-line, #dbe4e8);
   border-radius: 10px;
   padding: 10px 12px;
   font: inherit;
+  font-size: 16px;
   background: #f8fbfc;
   color: var(--c360-ink, #1c2b32);
 }
@@ -1495,13 +1526,13 @@ html.c360-metrics-lite .metrics-actions {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 108px;
+  gap: 8px;
+  min-height: 100px;
+  min-width: 0;
   padding: 14px 14px 16px;
   border: 1px solid var(--c360-line, #dbe4e8);
   border-radius: 16px;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
   box-shadow: var(--c360-shadow-1);
   overflow: hidden;
 }
@@ -1570,7 +1601,7 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-mkpi-value {
   display: block;
-  font-size: clamp(24px, 4vw, 30px);
+  font-size: clamp(22px, 3.6vw, 30px);
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -1596,14 +1627,16 @@ html.c360-metrics-lite .metrics-actions {
   background: #fff;
   padding: 16px;
   box-shadow: var(--c360-shadow-1);
+  min-width: 0;
 }
 
 .c360-metrics-card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  display: block;
   margin-bottom: 8px;
+}
+
+.c360-metrics-card-head > div {
+  min-width: 0;
 }
 
 .c360-metrics-card-head h3 {
@@ -1626,7 +1659,7 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-linechart {
   width: 100%;
-  min-height: 220px;
+  min-height: 200px;
   margin-top: 4px;
 }
 
@@ -1634,19 +1667,12 @@ html.c360-metrics-lite .metrics-actions {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 220px;
+  min-height: 200px;
   overflow: visible;
 }
 
-.c360-linechart-grid {
-  stroke: #e7eef1;
-  stroke-width: 1;
-}
-
-.c360-linechart-area {
-  fill: rgb(31 138 91 / 12%);
-}
-
+.c360-linechart-grid { stroke: #e7eef1; stroke-width: 1; }
+.c360-linechart-area { fill: rgb(31 138 91 / 12%); }
 .c360-linechart-path {
   fill: none;
   stroke: #1f8a5b;
@@ -1654,42 +1680,41 @@ html.c360-metrics-lite .metrics-actions {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-
 .c360-linechart-dot {
   fill: #fff;
   stroke: #1f8a5b;
   stroke-width: 2.5;
 }
-
 .c360-linechart-val {
   fill: #1c2b32;
   font-size: 11px;
   font-weight: 800;
   text-anchor: middle;
 }
-
 .c360-linechart-xlabel {
   fill: #5b6b70;
   font-size: 11px;
   font-weight: 700;
   text-anchor: middle;
 }
-
 .c360-linechart-empty {
   display: grid;
   place-items: center;
-  min-height: 180px;
+  min-height: 160px;
   border: 1px dashed var(--c360-line, #dbe4e8);
   border-radius: 14px;
   background: #f7fbfc;
   color: var(--c360-ink-soft, #58696d);
   font-size: 14px;
+  padding: 16px;
+  text-align: center;
 }
 
 .c360-metrics-table-wrap {
   overflow-x: auto;
   margin-top: 4px;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
 .c360-metrics-table {
@@ -1738,7 +1763,7 @@ html.c360-metrics-lite .metrics-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 110px;
+  min-width: 0;
   font-weight: 700;
 }
 
@@ -1749,6 +1774,7 @@ html.c360-metrics-lite .metrics-actions {
   border-radius: 999px;
   background: #e7eef0;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .c360-mbar-fill {
@@ -1786,7 +1812,7 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-mchart {
   position: relative;
-  min-height: 210px;
+  min-height: 200px;
   padding-top: 8px;
 }
 
@@ -1817,22 +1843,11 @@ html.c360-metrics-lite .metrics-actions {
   min-height: 4px;
 }
 
-.c360-mchart-bar.tone-healthy {
-  background: linear-gradient(180deg, #3cb87f, #1f8a5b);
-}
-
-.c360-mchart-bar.tone-acceptable {
-  background: linear-gradient(180deg, #e0a63a, #c98512);
-}
-
+.c360-mchart-bar.tone-healthy { background: linear-gradient(180deg, #3cb87f, #1f8a5b); }
+.c360-mchart-bar.tone-acceptable { background: linear-gradient(180deg, #e0a63a, #c98512); }
 .c360-mchart-bar.tone-critical,
-.c360-mchart-bar.tone-warn {
-  background: linear-gradient(180deg, #e06b5c, #c44b3c);
-}
-
-.c360-mchart-bar.tone-pending {
-  background: linear-gradient(180deg, #a8b7bc, #8aa0a6);
-}
+.c360-mchart-bar.tone-warn { background: linear-gradient(180deg, #e06b5c, #c44b3c); }
+.c360-mchart-bar.tone-pending { background: linear-gradient(180deg, #a8b7bc, #8aa0a6); }
 
 .c360-mchart-val {
   font-size: 11px;
@@ -1915,7 +1930,6 @@ html.c360-metrics-lite .metrics-actions {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Keep the input clickable in Android WebView (display:none breaks the picker). */
 .c360-import-file .c360-import-input,
 .c360-import-file input[type="file"] {
   position: absolute;
@@ -1950,7 +1964,8 @@ html.c360-metrics-lite .metrics-actions {
   background: transparent;
 }
 
-@media (min-width: 900px) {
+/* Desktop */
+@media (min-width: 1024px) {
   .c360-metrics-head {
     flex-direction: row;
     align-items: flex-end;
@@ -1958,6 +1973,7 @@ html.c360-metrics-lite .metrics-actions {
   }
 
   .c360-metrics-toolbar {
+    width: auto;
     flex-direction: column;
     align-items: flex-end;
   }
@@ -1967,33 +1983,208 @@ html.c360-metrics-lite .metrics-actions {
   }
 }
 
-@media (max-width: 700px) {
+/* Tablet */
+@media (min-width: 701px) and (max-width: 1023px) {
   .c360-metrics-kpis {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .c360-metrics-filters {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .c360-metrics-switch,
-  .c360-metrics-range {
-    width: 100%;
+  .c360-metrics-charts {
+    grid-template-columns: 1fr 1fr;
   }
+
+  .c360-metrics-table-farms .c360-col-optional {
+    display: none;
+  }
+
+  .c360-metrics-table-farms {
+    min-width: 0;
+  }
+}
+
+/* Phone */
+@media (max-width: 700px) {
+  .c360-metrics-board {
+    gap: 12px;
+    padding: 0 0 24px;
+  }
+
+  .c360-lbl-full { display: none; }
+  .c360-lbl-short { display: inline; }
+
+  .c360-metrics-head-main p { font-size: 13px; }
+
+  .c360-metrics-toolbar { flex-direction: column; }
+
+  .c360-metrics-switch,
+  .c360-metrics-range { width: 100%; }
 
   .c360-metrics-switch button,
   .c360-metrics-range button {
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 9px 8px;
+    font-size: 12px;
     text-align: center;
   }
 
-  .c360-mkpi-value {
-    font-size: 22px;
+  .c360-metrics-filters {
+    grid-template-columns: 1fr 1fr;
   }
+
+  .c360-metrics-filters label:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .c360-metrics-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .c360-mkpi {
+    min-height: 92px;
+    padding: 12px 12px 14px;
+    gap: 6px;
+  }
+
+  .c360-mkpi-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .c360-mkpi-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .c360-mkpi-value { font-size: 22px; }
+  .c360-mkpi-delta { font-size: 11px; }
+
+  .c360-metrics-card {
+    padding: 14px 12px;
+    border-radius: 16px;
+  }
+
+  .c360-metrics-card-head h3 { font-size: 15px; }
+  .c360-metrics-card-head p { font-size: 12.5px; }
+
+  .c360-linechart,
+  .c360-linechart svg { min-height: 180px; }
+
+  .c360-mchart { min-height: 180px; }
+  .c360-mchart-bars { height: 160px; gap: 6px; }
+  .c360-mchart-label { font-size: 10px; max-width: 58px; }
+
+  .c360-metrics-table-wrap { overflow: visible; }
+
+  .c360-metrics-table {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .c360-metrics-table thead { display: none; }
+
+  .c360-metrics-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .c360-metrics-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 12px;
+    border: 1px solid var(--c360-line, #dbe4e8);
+    border-radius: 14px;
+    background: #fbfcfd;
+  }
+
+  .c360-metrics-table tbody tr[data-open-farm] {
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(28 43 50 / 5%);
+  }
+
+  .c360-metrics-table th,
+  .c360-metrics-table td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .c360-metrics-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--c360-ink-soft, #58696d);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .c360-metrics-table td:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .c360-metrics-table-farms td:first-child strong {
+    font-size: 15px;
+  }
+
+  .c360-metrics-inline {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .c360-mbar { width: 64px; }
+  .c360-metrics-wrap { max-width: none; }
 }
 
 @media (max-width: 420px) {
   .c360-metrics-kpis {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .c360-mkpi-label {
+    font-size: 10px;
+    letter-spacing: 0.03em;
+  }
+
+  .c360-mkpi-value { font-size: 20px; }
+
+  .c360-metrics-filters { grid-template-columns: 1fr; }
+  .c360-metrics-filters label:first-child { grid-column: auto; }
+
+  .c360-metrics-range button {
+    padding: 8px 6px;
+    font-size: 11.5px;
+  }
+
+  .c360-metrics-table tbody tr {
     grid-template-columns: 1fr;
   }
+}
+
+@media (orientation: landscape) and (max-height: 540px) and (max-width: 900px) {
+  .c360-metrics-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .c360-mkpi {
+    min-height: 78px;
+    padding: 10px;
+  }
+
+  .c360-linechart,
+  .c360-linechart svg { min-height: 150px; }
 }
