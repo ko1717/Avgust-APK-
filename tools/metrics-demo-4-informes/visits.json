@@ -1,0 +1,81 @@
+{
+  "farm": "Finca San Isidro",
+  "crop": "Rosa",
+  "zone": "Antioquia",
+  "city": "Rionegro",
+  "notes": "Cuatro informes demo para ver Evolución, capítulos y hallazgos en Métricas.",
+  "visits": [
+    {
+      "date": "2025-10-08",
+      "responsible": "Ana Ruiz",
+      "technician": "Ana Ruiz",
+      "scoreTarget": 40,
+      "answers": {
+        "1.1": "NO",
+        "1.2": "SI",
+        "2.1": "NO",
+        "2.2": "SI",
+        "3.1": "NO",
+        "4.1": "NO",
+        "4.2": "SI",
+        "5.1": "NO",
+        "5.2": "SI",
+        "5.3": "NO"
+      }
+    },
+    {
+      "date": "2025-12-17",
+      "responsible": "Wilson Castro",
+      "technician": "Wilson Castro",
+      "scoreTarget": 60,
+      "answers": {
+        "1.1": "SI",
+        "1.2": "SI",
+        "2.1": "NO",
+        "2.2": "SI",
+        "3.1": "NO",
+        "4.1": "SI",
+        "4.2": "SI",
+        "5.1": "NO",
+        "5.2": "SI",
+        "5.3": "NO"
+      }
+    },
+    {
+      "date": "2026-03-11",
+      "responsible": "Ana Ruiz",
+      "technician": "Ana Ruiz",
+      "scoreTarget": 90,
+      "answers": {
+        "1.1": "SI",
+        "1.2": "SI",
+        "2.1": "SI",
+        "2.2": "SI",
+        "3.1": "SI",
+        "4.1": "SI",
+        "4.2": "SI",
+        "5.1": "NO",
+        "5.2": "SI",
+        "5.3": "SI"
+      }
+    },
+    {
+      "date": "2026-06-25",
+      "responsible": "Luis Pérez",
+      "technician": "Luis Pérez",
+      "scoreTarget": 70,
+      "answers": {
+        "1.1": "SI",
+        "1.2": "SI",
+        "2.1": "SI",
+        "2.2": "SI",
+        "3.1": "NO",
+        "4.1": "SI",
+        "4.2": "NO",
+        "5.1": "NO",
+        "5.2": "SI",
+        "5.3": "SI"
+      }
+    }
+  ]
+}

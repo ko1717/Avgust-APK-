@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CARE 360 · 4 informes demo (Métricas)</title>
+  <link rel="stylesheet" href="/enhance/care360-enhance.css" />
+  <style>
+    body { margin: 0; font-family: "Segoe UI", "Helvetica Neue", sans-serif; background: #f4f7f8; color: #1c2b32; }
+    .shell { max-width: 1100px; margin: 0 auto; padding: 16px 16px 48px; }
+    .module-nav { display: flex; gap: 8px; margin-bottom: 12px; }
+    .module-nav button { border: 1px solid #dbe4e8; background: #fff; border-radius: 10px; padding: 10px 14px; font-weight: 700; }
+    .module-nav button[aria-selected="true"] { background: #007fa3; color: #fff; border-color: #007fa3; }
+    .metrics-area { min-height: 60vh; }
+    .demo-banner {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #e8f4f8;
+      border: 1px solid #b7d9e4;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p class="demo-banner">
+      Demo con <strong>4 informes</strong> de <strong>Finca San Isidro</strong>
+      (oct 2025 40% → dic 60% → mar 2026 90% → jun 70%).
+      Abre Métricas → finca San Isidro para ver Evolución con 4 puntos.
+    </p>
+    <nav class="module-nav" role="tablist">
+      <button type="button" role="tab" aria-selected="false">Visitas</button>
+      <button type="button" role="tab" aria-selected="true">Métricas</button>
+    </nav>
+    <main class="metrics-area"></main>
+  </div>
+  <script>
+    function mkAnswers(map) {
+      var out = {};
+      Object.keys(map).forEach(function (id) {
+        out[id] = {
+          value: map[id],
+          observation: map[id] === "NO" ? "Hallazgo en criterio " + id + ": incumplimiento observado en campo." : "",
+          recommendation:
+            map[id] === "NO"
+              ? "Corregir el incumplimiento de " +
+                id +
+                ". Verificar evidencia, EPP y registro antes de la siguiente visita."
+              : "",
+        };
+      });
+      return out;
+    }
+
+    var FARM = "Finca San Isidro";
+    var visits = [
+      {
+        farm: FARM,
+        date: "2025-10-08",
+        reviewed: true,
+        serviceKind: "assurance",
+        responsible: "Ana Ruiz",
+        crop: "Rosa",
+        zone: "Antioquia",
+        answers: mkAnswers({
+          "1.1": "NO", "1.2": "SI", "2.1": "NO", "2.2": "SI", "3.1": "NO",
+          "4.1": "NO", "4.2": "SI", "5.1": "NO", "5.2": "SI", "5.3": "NO",
+        }),
+      },
+      {
+        farm: FARM,
+        date: "2025-12-17",
+        reviewed: true,
+        serviceKind: "assurance",
+        responsible: "Wilson Castro",
+        crop: "Rosa",
+        zone: "Antioquia",
+        answers: mkAnswers({
+          "1.1": "SI", "1.2": "SI", "2.1": "NO", "2.2": "SI", "3.1": "NO",
+          "4.1": "SI", "4.2": "SI", "5.1": "NO", "5.2": "SI", "5.3": "NO",
+        }),
+      },
+      {
+        farm: FARM,
+        date: "2026-03-11",
+        reviewed: true,
+        serviceKind: "assurance",
+        responsible: "Ana Ruiz",
+        crop: "Rosa",
+        zone: "Antioquia",
+        answers: mkAnswers({
+          "1.1": "SI", "1.2": "SI", "2.1": "SI", "2.2": "SI", "3.1": "SI",
+          "4.1": "SI", "4.2": "SI", "5.1": "NO", "5.2": "SI", "5.3": "SI",
+        }),
+      },
+      {
+        farm: FARM,
+        date: "2026-06-25",
+        reviewed: true,
+        serviceKind: "assurance",
+        responsible: "Luis Pérez",
+        crop: "Rosa",
+        zone: "Antioquia",
+        answers: mkAnswers({
+          "1.1": "SI", "1.2": "SI", "2.1": "SI", "2.2": "SI", "3.1": "NO",
+          "4.1": "SI", "4.2": "NO", "5.1": "NO", "5.2": "SI", "5.3": "SI",
+        }),
+      },
+    ];
+
+    var originalFetch = window.fetch.bind(window);
+    window.fetch = async function (url, opts) {
+      if (String(url).includes("/api/visits")) {
+        return { ok: true, json: async function () { return visits; } };
+      }
+      return originalFetch(url, opts);
+    };
+  </script>
+  <script src="/enhance/care360-metrics.js"></script>
+</body>
+</html>
