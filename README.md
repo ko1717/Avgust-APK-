@@ -14,7 +14,7 @@ Este programa fue creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| `CARE-360-1.4.35-sin-marca-Android.apk` | **Sin marca Avgust.** Briefing de Inicio, calidad de visita, filtros en la lista y el tablero de métricas. |
+| `CARE-360-1.5.0-sin-marca-Android.apk` | **Sin marca Avgust, edición profesional.** Identidad CARE 360 en verde agro, buscadores en listas, espejo de guardado, informe con membrete, modo sol y accesibilidad reforzada. Incluye la capa operativa 1.4.35 (briefing, calidad de visita, filtros). |
 | `AVGUST-CARE-360-1.4.2-Android.apk` | Versión con marca Avgust (la de campo). |
 | `enhance/src/` | Código de la capa de mejoras (CSS y JavaScript). |
 | `tools/` | Guiones de compilación, vista previa, paquete base y firma. |
@@ -28,17 +28,38 @@ riesgo de romper ninguna función existente.
 
 ---
 
-## Versión 1.4.35 sin marca Avgust
+## Versión 1.5.0 sin marca Avgust — edición profesional de campo
 
-Capa operativa de campo para el técnico que trabaja en la finca:
+Incluye la capa operativa 1.4.35 y sube el nivel profesional sin tocar el código compilado (capas aditivas):
+
+**Capa operativa (1.4.35):**
 
 - **Inicio:** briefing del día con borradores, compromisos vencidos, agenda y estado del respaldo.
 - **Visita:** panel de calidad con avance, pendientes y un botón para ir al siguiente criterio incompleto.
 - **Visitas guardadas:** búsqueda y filtros Todas / Borradores / Revisadas, con indicador de estado.
 
-**[CARE-360-1.4.35-sin-marca-Android.apk](./CARE-360-1.4.35-sin-marca-Android.apk)**
+**Capa profesional (1.5.0):**
 
-Se instala encima de la 1.4.2 a la 1.4.34 (misma firma).
+- **Identidad CARE 360 profesional:** lockup con escudo hoja en la cabecera,
+  píldora «MIPE · Campo», distintivo de versión Pro, favicon e icono en verde
+  agro (`#14532d`) y tema verde en manifiesto y barra del sistema.
+- **Productividad en campo:** buscador rápido con contador en las listas
+  (fincas, visitas, informes, solicitudes, seguimiento, consulta), resaltado de
+  campos obligatorios vacíos y píldora flotante de guardado («● Cambios sin
+  guardar» / «✓ Guardado HH:MM»).
+- **Informe técnico con membrete:** encabezado «CARE 360 · Informe técnico
+  MIPE» en pantalla y membrete + pie impresos, tablas rayadas con encabezado
+  repetido, fotos y secciones sin cortes de página y márgenes A4.
+- **Accesibilidad de exteriores:** modo sol ☀ de alto contraste (persistente),
+  foco visible reforzado, objetivos táctiles de 44 px y respeto por «reducir
+  movimiento». Estado de conexión siempre visible («En línea» / «Sin
+  conexión»).
+- Todo defensivo: si una pantalla cambia, la capa simplemente no aplica ese
+  pulido en lugar de romper la aplicación (`window.Care360Pro`).
+
+**[CARE-360-1.5.0-sin-marca-Android.apk](./CARE-360-1.5.0-sin-marca-Android.apk)**
+
+Se instala encima de la 1.4.2 a la 1.4.34 (misma firma, código 48).
 
 ## Versión 1.4.13 sin marca Avgust
 
@@ -186,9 +207,11 @@ Parámetros opcionales: `tools/build-apk.sh <apk-base> <version-name> <version-c
 Para generar la APK **sin marca Avgust**:
 
 ```bash
-  C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
-  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.4.35 47
+C360_DEBRAND=1 ANDROID_BUILD_TOOLS=/ruta/a/build-tools/34.0.0 \
+  tools/build-apk.sh tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk 1.5.0 48
 ```
+
+Sin argumentos, la edición sin marca ya sale como 1.5.0 (código 48).
 
 El guion extrae del paquete base sólo lo que va a cambiar, añade la capa de
 mejoras, ajusta `versionName` y `versionCode` dentro del manifiesto binario,

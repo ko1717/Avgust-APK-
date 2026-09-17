@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node e2e.mjs",
     "test:debrand": "node debrand.mjs",
-    "test:ops": "node ops.mjs"
+    "test:ops": "node ops.mjs",
+    "test:pro": "node pro.mjs"
   },
   "devDependencies": {
     "puppeteer": "^23.0.0"

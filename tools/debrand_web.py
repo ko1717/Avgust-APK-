@@ -41,8 +41,12 @@ PAIRS = [
 EMPTY_LOGO = """<svg xmlns="http://www.w3.org/2000/svg" width="1303" height="347" viewBox="0 0 1303 347"></svg>
 """
 
-NEUTRAL_FAVICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1c2b32"/></svg>
+NEUTRAL_FAVICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14532d"/><path d="M32 10c-9 6-14 11-14 19a14 14 0 0 0 28 0c0-8-5-13-14-19z" fill="#7cb342"/><path d="M32 14v30M32 30l-8-8M32 26l8-8" stroke="#14532d" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M24 44l5 5 11-12" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
 """
+
+# Verde agro profesional de la edición sin marca.
+PRO_THEME = "#14532d"
+LEGACY_THEME = "#007fa3"
 
 
 def scrub_text(source: str) -> str:
@@ -115,6 +119,8 @@ def patch_tree(root: Path) -> list[str]:
             seen.add(path)
             original = path.read_text(encoding="utf-8")
             updated = scrub_text(original)
+            if LEGACY_THEME in updated:
+                updated = updated.replace(LEGACY_THEME, PRO_THEME)
             if updated != original:
                 path.write_text(updated, encoding="utf-8")
                 changed.append(str(path))

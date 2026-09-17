@@ -12,7 +12,8 @@ modifica ni una línea del código original.
 | `care360-presentation.css` | Estilos de la presentación de bienvenida. |
 | `care360-presentation.js` | Contenido y comportamiento de la presentación, el botón **Guía** de la barra superior y la API `window.Care360Intro`. |
 | `care360-experience.js` | Botón físico de atrás, teclado en pantalla, aviso de cambios sin guardar, estado de conexión, recuperación ante errores y medidas de las barras fijas. |
-| `care360-ops.js` | Briefing de Inicio, panel de calidad de la visita y filtros de la lista de visitas. |
+| `care360-ops.js` | Capa operativa 1.4.35: briefing de Inicio, panel de calidad de la visita y filtros de la lista de visitas. API `window.Care360Ops`. |
+| `care360-pro.css` / `care360-pro.js` | Edición profesional 1.5.0: identidad CARE 360 sin marca (verde agro, favicon hoja), píldora de conexión, espejo de guardado, buscadores en listas, resaltado de obligatorios, encabezado y membrete de informe impreso, modo sol de alto contraste y botón de volver arriba. API `window.Care360Pro`. |
 | `care360-debrand.css` / `care360-debrand.js` | Solo en la APK sin marca: ocultan logos y sustituyen el nombre Avgust en pantalla. |
 
 ## Variables publicadas en tiempo de ejecución
@@ -35,6 +36,8 @@ window.Care360Intro.isOpen();
 window.Care360Experience.toast(mensaje, tono, duracion);
 window.Care360Ops.refresh();        // recalcula briefing, calidad y filtros
 window.Care360Ops.auditVisit();     // auditoría de la visita abierta
+window.Care360Pro.pass();           // reaplica la capa profesional (marca, filtros, informe)
+window.Care360Pro.isDebrand();      // true en la edición sin marca
 ```
 
 ## Al editar

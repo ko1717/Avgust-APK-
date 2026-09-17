@@ -34,6 +34,7 @@ head = (
     '<link rel="icon" href="/favicon.svg">'
     '<link rel="stylesheet" href="/enhance/care360-enhance.css">'
     '<link rel="stylesheet" href="/enhance/care360-presentation.css">'
+    '<link rel="stylesheet" href="/enhance/care360-pro.css">'
 )
 body = (
     '<script defer src="/enhance/colombia-geo.js"></script>'
@@ -41,6 +42,7 @@ body = (
     '<script defer src="/enhance/care360-ops.js"></script>'
     '<script defer src="/enhance/care360-import.js"></script>'
     '<script defer src="/enhance/care360-metrics.js"></script>'
+    '<script defer src="/enhance/care360-pro.js"></script>'
     '<script defer src="/enhance/care360-presentation.js"></script>'
 )
 if debrand:

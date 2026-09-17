@@ -18,8 +18,8 @@ if [[ "$BASE_APK" != /* ]]; then
 fi
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.4.35}"
-  VERSION_CODE="${3:-47}"
+  VERSION_NAME="${2:-1.5.0}"
+  VERSION_CODE="${3:-48}"
 else
   VERSION_NAME="${2:-1.4.2}"
   VERSION_CODE="${3:-14}"
@@ -99,7 +99,8 @@ head = (
     '<link rel="icon" href="/favicon.svg">'
     '<link rel="manifest" href="/manifest.webmanifest">'
     '<link rel="stylesheet" href="/enhance/care360-enhance.css?v=%s">'
-    '<link rel="stylesheet" href="/enhance/care360-presentation.css?v=%s">' % (version, version)
+    '<link rel="stylesheet" href="/enhance/care360-presentation.css?v=%s">'
+    '<link rel="stylesheet" href="/enhance/care360-pro.css?v=%s">' % (version, version, version)
 )
 body = (
     '<script defer src="/enhance/colombia-geo.js?v=%s"></script>'
@@ -107,7 +108,8 @@ body = (
     '<script defer src="/enhance/care360-ops.js?v=%s"></script>'
     '<script defer src="/enhance/care360-import.js?v=%s"></script>'
     '<script defer src="/enhance/care360-metrics.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version, version, version, version, version)
+    '<script defer src="/enhance/care360-pro.js?v=%s"></script>'
+    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version, version, version, version, version, version)
 )
 if __import__("os").environ.get("C360_DEBRAND") == "1":
     head += '<link rel="stylesheet" href="/enhance/care360-debrand.css?v=%s">' % version

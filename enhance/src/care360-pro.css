@@ -1,0 +1,525 @@
+/*
+ * CARE 360 — capa profesional 1.5.0 (edición sin marca).
+ *
+ * Se carga después de care360-enhance.css, por lo que sus reglas ganan por
+ * cascada ante igual especificidad. Todo es aditivo: no modifica el código
+ * compilado de la aplicación, solo pule identidad, legibilidad en campo,
+ * productividad de listas, informe impreso y accesibilidad.
+ *
+ * El tema verde agro solo aplica cuando el documento lleva
+ * `html.c360-debrand` (lo pone care360-pro.js al detectar la edición sin
+ * marca). En la edición con marca se conservan los azules originales.
+ */
+
+/* ------------------------------------------------------------------ *
+ * 1. Tokens profesionales
+ * ------------------------------------------------------------------ */
+
+:root {
+  --c360-pro-green: #1e7a3c;
+  --c360-pro-green-strong: #14532d;
+  --c360-pro-green-soft: #e7f3ea;
+  --c360-pro-lime: #7cb342;
+  --c360-pro-amber: #b77900;
+  --c360-pro-ver-fg: #5b6b70;
+  --c360-pro-pill-bg: #eef3f5;
+  --c360-pro-save-ok: #146b45;
+  --c360-pro-save-warn: #8a5a00;
+}
+
+html.c360-debrand {
+  --c360-brand: var(--c360-pro-green);
+  --c360-brand-strong: var(--c360-pro-green-strong);
+  --c360-accent: var(--c360-pro-lime);
+  --c360-tone-brand-bg: var(--c360-pro-green-soft);
+  --c360-tone-info-card: #edf5ee;
+}
+
+html.dark.c360-debrand {
+  --c360-tone-brand-bg: rgb(124 179 66 / 14%);
+  --c360-tone-info-card: #14261b;
+}
+
+/* ------------------------------------------------------------------ *
+ * 2. Cabecera: lockup CARE 360 + píldoras
+ * ------------------------------------------------------------------ */
+
+.brand > span {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.brand[data-c360-pro="1"] > span:not(.c360-pro-mark),
+.brand[data-c360-pro="1"] > small {
+  display: none !important;
+}
+
+.c360-pro-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.c360-pro-mark svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(20 83 45 / 25%);
+}
+
+.c360-pro-name {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.03em;
+  color: var(--c360-ink);
+  white-space: nowrap;
+}
+
+.c360-pro-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--c360-tone-brand-bg);
+  color: var(--c360-brand-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+
+html.dark .c360-pro-tag {
+  color: #a9d18e;
+}
+
+.c360-pro-ver {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c360-pro-ver-fg);
+  white-space: nowrap;
+}
+
+html.dark .c360-pro-ver {
+  color: #9bb0ac;
+}
+
+.c360-pro-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--c360-pro-pill-bg);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--c360-ink-soft);
+  white-space: nowrap;
+}
+
+html.dark .c360-pro-conn {
+  background: #1b3034;
+}
+
+.c360-pro-conn i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c360-ok);
+  box-shadow: 0 0 0 3px rgb(47 143 91 / 18%);
+}
+
+.c360-pro-conn[data-state="offline"] i {
+  background: var(--c360-danger);
+  box-shadow: 0 0 0 3px rgb(192 57 43 / 16%);
+}
+
+.c360-pro-sunbtn {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--c360-line);
+  border-radius: 12px;
+  background: var(--c360-surface);
+  color: var(--c360-ink-soft);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.c360-pro-sunbtn[aria-pressed="true"] {
+  border-color: var(--c360-brand);
+  color: var(--c360-brand-strong);
+  background: var(--c360-tone-brand-bg);
+}
+
+@media (max-width: 700px) {
+  .c360-pro-ver,
+  .c360-pro-conn span {
+    display: none;
+  }
+  .c360-pro-conn {
+    margin-left: 6px;
+    padding: 3px 8px;
+  }
+  .c360-pro-tag {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. Buscador rápido de listas + contadores
+ * ------------------------------------------------------------------ */
+
+.c360-pro-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+
+.c360-pro-filter {
+  flex: 1 1 auto;
+  min-height: 46px;
+  padding: 10px 14px 10px 40px;
+  border: 1.5px solid var(--c360-line);
+  border-radius: 14px;
+  background:
+    var(--c360-surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2358696d' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")
+    no-repeat 13px center;
+  font-size: 15px;
+  color: var(--c360-ink);
+}
+
+.c360-pro-filter::placeholder {
+  color: var(--c360-ink-soft);
+}
+
+.c360-pro-filter:focus {
+  outline: 3px solid var(--c360-focus);
+  outline-offset: 1px;
+  border-color: var(--c360-brand);
+}
+
+.c360-pro-count {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--c360-ink-soft);
+  background: var(--c360-muted);
+  border-radius: 999px;
+  padding: 5px 11px;
+  white-space: nowrap;
+}
+
+.c360-pro-empty {
+  margin: 10px 0;
+  padding: 16px;
+  border: 1.5px dashed var(--c360-line);
+  border-radius: 14px;
+  background: var(--c360-surface-2);
+  color: var(--c360-ink-soft);
+  font-size: 14px;
+  text-align: center;
+}
+
+.c360-pro-hidden {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. Píldora de guardado (espejo de .saved-status)
+ * ------------------------------------------------------------------ */
+
+.c360-pro-save {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--c360-save-h, 0px) + 18px + var(--c360-safe-b));
+  z-index: 70;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  max-width: min(78vw, 340px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--c360-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--c360-line);
+  box-shadow: var(--c360-shadow-1);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c360-ink-soft);
+}
+
+.c360-pro-save[data-visible="1"] {
+  display: inline-flex;
+}
+
+.c360-pro-save[data-tone="warn"] {
+  border-color: #e8c96a;
+  background: #fff8e3;
+  color: var(--c360-pro-save-warn);
+}
+
+html.dark .c360-pro-save[data-tone="warn"] {
+  background: #3a2f14;
+  color: #f3e2a6;
+}
+
+.c360-pro-save[data-tone="ok"] {
+  border-color: #9fd8b6;
+  color: var(--c360-pro-save-ok);
+}
+
+html.dark .c360-pro-save[data-tone="ok"] {
+  border-color: #2c5a41;
+}
+
+/* ------------------------------------------------------------------ *
+ * 5. Campos obligatorios vacíos
+ * ------------------------------------------------------------------ */
+
+.c360-pro-missing {
+  border-color: var(--c360-danger) !important;
+  box-shadow: inset 0 0 0 1px var(--c360-danger);
+  background: #fffafa;
+}
+
+html.dark .c360-pro-missing {
+  background: #2b1a17;
+}
+
+.c360-pro-req {
+  color: var(--c360-danger);
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------------ *
+ * 6. Encabezado del informe en pantalla
+ * ------------------------------------------------------------------ */
+
+.c360-pro-report-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border-radius: var(--c360-radius);
+  background: linear-gradient(135deg, var(--c360-brand-strong), var(--c360-brand));
+  color: #fff;
+  box-shadow: var(--c360-shadow-1);
+}
+
+.c360-pro-report-head svg {
+  flex: none;
+  width: 34px;
+  height: 34px;
+}
+
+.c360-pro-report-head b {
+  display: block;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+.c360-pro-report-head small {
+  display: block;
+  font-size: 12px;
+  opacity: 0.88;
+}
+
+html.dark .c360-pro-report-head {
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ *
+ * 7. Modo sol: contraste máximo para trabajo en exteriores
+ * ------------------------------------------------------------------ */
+
+html.c360-sun {
+  --c360-ink: #0c1a12;
+  --c360-ink-soft: #33463a;
+  --c360-line: #9db3a5;
+  --c360-line-soft: #b9cabd;
+  --c360-surface: #ffffff;
+  --c360-surface-2: #f4f8f4;
+  --c360-canvas: #eef4ee;
+  --c360-muted: #e4ede4;
+  --c360-input: #ffffff;
+  --c360-glass: #ffffff;
+  --c360-glass-soft: #ffffff;
+  --c360-chip: #ffffff;
+}
+
+html.c360-sun body {
+  font-weight: 500;
+}
+
+html.c360-sun .c360-pro-filter,
+html.c360-sun input,
+html.c360-sun select,
+html.c360-sun textarea {
+  border-width: 2px;
+}
+
+html.c360-sun .module-nav [data-slot="tabs-trigger"] {
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------------ *
+ * 8. Informe impreso / PDF profesional
+ * ------------------------------------------------------------------ */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 13mm 16mm;
+  }
+
+  .topbar,
+  .module-nav,
+  .c360-net-badge,
+  .c360-pro-save,
+  .c360-pro-filterbar,
+  .c360-to-top,
+  .c360-pro-sunbtn,
+  .c360-pro-conn,
+  button,
+  .actions {
+    display: none !important;
+  }
+
+  .workspace {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Membrete impreso generado por CSS aunque el JS no haya inyectado nada */
+  .workspace::before {
+    content: "CARE 360 · Informe técnico MIPE  —  Acompañamiento en campo";
+    display: block;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2.5px solid #14532d;
+    font-size: 11pt;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #14532d;
+  }
+
+  .workspace::after {
+    content: "CARE 360 · Documento generado en campo. Verifica la versión publicada antes de divulgarlo.";
+    display: block;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #9db3a5;
+    font-size: 8pt;
+    color: #5b6b70;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 9.5pt;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+
+  th {
+    background: #e7f3ea !important;
+    color: #14532d !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  th,
+  td {
+    border: 0.7pt solid #9db3a5;
+    padding: 5pt 7pt;
+    vertical-align: top;
+  }
+
+  tbody tr:nth-child(even) td {
+    background: #f4f8f4 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .photo-card,
+  figure,
+  .c360-nocumple-block,
+  .c360-report-chapter-measures,
+  section,
+  article {
+    break-inside: avoid;
+  }
+
+  img {
+    max-width: 100% !important;
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    color: #14532d;
+  }
+
+  a {
+    color: #14532d;
+    text-decoration: none;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 9. Accesibilidad y objetivos táctiles
+ * ------------------------------------------------------------------ */
+
+.c360-pro-filter,
+.c360-pro-sunbtn,
+.c360-pro-save {
+  min-height: 44px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--c360-focus) !important;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c360-pro-save,
+  .c360-pro-report-head,
+  .c360-pro-conn {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 10. Métricas: estados vacíos y ficha imprimible
+ * ------------------------------------------------------------------ */
+
+#c360-metrics-board .c360-pro-empty {
+  margin-top: 4px;
+}
+
+@media print {
+  #c360-metrics-board {
+    break-inside: avoid;
+  }
+}
