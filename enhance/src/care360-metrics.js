@@ -513,18 +513,77 @@
     return html;
   }
 
-  function downloadText(filename, text, mime) {
-    var blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+  function fileBridge() {
+    var b = globalThis.AvgustFileBridge;
+    return b && typeof b.begin === "function" ? b : null;
+  }
+
+  function bytesToBase64(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i += 8192) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    }
+    return btoa(out);
+  }
+
+  async function saveBlobNative(blob, filename) {
+    var bridge = fileBridge();
+    if (!bridge) return false;
+    var buf = new Uint8Array(await blob.arrayBuffer());
+    var id = bridge.begin(filename, blob.type || "application/octet-stream");
+    if (!id) throw new Error("El teléfono no pudo preparar el archivo. Libera espacio e inténtalo de nuevo.");
+    var chunk = 180 * 1024;
+    for (var i = 0; i < buf.length; i += chunk) {
+      if (!bridge.append(id, bytesToBase64(buf.subarray(i, i + chunk)))) {
+        try {
+          bridge.abort(id);
+        } catch (e) {}
+        throw new Error("No se pudo escribir el archivo en el teléfono.");
+      }
+    }
+    if (!bridge.finish(id)) {
+      throw new Error("No se pudo abrir el menú para guardar o compartir el archivo.");
+    }
+    return true;
+  }
+
+  async function shareBlobIfPossible(blob, filename) {
+    if (!navigator.share || !navigator.canShare) return false;
+    try {
+      var file = new File([blob], filename, { type: blob.type || "application/octet-stream" });
+      if (!navigator.canShare({ files: [file] })) return false;
+      await navigator.share({ files: [file], title: filename });
+      return true;
+    } catch (err) {
+      if (err && (err.name === "AbortError" || /abort/i.test(String(err)))) return true;
+      return false;
+    }
+  }
+
+  function downloadBlobAnchor(blob, filename) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    a.rel = "noopener";
+    a.style.display = "none";
     document.body.appendChild(a);
     a.click();
     window.setTimeout(function () {
       URL.revokeObjectURL(url);
       a.remove();
-    }, 800);
+    }, 2000);
+  }
+
+  async function saveOrDownloadBlob(blob, filename) {
+    if (await saveBlobNative(blob, filename)) {
+      return { via: "bridge" };
+    }
+    if (await shareBlobIfPossible(blob, filename)) {
+      return { via: "share" };
+    }
+    downloadBlobAnchor(blob, filename);
+    return { via: "download" };
   }
 
   function csvEscape(v) {
@@ -533,134 +592,148 @@
     return s;
   }
 
-  function exportBoardCsv() {
-    var data = state._viewData;
-    if (!data) {
-      setNotice("No hay datos para exportar.", true);
-      render();
-      return;
-    }
-    var lines = [];
-    lines.push("CARE 360 · Exportación de métricas");
-    lines.push(
-      "Modo," +
-        csvEscape(state.mode === "farm" ? "Una finca" : "Todas las fincas") +
-        (state.mode === "farm" ? "," + csvEscape(state.farm) : "")
-    );
-    lines.push(
-      "Periodo," +
-        csvEscape(formatDateEs(state.dateFrom) || "Todo") +
-        "," +
-        csvEscape(formatDateEs(state.dateTo) || "Todo")
-    );
-    if (state._compare) {
-      lines.push(
-        "Periodo anterior," +
-          csvEscape(formatDateEs(state._compare.prevWin.from)) +
-          "," +
-          csvEscape(formatDateEs(state._compare.prevWin.to))
-      );
-      lines.push(
-        "Indicador actual,Indicador anterior,Delta pts,Hallazgos actual,Hallazgos anterior,Visitas actual,Visitas anterior"
-      );
-      lines.push(
-        [
-          state._compare.score,
-          state._compare.prevScore,
-          state._compare.scoreDelta,
-          state._compare.findings,
-          state._compare.prevFindings,
-          state._compare.visits,
-          state._compare.prevVisits,
-        ]
-          .map(csvEscape)
-          .join(",")
-      );
-    }
-    lines.push("");
-    if (data.farms && data.farms.length) {
-      lines.push("Resumen por finca");
-      lines.push("Finca,Visitas,Indicador %,Hallazgos,Estado,Primera visita,Última visita");
-      data.farms.forEach(function (f) {
-        lines.push(
-          [
-            f.name,
-            f.visits,
-            f.score,
-            f.findings,
-            statusLabel(f.status),
-            formatDateEs(f.firstDate),
-            formatDateEs(f.lastDate),
-          ]
-            .map(csvEscape)
-            .join(",")
-        );
-      });
-      lines.push("");
-    }
-    if (data.timeline && data.timeline.length) {
-      lines.push("Evolución / visitas");
-      lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable,Finca");
-      data.timeline.forEach(function (r) {
-        lines.push(
-          [
-            formatDateEs(r.date) || r.label,
-            r.score,
-            r.findings,
-            statusLabel(r.status),
-            r.responsible || "",
-            r.farm || state.farm || "",
-          ]
-            .map(csvEscape)
-            .join(",")
-        );
-      });
-      lines.push("");
-    }
-    if (data.chapters && data.chapters.length) {
-      lines.push("Capítulos");
-      lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables");
-      data.chapters.forEach(function (c) {
-        lines.push([c.id, c.title, c.score, c.findings, c.applicable].map(csvEscape).join(","));
-      });
-      lines.push("");
-    }
-    if (data.items && data.items.length) {
-      lines.push("Hallazgos / criterios");
-      lines.push("Ítem,Capítulo,Hallazgos,Frecuencia %,Observación,Recomendación");
-      data.items.forEach(function (it) {
-        lines.push(
-          [
-            it.id,
-            it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
-            it.findings != null ? it.findings : 1,
-            it.rate != null ? it.rate : "",
-            it.observation || "",
-            it.recommendation || "",
-          ]
-            .map(csvEscape)
-            .join(",")
-        );
-      });
-    }
+  function exportStampName(ext) {
     var stamp = isoDate(new Date());
-    var name =
+    return (
       "CARE360-metricas-" +
       (state.mode === "farm" ? normFarm(state.farm).replace(/\s+/g, "-") + "-" : "todas-") +
       stamp +
-      ".csv";
-    downloadText(name, "\ufeff" + lines.join("\r\n"), "text/csv;charset=utf-8");
-    setNotice("Excel/CSV exportado: " + name, false);
-    render();
+      ext
+    );
   }
 
-  function exportBoardPrint() {
+  async function exportBoardCsv() {
     var data = state._viewData;
     if (!data) {
       setNotice("No hay datos para exportar.", true);
       render();
       return;
     }
+    try {
+      var lines = [];
+      lines.push("CARE 360 · Exportación de métricas");
+      lines.push(
+        "Modo," +
+          csvEscape(state.mode === "farm" ? "Una finca" : "Todas las fincas") +
+          (state.mode === "farm" ? "," + csvEscape(state.farm) : "")
+      );
+      lines.push(
+        "Periodo," +
+          csvEscape(formatDateEs(state.dateFrom) || "Todo") +
+          "," +
+          csvEscape(formatDateEs(state.dateTo) || "Todo")
+      );
+      var cmp = state._compare;
+      if (cmp && cmp.enabled && cmp.prevWin) {
+        lines.push(
+          "Periodo anterior," +
+            csvEscape(formatDateEs(cmp.prevWin.from)) +
+            "," +
+            csvEscape(formatDateEs(cmp.prevWin.to))
+        );
+        lines.push(
+          "Indicador actual,Indicador anterior,Delta pts,Hallazgos actual,Hallazgos anterior,Visitas actual,Visitas anterior"
+        );
+        lines.push(
+          [
+            cmp.score,
+            cmp.prevScore,
+            cmp.scoreDelta,
+            cmp.findings,
+            cmp.prevFindings,
+            cmp.visits,
+            cmp.prevVisits,
+          ]
+            .map(csvEscape)
+            .join(",")
+        );
+      }
+      lines.push("");
+      if (data.farms && data.farms.length) {
+        lines.push("Resumen por finca");
+        lines.push("Finca,Visitas,Indicador %,Hallazgos,Estado,Primera visita,Última visita");
+        data.farms.forEach(function (f) {
+          lines.push(
+            [
+              f.name,
+              f.visits,
+              f.score,
+              f.findings,
+              statusLabel(f.status),
+              formatDateEs(f.firstDate),
+              formatDateEs(f.lastDate),
+            ]
+              .map(csvEscape)
+              .join(",")
+          );
+        });
+        lines.push("");
+      }
+      if (data.timeline && data.timeline.length) {
+        lines.push("Evolución / visitas");
+        lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable,Finca");
+        data.timeline.forEach(function (r) {
+          lines.push(
+            [
+              formatDateEs(r.date) || r.label,
+              r.score,
+              r.findings,
+              statusLabel(r.status),
+              r.responsible || "",
+              r.farm || state.farm || "",
+            ]
+              .map(csvEscape)
+              .join(",")
+          );
+        });
+        lines.push("");
+      }
+      if (data.chapters && data.chapters.length) {
+        lines.push("Capítulos");
+        lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables");
+        data.chapters.forEach(function (c) {
+          lines.push([c.id, c.title, c.score, c.findings, c.applicable].map(csvEscape).join(","));
+        });
+        lines.push("");
+      }
+      if (data.items && data.items.length) {
+        lines.push("Hallazgos / criterios");
+        lines.push("Ítem,Capítulo,Hallazgos,Frecuencia %,Observación,Recomendación");
+        data.items.forEach(function (it) {
+          lines.push(
+            [
+              it.id,
+              it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
+              it.findings != null ? it.findings : 1,
+              it.rate != null ? it.rate : "",
+              it.observation || "",
+              it.recommendation || "",
+            ]
+              .map(csvEscape)
+              .join(",")
+          );
+        });
+      }
+      var name = exportStampName(".csv");
+      var blob = new Blob(["\ufeff" + lines.join("\r\n")], {
+        type: "text/csv;charset=utf-8",
+      });
+      var result = await saveOrDownloadBlob(blob, name);
+      if (result.via === "bridge") {
+        setNotice("Excel listo: usa Guardar / Compartir para " + name, false);
+      } else if (result.via === "share") {
+        setNotice("Excel compartido: " + name, false);
+      } else {
+        setNotice("Excel/CSV descargado: " + name, false);
+      }
+    } catch (err) {
+      setNotice(err && err.message ? err.message : "No se pudo exportar Excel.", true);
+    }
+    render();
+  }
+
+  function buildExportReportHtml() {
+    var data = state._viewData;
     var cmp = state._compare;
     var title =
       "CARE 360 · Métricas" +
@@ -673,7 +746,7 @@
       " → " +
       escapeHtml(formatDateEs(state.dateTo) || "Todo") +
       "</p>";
-    if (cmp && cmp.prevWin) {
+    if (cmp && cmp.enabled && cmp.prevWin) {
       body +=
         "<p class='meta'>Comparado con: " +
         escapeHtml(formatDateEs(cmp.prevWin.from)) +
@@ -701,6 +774,18 @@
         (cmp.visitsDelta > 0 ? "+" : "") +
         cmp.visitsDelta +
         ")</small></div>";
+      body += "</div>";
+    } else if (data) {
+      var score =
+        state.mode === "farm"
+          ? data.timeline && data.timeline.length
+            ? data.timeline[data.timeline.length - 1].score
+            : null
+          : data.score;
+      body += "<div class='kpis'>";
+      body += "<div><b>Indicador</b><br>" + (score == null ? "—" : score + "%") + "</div>";
+      body += "<div><b>Hallazgos</b><br>" + (data.findings || 0) + "</div>";
+      body += "<div><b>Visitas</b><br>" + (data.visits || 0) + "</div>";
       body += "</div>";
     }
     function table(headers, rows) {
@@ -779,8 +864,8 @@
       );
     }
     body += "<p class='meta'>Generado " + escapeHtml(formatDateEs(isoDate(new Date()))) + " · CARE 360</p>";
-    var html =
-      "<!doctype html><html lang='es'><head><meta charset='utf-8'><title>" +
+    return (
+      "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>" +
       escapeHtml(title) +
       "</title><style>" +
       "body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1c2b32;padding:24px;}" +
@@ -791,24 +876,122 @@
       "table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}" +
       "th,td{border-bottom:1px solid #dbe4e8;text-align:left;padding:8px 6px;vertical-align:top}" +
       "th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d}" +
-      "@media print{body{padding:0}}" +
+      "@media print{body{padding:12px}}" +
       "</style></head><body>" +
       body +
-      "<script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>" +
-      "</body></html>";
-    var w = window.open("", "_blank", "noopener,noreferrer,width=920,height=720");
-    if (!w) {
-      setNotice("Permite ventanas emergentes para exportar PDF/imprimir.", true);
+      "</body></html>"
+    );
+  }
+
+  function printHtmlDocument(html) {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(ok, reason) {
+        if (done) return;
+        done = true;
+        resolve({ ok: !!ok, reason: reason || "" });
+      }
+      window.setTimeout(function () {
+        finish(false, "timeout");
+      }, 1200);
+      try {
+        var iframe = document.createElement("iframe");
+        iframe.setAttribute("aria-hidden", "true");
+        iframe.style.cssText =
+          "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
+        document.body.appendChild(iframe);
+        var win = iframe.contentWindow;
+        var doc = win && win.document;
+        if (!doc) {
+          iframe.remove();
+          finish(false, "iframe");
+          return;
+        }
+        doc.open();
+        doc.write(html);
+        doc.close();
+        var printed = false;
+        function doPrint() {
+          if (printed) return;
+          printed = true;
+          finish(true, "iframe");
+          window.setTimeout(function () {
+            try {
+              win.focus();
+              win.print();
+            } catch (err) {}
+            window.setTimeout(function () {
+              try {
+                iframe.remove();
+              } catch (e) {}
+            }, 2000);
+          }, 60);
+        }
+        if (doc.readyState === "complete") {
+          window.setTimeout(doPrint, 120);
+        } else {
+          iframe.onload = function () {
+            window.setTimeout(doPrint, 120);
+          };
+          window.setTimeout(doPrint, 600);
+        }
+      } catch (err) {
+        finish(false, String(err && err.message ? err.message : err));
+      }
+    });
+  }
+
+  async function exportBoardPrint() {
+    var data = state._viewData;
+    if (!data) {
+      setNotice("No hay datos para exportar.", true);
       render();
       return;
     }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    setNotice("Informe listo para imprimir o guardar como PDF.", false);
+    try {
+      var html = buildExportReportHtml();
+      var name = exportStampName(".html");
+      var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+
+      if (fileBridge()) {
+        await saveOrDownloadBlob(blob, name);
+        await printHtmlDocument(html);
+        setNotice(
+          "Informe listo para Guardar / Compartir (" +
+            name +
+            "). En Imprimir elige Guardar como PDF.",
+          false
+        );
+      } else {
+        var printResult = await printHtmlDocument(html);
+        if (!printResult.ok) {
+          var w = window.open("", "_blank", "noopener,noreferrer,width=920,height=720");
+          if (w) {
+            w.document.open();
+            w.document.write(
+              html.replace(
+                "</body>",
+                "<script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script></body>"
+              )
+            );
+            w.document.close();
+            setNotice("Informe listo para imprimir o guardar como PDF.", false);
+          } else {
+            await saveOrDownloadBlob(blob, name);
+            setNotice(
+              "Descarga el informe (" + name + ") y ábrelo para imprimir / Guardar como PDF.",
+              false
+            );
+          }
+        } else {
+          setNotice("Usa el diálogo de impresión → Guardar como PDF.", false);
+        }
+      }
+    } catch (err) {
+      setNotice(err && err.message ? err.message : "No se pudo generar el PDF/informe.", true);
+    }
     render();
   }
-
 
   function formatDateEs(iso) {
     var s = String(iso || "").trim();
