@@ -1982,12 +1982,56 @@
         '»?\n\nSe eliminarán también sus visitas, informes y solicitudes vinculadas. Esta acción no se puede deshacer.';
       if (!confirmDelete(message)) return;
       button.disabled = true;
-      deleteByUrl("/api/farms/" + farm.id, "Finca")
+      apiJson("/api/farms/" + farm.id, { method: "DELETE" })
+        .then(function () {
+          return purgeOrphanVisitsForFarm(farm);
+        })
+        .then(function () {
+          invalidateDeleteCache();
+          try {
+            window.dispatchEvent(
+              new CustomEvent("care360:data-changed", {
+                detail: { type: "farm-deleted", farmId: farm.id, farm: farm.name },
+              })
+            );
+          } catch (err) {
+            /* sin CustomEvent */
+          }
+          toast("Finca eliminada.", "ok");
+          refreshAfterDelete();
+        })
         .catch(function (err) {
           button.disabled = false;
           toast((err && err.message) || "No se pudo borrar la finca.", "info", 3600);
         });
     });
+  }
+
+  function purgeOrphanVisitsForFarm(farm) {
+    var farmId = farm && farm.id;
+    var farmName = normalizeText(farm && farm.name);
+    if (!farmId && !farmName) return Promise.resolve();
+    return apiJson("/api/visits")
+      .then(function (list) {
+        var arr = Array.isArray(list) ? list : list && list.visits ? list.visits : [];
+        var jobs = arr
+          .filter(function (v) {
+            if (!v || !v.id) return false;
+            if (farmId && (v.farmId === farmId || v.farm_id === farmId)) return true;
+            return farmName && normalizeText(v.farm) === farmName;
+          })
+          .map(function (v) {
+            return fetch("/api/visits/" + encodeURIComponent(v.id), { method: "DELETE" }).catch(
+              function () {
+                return null;
+              }
+            );
+          });
+        return Promise.all(jobs);
+      })
+      .catch(function () {
+        return null;
+      });
   }
 
   function enhanceFarmDelete() {

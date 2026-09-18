@@ -44,7 +44,12 @@ DELETE_FARM_METHOD = (
     "let n=this.db.prepare(`SELECT * FROM farms WHERE id = ?`).get(t);"
     "if(!n)throw Error(`404:Finca no encontrada.`);"
     "return this.transaction(()=>{"
-    "let e=this.db.prepare(`SELECT id FROM visits WHERE farm_id = ?`).all(t);"
+    "let _fn=String(n.name||``).trim().toLowerCase();"
+    "let e=this.db.prepare(`SELECT id,farm_id,payload FROM visits`).all().filter(v=>{"
+    "if(v.farm_id===t)return!0;"
+    "try{let p=JSON.parse(String(v.payload||`{}`));"
+    "return p.farmId===t||String(p.farm||``).trim().toLowerCase()===_fn}catch{return!1}"
+    "}).map(v=>({id:v.id}));"
     "for(let n of e){"
     "let r=this.db.prepare(`SELECT id FROM report_versions WHERE visit_id = ?`).all(n.id);"
     "for(let e of r)this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(e.id);"
@@ -134,6 +139,8 @@ def already_has(name: str, source: str) -> bool:
         return "deleteVisit(" in source and "deleteReport(" in source and "deleteRequest(" in source
     if name == "borrar finca":
         return "deleteFarm(" in source
+    if name == "borrar finca por nombre de visita":
+        return "deleteFarm(" in source and "_fn=String(n.name" in source
     if name == "rutas DELETE de visitas informes y solicitudes":
         return "e.deleteVisit(" in source and "e.deleteReport(" in source and "e.deleteRequest(" in source
     if name == "ruta DELETE de fincas":
@@ -191,6 +198,21 @@ def patch_file(path: Path) -> list[str]:
                 1,
             )
             applied.append("ruta DELETE de fincas")
+
+    # Upgrade: borrar también visitas huérfanas que solo guardan el nombre de finca.
+    if not already_has("borrar finca por nombre de visita", source) and "deleteFarm(" in source:
+        old_select = "let e=this.db.prepare(`SELECT id FROM visits WHERE farm_id = ?`).all(t);"
+        new_select = (
+            "let _fn=String(n.name||``).trim().toLowerCase();"
+            "let e=this.db.prepare(`SELECT id,farm_id,payload FROM visits`).all().filter(v=>{"
+            "if(v.farm_id===t)return!0;"
+            "try{let p=JSON.parse(String(v.payload||`{}`));"
+            "return p.farmId===t||String(p.farm||``).trim().toLowerCase()===_fn}catch{return!1}"
+            "}).map(v=>({id:v.id}));"
+        )
+        if old_select in source:
+            source = source.replace(old_select, new_select, 1)
+            applied.append("borrar finca por nombre de visita")
 
     if applied:
         path.write_text(source, encoding="utf-8")

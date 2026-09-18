@@ -1125,17 +1125,23 @@
       if (tools) tools.remove();
       return;
     }
-    if (existing) return;
+    if (existing) {
+      wireImportUi(existing);
+      return;
+    }
     var host = findFarmsHost();
     if (!host) return;
-    var details = document.createElement("details");
-    details.id = "c360-farms-import";
-    details.className = "c360-farms-import no-print";
-    details.setAttribute("data-c360-farms-import", "1");
-    details.innerHTML =
-      "<summary>Importar finca e informes</summary>" +
+    var panel = document.createElement("section");
+    panel.id = "c360-farms-import";
+    panel.className = "c360-farms-import no-print";
+    panel.setAttribute("data-c360-farms-import", "1");
+    panel.setAttribute("aria-label", "Importar finca e informes");
+    panel.innerHTML =
       '<div class="c360-import-box">' +
-      '<p class="c360-import-lead">Sube Excel/CSV, Word o PDF. Se crea la finca si falta; el informe queda editable en Visitas con fotos, mediciones y plan de seguimiento.</p>' +
+      '<div class="c360-import-head">' +
+      "<strong>Importar finca e informes</strong>" +
+      "<p class=\"c360-import-lead\">Sube Excel/CSV, Word o PDF. Se crea la finca si falta; el informe queda editable en Visitas con fotos, mediciones y plan de seguimiento.</p>" +
+      "</div>" +
       '<label class="c360-import-file"><span>Elegir archivo</span>' +
       '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
       "</label>" +
@@ -1162,8 +1168,8 @@
         host.insertAdjacentElement("afterbegin", tools);
       }
     }
-    tools.appendChild(details);
-    wireImportUi(details);
+    tools.appendChild(panel);
+    wireImportUi(panel);
   }
 
   function enhanceImportPanel() {

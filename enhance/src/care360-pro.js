@@ -1,5 +1,5 @@
 /*
- * AVGUST CARE 360 — capa profesional 1.5.3.
+ * AVGUST CARE 360 — capa profesional 1.5.4.
  *
  * Comportamiento aditivo sobre la aplicación compilada: lockup de marca,
  * píldora de conexión, espejo de guardado, buscadores en listas, resaltado
@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var PRO_VERSION = "1.5.3";
+  var PRO_VERSION = "1.5.4";
   var SUN_KEY = "c360-sun";
 
   var BRAND_SVG =
@@ -348,16 +348,27 @@
 
   function reportHead() {
     try {
+      // Solo el preview real del informe de visita (no métricas ni paneles genéricos).
+      // En pantalla se oculta por CSS; sirve como membrete al imprimir.
       var anchors = qa(
-        ".report-panel, .report-preview, .consolidated-panel, [class*='report']"
+        ".report-preview, .visit-report, .informe-preview, [data-report-preview], .report-panel > .report-body, .report-panel > .preview"
       ).filter(function (el) {
-        return el.offsetParent !== null;
+        return el && el.offsetParent !== null;
       });
+      if (!anchors.length) {
+        var panel = q(".report-panel");
+        if (panel && panel.offsetParent !== null) {
+          var looks = /informe técnico|Descargar Word|Imprimir/i.test(
+            (panel.textContent || "").slice(0, 800)
+          );
+          if (looks) anchors = [panel];
+        }
+      }
       anchors.forEach(function (box) {
         if (q(":scope > .c360-pro-report-head", box)) return;
-        // Solo donde haya pinta de informe (tabla o título de informe).
-        var looks = /informe|reporte|hallazgos?/i.test(box.textContent.slice(0, 400));
-        if (!looks) return;
+        if (box.closest && box.closest(".c360-metrics-board, .metrics-panel, .consolidated-panel")) {
+          return;
+        }
         var head = document.createElement("div");
         head.className = "c360-pro-report-head";
         head.setAttribute("aria-hidden", "true");

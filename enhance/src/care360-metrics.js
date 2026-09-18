@@ -1998,6 +1998,17 @@
     render();
   }
 
+  function invalidateMetricsCache(detail) {
+    state.visits = null;
+    state._viewData = null;
+    state._compare = null;
+    state.focus = null;
+    if (detail && detail.farm && state.farm && normFarm(state.farm) === normFarm(detail.farm)) {
+      state.farm = "";
+    }
+    if (onMetricsTab()) loadVisits();
+  }
+
   function farmOptions(visits) {
     var map = {};
     visits.forEach(function (v) {
@@ -2031,7 +2042,12 @@
       document.documentElement.classList.remove("c360-metrics-lite");
       var existing = q("#" + ROOT_ID);
       if (existing) existing.remove();
+      // Al salir de Métricas se invalida la caché para no mostrar fincas/visitas ya borradas.
+      state.visits = null;
       state.boardMounted = false;
+      state._viewData = null;
+      state._compare = null;
+      state.focus = null;
       return;
     }
     document.documentElement.classList.add("c360-metrics-lite");
@@ -3358,6 +3374,9 @@
 
   function boot() {
     tick();
+    window.addEventListener("care360:data-changed", function (ev) {
+      invalidateMetricsCache((ev && ev.detail) || {});
+    });
     var pending = false;
     var lastOnMetrics = onMetricsTab();
     var obs = new MutationObserver(function () {

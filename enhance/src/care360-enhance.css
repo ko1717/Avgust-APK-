@@ -1398,15 +1398,15 @@ html.c360-metrics-lite .consolidated-panel .metric-table {
   display: none !important;
 }
 
-html.c360-metrics-lite .matrix-import {
-  display: block !important;
-  margin: 12px 0 20px;
+html.c360-metrics-lite .matrix-import,
+html.c360-metrics-lite details.matrix-import {
+  display: none !important;
 }
 
-/* Oculta el historial nativo incompleto; deja solo nuestro tablero e importación. */
-html.c360-metrics-lite .metrics-panel > :not(.c360-metrics-board):not(details.matrix-import):not(.matrix-import),
-html.c360-metrics-lite .consolidated-panel > :not(.c360-metrics-board):not(details.matrix-import):not(.matrix-import),
-html.c360-metrics-lite .metrics-area > :not(.c360-metrics-board):not(details.matrix-import):not(.matrix-import):not(.metrics-panel):not(.consolidated-panel) {
+/* Oculta el historial nativo incompleto; deja solo nuestro tablero. */
+html.c360-metrics-lite .metrics-panel > :not(.c360-metrics-board),
+html.c360-metrics-lite .consolidated-panel > :not(.c360-metrics-board),
+html.c360-metrics-lite .metrics-area > :not(.c360-metrics-board):not(.metrics-panel):not(.consolidated-panel) {
   display: none !important;
 }
 
@@ -3802,30 +3802,59 @@ html.c360-metrics-lite .metrics-actions {
 
 /* Importación y acciones en Fincas */
 .c360-farms-import {
-  margin: 12px 0 16px;
-  border: 1px solid var(--c360-line);
-  border-radius: 16px;
-  background: linear-gradient(180deg, var(--c360-muted-2), var(--c360-muted));
-  padding: 0 14px 14px;
+  margin: 0;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 
-.c360-farms-import > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 14px 2px 8px;
+.c360-farms-import .c360-import-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 16px;
+  background: var(--c360-surface, #fff);
+  box-shadow: 0 1px 2px rgb(28 43 50 / 4%);
+}
+
+.c360-import-head strong {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 15px;
   font-weight: 800;
-  font-size: 14px;
   color: var(--c360-brand, #007fa3);
 }
 
-.c360-farms-import > summary::-webkit-details-marker { display: none; }
+.c360-import-head .c360-import-lead,
+.c360-import-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--c360-ink-soft, #58696d);
+}
 
-.c360-farms-import[open] {
-  background: var(--c360-surface);
-  box-shadow: 0 1px 2px rgb(28 43 50 / 4%);
+.c360-farms-import .c360-import-file {
+  align-self: flex-start;
+}
+
+.c360-farms-import .c360-import-preview {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--c360-muted-2, #f3f7f8);
+  border: 1px solid var(--c360-line, #dbe4e8);
+}
+
+.c360-farms-import .c360-import-preview p {
+  margin: 0 0 8px;
+}
+
+.c360-farms-import .c360-import-preview .primary,
+.c360-farms-import .c360-import-go {
+  margin-top: 4px;
 }
 
 .c360-farm-actions {
@@ -4494,7 +4523,7 @@ html.dark .c360-hbar-hit:focus-visible {
 }
 
 html.dark .c360-metrics-import[open],
-html.dark .c360-farms-import[open] {
+html.dark .c360-farms-import .c360-import-box {
   background: var(--c360-surface);
 }
 

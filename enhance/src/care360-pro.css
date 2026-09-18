@@ -1,5 +1,5 @@
 /*
- * AVGUST CARE 360 — capa profesional 1.5.3.
+ * AVGUST CARE 360 — capa profesional 1.5.4.
  *
  * Se carga después de care360-enhance.css, por lo que sus reglas ganan por
  * cascada ante igual especificidad. Todo es aditivo: no modifica el código
@@ -361,15 +361,23 @@ html.dark .c360-pro-missing {
  * ------------------------------------------------------------------ */
 
 .c360-pro-report-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 12px;
-  padding: 14px 16px;
-  border-radius: var(--c360-radius);
-  background: linear-gradient(135deg, var(--c360-brand-strong), var(--c360-brand));
-  color: #fff;
-  box-shadow: var(--c360-shadow-1);
+  display: none;
+}
+
+@media print {
+  .c360-pro-report-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 14px 16px;
+    border-radius: var(--c360-radius);
+    background: linear-gradient(135deg, var(--c360-brand-strong), var(--c360-brand));
+    color: #fff;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
 
 .c360-pro-report-head svg,

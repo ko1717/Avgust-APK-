@@ -9,26 +9,24 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 
 ---
 
-## Entregables (v1.5.3)
+## Entregables (v1.5.4)
 
 | Ruta | Contenido |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.3-Android.apk`](./dist/AVGUST-CARE-360-1.5.3-Android.apk) | **Con marca Avgust.** Logo, teal + verde, guía de bienvenida y capa Pro 1.5.3. |
-| [`dist/CARE-360-1.5.3-sin-marca-Android.apk`](./dist/CARE-360-1.5.3-sin-marca-Android.apk) | Sin marca Avgust: identidad CARE 360 en verde agro. |
+| [`dist/AVGUST-CARE-360-1.5.4-Android.apk`](./dist/AVGUST-CARE-360-1.5.4-Android.apk) | **Con marca Avgust.** |
+| [`dist/CARE-360-1.5.4-sin-marca-Android.apk`](./dist/CARE-360-1.5.4-sin-marca-Android.apk) | Sin marca Avgust. |
 | `enhance/src/` | Capa de mejoras (CSS/JS) que se inyecta sobre el APK base. |
 | `tools/` | Compilación, firma, parches y demos de importación. |
 | `tests/` | Prueba e2e del contenido web. |
 
-Se instala encima de 1.4.x–1.5.2 firmadas con la misma clave (`tools/signing/`).
+Se instala encima de 1.4.x–1.5.3 firmadas con la misma clave (`tools/signing/`).
 
-### Destacados 1.5.3
+### Destacados 1.5.4
 
-- **Informe completo de métricas** desde Métricas → Informe (HTML/PDF) y Excel: KPIs, alertas, evolución, capítulos y todos los hallazgos visibles.
-- Lockup **AVGUST CARE 360** con logo oficial en cabecera e informe.
-- Presentación de bienvenida con marca reforzada (teal / lima Avgust).
-- Importación Word con fotos, mediciones y seguimiento completo.
-- Métricas, KPIs, Evolución, Excel/PDF vía puente nativo, borrar finca.
-- Capa Pro: buscadores, espejo de guardado, modo sol, conexión visible.
+- Al **borrar una finca** también se eliminan visitas huérfanas (por `farm_id` o nombre) y Métricas se refresca.
+- Panel **Importar finca e informes** rediseñado (sin acordeón raro).
+- Se quitó la **ventana azul** del membrete en pantalla del Informe (solo al imprimir).
+- Informe completo de métricas desde Métricas → Informe / Excel.
 
 ---
 
