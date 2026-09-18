@@ -1036,10 +1036,17 @@
 
   function chromeBottom() {
     var bottom = 8;
-    var topbar = q(".topbar");
-    var nav = q(".module-nav");
-    if (topbar) bottom = Math.max(bottom, topbar.getBoundingClientRect().bottom);
-    if (nav) bottom = Math.max(bottom, nav.getBoundingClientRect().bottom);
+    var nodes = [q(".topbar"), q(".module-nav"), q(".steps")];
+    var viewH = window.innerHeight || 0;
+    nodes.forEach(function (el) {
+      if (!el) return;
+      var pos = window.getComputedStyle(el).position;
+      if (pos !== "sticky" && pos !== "fixed") return;
+      var rect = el.getBoundingClientRect();
+      if (rect.bottom > bottom && rect.top < viewH * 0.55) {
+        bottom = rect.bottom;
+      }
+    });
     return Math.round(bottom);
   }
 

@@ -104,8 +104,8 @@
       var btn = document.createElement("button");
       btn.className = "c360-pro-sunbtn";
       btn.type = "button";
-      btn.title = "Modo sol: contraste alto para exteriores";
-      btn.setAttribute("aria-label", "Activar modo sol de alto contraste");
+      btn.title = "Modo lector: contraste alto para leer al sol";
+      btn.setAttribute("aria-label", "Activar modo lector de alto contraste");
       btn.setAttribute("aria-pressed", document.documentElement.classList.contains("c360-sun") ? "true" : "false");
       btn.textContent = "☀";
       btn.addEventListener("click", function () {

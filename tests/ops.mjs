@@ -63,14 +63,21 @@ await wait(1600);
 
 const hud1 = await p.evaluate(() => {
   const hud = document.querySelector("#c360-visit-hud");
+  const pos = hud ? getComputedStyle(hud).position : "";
   return {
     has: !!hud,
     text: hud ? hud.innerText.replace(/\s+/g, " ").trim() : "",
     next: !!document.querySelector('#c360-visit-hud [data-act="next"]'),
+    position: pos,
   };
 });
 check("El panel de calidad aparece en la visita", hud1.has, hud1.text.slice(0, 160));
 check("El panel ofrece ir al siguiente pendiente", hud1.next);
+check(
+  "El panel de calidad se queda en su sitio (no flota)",
+  hud1.position !== "sticky" && hud1.position !== "fixed",
+  hud1.position
+);
 
 await p.evaluate(() => {
   const btn = document.querySelector('#c360-visit-hud [data-act="next"]');

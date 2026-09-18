@@ -1141,9 +1141,19 @@ html.c360-keyboard .metrics-panel {
 
 html.c360-keyboard input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
 html.c360-keyboard textarea,
-html.c360-keyboard select {
+html.c360-keyboard select,
+html.c360-keyboard [data-slot="select-trigger"],
+html.c360-keyboard button[role="combobox"] {
   scroll-margin-top: calc(var(--c360-topbar-h) + var(--c360-nav-h) + 12px);
   scroll-margin-bottom: calc(var(--c360-keyboard-h, 0px) + 20px);
+}
+
+/* El panel de calidad y los pasos no deben tapar el campo al escribir. */
+html.c360-keyboard .c360-visit-hud,
+html.c360-keyboard .steps[data-slot="tabs-list"] {
+  position: static;
+  top: auto;
+  box-shadow: none;
 }
 
 html.c360-keyboard .query-search {
@@ -5135,9 +5145,9 @@ html.dark .theme-toggle {
  * ------------------------------------------------------------------ */
 
 .c360-visit-hud {
-  position: sticky;
-  top: calc(var(--c360-topbar-h) + var(--c360-nav-h) + 52px);
-  z-index: 38;
+  position: relative;
+  top: auto;
+  z-index: 2;
   margin: 8px 0 12px;
   padding: 10px 12px;
   border: 1px solid var(--c360-line);
@@ -5385,7 +5395,8 @@ html.dark .theme-toggle {
   }
 
   .c360-visit-hud {
-    top: calc(var(--c360-topbar-h) + var(--c360-nav-h) + 48px);
+    position: relative;
+    top: auto;
   }
 }
 
@@ -5413,5 +5424,132 @@ html.dark .c360-visit-filters button[data-active="1"] {
 html.dark .c360-brief-kicker,
 html.dark .c360-hud-kicker {
   color: var(--c360-accent);
+}
+
+/* ------------------------------------------------------------------ *
+ * 22. Modo oscuro: superficies nativas que quedaban en claro
+ * ------------------------------------------------------------------ */
+
+html.dark {
+  --background: var(--c360-canvas);
+  --foreground: var(--c360-ink);
+  --muted: var(--c360-muted);
+  --muted-foreground: var(--c360-ink-soft);
+  --border: var(--c360-line);
+  --secondary: var(--c360-muted);
+  --popover: var(--c360-surface);
+  --popover-foreground: var(--c360-ink);
+  --card: var(--c360-surface);
+  --card-foreground: var(--c360-ink);
+  --accent: var(--c360-muted);
+  --accent-foreground: var(--c360-ink);
+  --input: var(--c360-input);
+  --ring: var(--c360-accent);
+}
+
+html.dark body,
+html.dark .workspace {
+  color: var(--c360-ink);
+  background: var(--c360-canvas);
+}
+
+html.dark .chapter-choice,
+html.dark .chapter-choice.chosen,
+html.dark .answer-options label,
+html.dark [data-slot="select-trigger"],
+html.dark button[role="combobox"],
+html.dark [data-slot="select-content"],
+html.dark [data-slot="dropdown-menu-content"],
+html.dark [data-slot="popover-content"],
+html.dark [role="listbox"],
+html.dark [role="option"],
+html.dark [data-slot="select-item"] {
+  color: var(--c360-ink);
+  background: var(--c360-input);
+  border-color: var(--c360-line);
+}
+
+html.dark .chapter-choice.chosen {
+  background: var(--c360-tone-info-card);
+  border-color: var(--c360-accent);
+}
+
+html.dark .chapter-choice small,
+html.dark .form-footer span,
+html.dark .muted,
+html.dark .module-heading p,
+html.dark .page-heading p,
+html.dark .editor-heading p,
+html.dark .visit-row small {
+  color: var(--c360-ink-soft);
+}
+
+html.dark .form-footer,
+html.dark .visit-row,
+html.dark .question,
+html.dark .chapter-heading {
+  border-color: var(--c360-line);
+}
+
+html.dark .report-paper,
+html.dark .report-lifecycle,
+html.dark .report-version-list article,
+html.dark .farm-metric-evolution,
+html.dark .evolution-summary article,
+html.dark .summary,
+html.dark .metric-summary > div,
+html.dark .metric-year-grid > div,
+html.dark .followup-table,
+html.dark .followup-table td,
+html.dark .followup-table th {
+  color: var(--c360-ink);
+  background: var(--c360-surface);
+  border-color: var(--c360-line);
+}
+
+html.dark .report-paper h2,
+html.dark .report-paper h3,
+html.dark .report-lifecycle h2,
+html.dark .report-logo {
+  color: var(--c360-accent);
+}
+
+html.dark .report-paper th,
+html.dark .report-paper td,
+html.dark table th,
+html.dark table td {
+  color: var(--c360-ink);
+  border-color: var(--c360-line);
+  background: transparent;
+}
+
+html.dark .report-paper th,
+html.dark table thead th,
+html.dark .followup-table th {
+  background: var(--c360-muted);
+}
+
+html.dark .report-lifecycle > div > p,
+html.dark .report-version-list small,
+html.dark .report-paper figcaption {
+  color: var(--c360-ink-soft);
+}
+
+html.dark option {
+  color: var(--c360-ink);
+  background: var(--c360-surface);
+}
+
+html.dark .c360-hud-toggle,
+html.dark .c360-hud-chip b,
+html.dark .c360-pro-sunbtn {
+  color: var(--c360-ink);
+  background: var(--c360-surface);
+  border-color: var(--c360-line);
+}
+
+html.dark .c360-help-btn:hover,
+html.dark .c360-pro-sunbtn:hover {
+  background: var(--c360-muted);
 }
 

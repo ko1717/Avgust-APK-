@@ -442,37 +442,259 @@ html.c360-branded .c360-pro-mark.is-avgust {
 }
 
 /* ------------------------------------------------------------------ *
- * 7. Modo sol: contraste máximo para trabajo en exteriores
+ * 7. Modo lector / sol: contraste máximo para leer en exteriores
+ *     Gana sobre html.dark para que no queden bloques ilegibles.
  * ------------------------------------------------------------------ */
 
-html.c360-sun {
+html.c360-sun,
+html.dark.c360-sun {
   --c360-ink: #0c1a12;
-  --c360-ink-soft: #33463a;
-  --c360-line: #9db3a5;
-  --c360-line-soft: #b9cabd;
+  --c360-ink-soft: #24362c;
+  --c360-line: #6f8a7a;
+  --c360-line-soft: #9db3a5;
   --c360-surface: #ffffff;
   --c360-surface-2: #f4f8f4;
   --c360-canvas: #eef4ee;
   --c360-muted: #e4ede4;
+  --c360-muted-2: #f7fbf7;
   --c360-input: #ffffff;
   --c360-glass: #ffffff;
   --c360-glass-soft: #ffffff;
   --c360-chip: #ffffff;
+  --c360-legend: #e4ede4;
+  --c360-tone-ok-bg: #d8f3e3;
+  --c360-tone-ok-fg: #0d4a2c;
+  --c360-tone-warn-bg: #ffe9b8;
+  --c360-tone-warn-fg: #6a4300;
+  --c360-tone-crit-bg: #ffd4cc;
+  --c360-tone-crit-fg: #7a1d14;
+  --c360-tone-pend-bg: #e4ede4;
+  --c360-tone-pend-fg: #24362c;
+  --c360-tone-brand-bg: #d8efe4;
+  --c360-tone-info-card: #e7f3ea;
+  --c360-chart-grid: #c5d4c8;
+  --c360-chart-label: #0c1a12;
+  --c360-chart-xlabel: #24362c;
+  --c360-chart-val: #0c1a12;
+  --background: #ffffff;
+  --foreground: #0c1a12;
+  --muted: #e4ede4;
+  --muted-foreground: #24362c;
+  --border: #6f8a7a;
+  --secondary: #e7f3ea;
+  --popover: #ffffff;
+  --popover-foreground: #0c1a12;
+  --card: #ffffff;
+  --card-foreground: #0c1a12;
+  --accent: #e7f3ea;
+  --accent-foreground: #0c1a12;
+  --input: #ffffff;
+  --ring: #14532d;
+  color-scheme: light;
 }
 
-html.c360-sun body {
+html.c360-sun body,
+html.dark.c360-sun body,
+html.c360-sun .workspace,
+html.dark.c360-sun .workspace {
+  color: var(--c360-ink);
+  background: var(--c360-canvas);
   font-weight: 500;
 }
 
 html.c360-sun .c360-pro-filter,
 html.c360-sun input,
 html.c360-sun select,
-html.c360-sun textarea {
+html.c360-sun textarea,
+html.dark.c360-sun .c360-pro-filter,
+html.dark.c360-sun input,
+html.dark.c360-sun select,
+html.dark.c360-sun textarea {
   border-width: 2px;
+  color: var(--c360-ink);
+  background: var(--c360-input);
+  border-color: var(--c360-line);
 }
 
-html.c360-sun .module-nav [data-slot="tabs-trigger"] {
+html.c360-sun .module-nav [data-slot="tabs-trigger"],
+html.dark.c360-sun .module-nav [data-slot="tabs-trigger"] {
   font-weight: 800;
+  color: #1a3a28 !important;
+}
+
+html.c360-sun .module-nav [data-slot="tabs-trigger"][data-active],
+html.dark.c360-sun .module-nav [data-slot="tabs-trigger"][data-active] {
+  color: #fff !important;
+}
+
+html.c360-sun .topbar,
+html.c360-sun .editor,
+html.c360-sun .visits-list,
+html.c360-sun .followup-panel,
+html.c360-sun .metrics-panel,
+html.c360-sun .farm-query,
+html.c360-sun .farm-dossier,
+html.c360-sun .desktop-tools,
+html.c360-sun .summary,
+html.c360-sun .function-card,
+html.c360-sun .photo-card,
+html.c360-sun .action-editor,
+html.c360-sun .report-paper,
+html.c360-sun .mobile-save,
+html.c360-sun .c360-visit-hud,
+html.c360-sun .c360-home-brief,
+html.c360-sun .c360-brief-tile,
+html.c360-sun .chapter-choice,
+html.c360-sun .chapter-choice.chosen,
+html.c360-sun .answer-options label,
+html.c360-sun [data-slot="select-trigger"],
+html.c360-sun button[role="combobox"],
+html.c360-sun [data-slot="select-content"],
+html.c360-sun [role="listbox"],
+html.c360-sun [role="option"],
+html.c360-sun .report-lifecycle,
+html.c360-sun .report-version-list article,
+html.c360-sun .farm-metric-evolution,
+html.c360-sun .evolution-summary article,
+html.c360-sun .home-stats > div,
+html.dark.c360-sun .topbar,
+html.dark.c360-sun .editor,
+html.dark.c360-sun .visits-list,
+html.dark.c360-sun .followup-panel,
+html.dark.c360-sun .metrics-panel,
+html.dark.c360-sun .farm-query,
+html.dark.c360-sun .farm-dossier,
+html.dark.c360-sun .desktop-tools,
+html.dark.c360-sun .summary,
+html.dark.c360-sun .function-card,
+html.dark.c360-sun .photo-card,
+html.dark.c360-sun .action-editor,
+html.dark.c360-sun .report-paper,
+html.dark.c360-sun .mobile-save,
+html.dark.c360-sun .c360-visit-hud,
+html.dark.c360-sun .c360-home-brief,
+html.dark.c360-sun .c360-brief-tile,
+html.dark.c360-sun .chapter-choice,
+html.dark.c360-sun .chapter-choice.chosen,
+html.dark.c360-sun .answer-options label,
+html.dark.c360-sun [data-slot="select-trigger"],
+html.dark.c360-sun button[role="combobox"],
+html.dark.c360-sun [data-slot="select-content"],
+html.dark.c360-sun [role="listbox"],
+html.dark.c360-sun [role="option"],
+html.dark.c360-sun .report-lifecycle,
+html.dark.c360-sun .report-version-list article,
+html.dark.c360-sun .farm-metric-evolution,
+html.dark.c360-sun .evolution-summary article,
+html.dark.c360-sun .home-stats > div {
+  color: var(--c360-ink);
+  background: var(--c360-surface);
+  border-color: var(--c360-line);
+}
+
+html.c360-sun .chapter-choice.chosen,
+html.dark.c360-sun .chapter-choice.chosen {
+  background: var(--c360-tone-info-card);
+  border-color: var(--c360-brand);
+}
+
+html.c360-sun h1,
+html.c360-sun h2,
+html.c360-sun h3,
+html.c360-sun label,
+html.c360-sun .brand,
+html.c360-sun .visit-row,
+html.c360-sun .c360-hud-copy strong,
+html.c360-sun .c360-pro-name,
+html.dark.c360-sun h1,
+html.dark.c360-sun h2,
+html.dark.c360-sun h3,
+html.dark.c360-sun label,
+html.dark.c360-sun .brand,
+html.dark.c360-sun .visit-row,
+html.dark.c360-sun .c360-hud-copy strong,
+html.dark.c360-sun .c360-pro-name {
+  color: var(--c360-ink);
+}
+
+html.c360-sun .muted,
+html.c360-sun .chapter-choice small,
+html.c360-sun .form-footer span,
+html.c360-sun .editor-heading p,
+html.c360-sun .module-heading p,
+html.c360-sun .c360-hud-copy span,
+html.c360-sun .c360-hud-kicker,
+html.c360-sun .c360-pro-ver,
+html.c360-sun .c360-pro-tag,
+html.dark.c360-sun .muted,
+html.dark.c360-sun .chapter-choice small,
+html.dark.c360-sun .form-footer span,
+html.dark.c360-sun .editor-heading p,
+html.dark.c360-sun .module-heading p,
+html.dark.c360-sun .c360-hud-copy span,
+html.dark.c360-sun .c360-hud-kicker,
+html.dark.c360-sun .c360-pro-ver,
+html.dark.c360-sun .c360-pro-tag {
+  color: var(--c360-ink-soft);
+}
+
+html.c360-sun .report-paper h2,
+html.c360-sun .report-paper h3,
+html.c360-sun .report-lifecycle h2,
+html.dark.c360-sun .report-paper h2,
+html.dark.c360-sun .report-paper h3,
+html.dark.c360-sun .report-lifecycle h2 {
+  color: var(--c360-brand-strong);
+}
+
+html.c360-sun .report-paper th,
+html.c360-sun .report-paper td,
+html.c360-sun table th,
+html.c360-sun table td,
+html.dark.c360-sun .report-paper th,
+html.dark.c360-sun .report-paper td,
+html.dark.c360-sun table th,
+html.dark.c360-sun table td {
+  color: var(--c360-ink);
+  border-color: var(--c360-line);
+  background: #fff;
+}
+
+html.c360-sun .secondary,
+html.c360-sun .theme-toggle,
+html.c360-sun .c360-hud-toggle,
+html.c360-sun .c360-pro-sunbtn,
+html.c360-sun .c360-help-btn,
+html.dark.c360-sun .secondary,
+html.dark.c360-sun .theme-toggle,
+html.dark.c360-sun .c360-hud-toggle,
+html.dark.c360-sun .c360-pro-sunbtn,
+html.dark.c360-sun .c360-help-btn {
+  color: var(--c360-ink);
+  background: #fff;
+  border-color: var(--c360-line);
+}
+
+html.c360-sun .c360-pro-sunbtn[aria-pressed="true"],
+html.dark.c360-sun .c360-pro-sunbtn[aria-pressed="true"] {
+  border-color: var(--c360-brand);
+  color: var(--c360-brand-strong);
+  background: var(--c360-tone-brand-bg);
+}
+
+html.c360-sun .c360-intro-card,
+html.c360-sun .c360-intro-foot,
+html.dark.c360-sun .c360-intro-card,
+html.dark.c360-sun .c360-intro-foot {
+  background: #fff;
+  color: var(--c360-ink);
+}
+
+html.c360-sun .c360-list li,
+html.dark.c360-sun .c360-list li {
+  background: #f4f8f4;
+  border-color: var(--c360-line);
+  color: var(--c360-ink);
 }
 
 /* ------------------------------------------------------------------ *
