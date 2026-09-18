@@ -82,11 +82,16 @@
   /**
    * Misma finca solo por nombre (con alias «finca …»).
    * El farmId no puede meter visitas de otro nombre.
+   * Nunca usa responsable/técnico como nombre de finca.
    */
   function sameFarm(visit, farmName, farmId) {
     if (!visit) return false;
     var wantKeys = farmKeys(farmName);
+    if (!wantKeys.length) return false;
     var got = normFarm(visit.farm);
+    // Defensa: si el campo farm parece un responsable, no emparejar por nombre.
+    var resp = normFarm(visit.responsible || visit.technician || "");
+    if (got && resp && got === resp) return false;
     if (got) {
       for (var i = 0; i < wantKeys.length; i++) {
         if (got === wantKeys[i]) return true;
@@ -2297,16 +2302,20 @@
     var map = {};
     visits.forEach(function (v) {
       if (!v.farm) return;
-      var keys = farmKeys(v.farm);
+      var farmName = String(v.farm || "").trim();
+      var respName = String(v.responsible || v.technician || "").trim();
+      // No listar como finca un valor que es claramente el responsable.
+      if (respName && normFarm(farmName) === normFarm(respName)) return;
+      var keys = farmKeys(farmName);
       if (!keys.length) return;
       // Clave canónica: sin prefijo «finca», para no duplicar la misma finca.
       var key = keys.length > 1 && keys[0].indexOf("finca ") === 0 ? keys[1] : keys[0];
       if (!map[key]) {
-        map[key] = { name: v.farm, farmId: visitFarmId(v) };
+        map[key] = { name: farmName, farmId: visitFarmId(v) };
       } else {
         if (!map[key].farmId) map[key].farmId = visitFarmId(v);
         // Prefiere el nombre más largo / con «Finca» si ya existía el corto.
-        if (String(v.farm).length > String(map[key].name).length) map[key].name = v.farm;
+        if (farmName.length > String(map[key].name).length) map[key].name = farmName;
       }
     });
     return Object.keys(map)
@@ -2318,16 +2327,21 @@
 
   function pickFarmOption(farms, farmName, farmId) {
     if (!farms || !farms.length) return null;
+    var want = normFarm(farmName);
+    // Prioriza el nombre: el id no puede cambiar la finca elegida por el usuario.
+    if (want) {
+      for (var j = 0; j < farms.length; j++) {
+        if (normFarm(farms[j].name) === want) return farms[j];
+        var keys = farmKeys(farms[j].name);
+        for (var k = 0; k < keys.length; k++) {
+          if (keys[k] === want) return farms[j];
+        }
+      }
+    }
     var wantId = String(farmId || "").trim();
     if (wantId) {
       for (var i = 0; i < farms.length; i++) {
         if (farms[i].farmId && farms[i].farmId === wantId) return farms[i];
-      }
-    }
-    var want = normFarm(farmName);
-    if (want) {
-      for (var j = 0; j < farms.length; j++) {
-        if (normFarm(farms[j].name) === want) return farms[j];
       }
     }
     return null;
@@ -2841,15 +2855,26 @@
         .slice()
         .reverse()
         .forEach(function (row) {
-          // Defensa: no pintar visitas cuyo nombre real no coincida con la finca elegida.
-          if (row.farmActual && state.farm && !sameFarm({ farm: row.farmActual }, state.farm, "")) {
-            return;
+          // Defensa: en Por finca solo pintar visitas de la finca elegida.
+          var farmShown = state.farm || row.farm || "";
+          if (state.mode === "farm" && state.farm) {
+            var actual = row.farmActual || row.farm || "";
+            if (!actual || !sameFarm({ farm: actual }, state.farm, state.farmId)) {
+              return;
+            }
+            farmShown = state.farm;
           }
           html += '<article class="c360-visit-card tone-' + (row.status || "pending") + '">';
           html +=
             '<div class="c360-visit-card-top"><div><strong>' +
             escapeHtml(row.label || formatDateEs(row.date)) +
-            "</strong><p class=\"c360-visit-card-meta\">Responsable · " +
+            "</strong>";
+          if (farmShown) {
+            html +=
+              '<p class="c360-visit-card-farm">' + escapeHtml(farmShown) + "</p>";
+          }
+          html +=
+            '<p class="c360-visit-card-meta"><span class="c360-meta-lbl">Responsable técnico</span> · ' +
             escapeHtml(row.responsible || "Sin responsable") +
             "</p></div>";
           html +=
@@ -2872,7 +2897,7 @@
           html += "</div>";
           html +=
             '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
-            escapeHtml(state.farm || row.farm || "") +
+            escapeHtml(farmShown) +
             '" data-open-date="' +
             escapeHtml(row.date || "") +
             '"' +

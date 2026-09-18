@@ -18,11 +18,11 @@ if [[ "$BASE_APK" != /* ]]; then
 fi
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.5.9}"
-  VERSION_CODE="${3:-57}"
+  VERSION_NAME="${2:-1.5.10}"
+  VERSION_CODE="${3:-58}"
 else
-  VERSION_NAME="${2:-1.5.9}"
-  VERSION_CODE="${3:-57}"
+  VERSION_NAME="${2:-1.5.10}"
+  VERSION_CODE="${3:-58}"
 fi
 BASE_VERSION_NAME="1.1.0-rc.5"
 
@@ -251,13 +251,17 @@ print("resources.arsc sin comprimir (%d bytes)" % info.file_size)
 PY
 
 find "$OUT_DIR" -maxdepth 1 -name '*.idsig' -delete
+# En dist/ queda una sola APK: la que se acaba de generar (versión actual).
 if [[ "$DEBRAND" == "1" ]]; then
   find "$OUT_DIR" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' ! -name "CARE-360-$VERSION_NAME-sin-marca-Android.apk" -delete
-  # Retirar copias sueltas en la raíz del repo (solo dist/ es la fuente de verdad).
+  find "$OUT_DIR" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' -delete
   find "$ROOT" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' -delete
+  find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' -delete
 else
   find "$OUT_DIR" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
+  find "$OUT_DIR" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' -delete
   find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' -delete
+  find "$ROOT" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' -delete
 fi
 find "$ROOT" -maxdepth 1 -name '*.idsig' -delete
 
