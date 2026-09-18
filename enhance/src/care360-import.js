@@ -95,6 +95,85 @@
     return out;
   }
 
+  var ACTION_STATUS = {
+    propuesta: "proposed",
+    proposed: "proposed",
+    aceptada: "pending",
+    pending: "pending",
+    enproceso: "progress",
+    progress: "progress",
+    completado: "closed",
+    cerrado: "closed",
+    closed: "closed",
+    cancelado: "cancelled",
+    cancelled: "cancelled",
+  };
+
+  function normalizeActionStatus(raw) {
+    var key = norm(raw).replace(/\s+/g, "");
+    return ACTION_STATUS[key] || "proposed";
+  }
+
+  function normalizeActions(actions) {
+    var out = {};
+    if (!actions || typeof actions !== "object" || Array.isArray(actions)) return out;
+    Object.keys(actions).forEach(function (id) {
+      if (!ALL_ITEM_IDS[id]) return;
+      var raw = actions[id] || {};
+      out[id] = {
+        owner: clampStr(raw.owner, 300),
+        due: normalizeDate(raw.due) || "",
+        status: normalizeActionStatus(raw.status || "proposed"),
+        closure: clampStr(raw.closure, 12000),
+        beforePhotoId: clampStr(raw.beforePhotoId, 36),
+        photoId: clampStr(raw.photoId, 36),
+        completedAt: clampStr(raw.completedAt, 40),
+        completedBy: clampStr(raw.completedBy, 300),
+        reopenedAt: clampStr(raw.reopenedAt, 40),
+      };
+    });
+    return out;
+  }
+
+  function normalizePhotos(photos) {
+    if (!Array.isArray(photos)) return [];
+    return photos
+      .map(function (p) {
+        if (!p || !p.id) return null;
+        var chapter = Number(p.chapter);
+        return {
+          id: clampStr(p.id, 36),
+          caption: clampStr(p.caption, 2000),
+          chapter: Number.isFinite(chapter) && chapter >= 1 && chapter <= 5 ? chapter : "",
+          criterionId: ALL_ITEM_IDS[p.criterionId] ? p.criterionId : "",
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 60);
+  }
+
+  var MEASURE_LABELS = [
+    { re: /^ph del agua$/i, key: "ph" },
+    { re: /^dureza/i, key: "hardness" },
+    { re: /^conductividad(?!.*mezcla)/i, key: "conductivity" },
+    { re: /^ph mezcla final$/i, key: "mixPh" },
+    { re: /^conductividad mezcla final$/i, key: "mixConductivity" },
+    { re: /^presi[oó]n de la bomba/i, key: "pressure" },
+    { re: /^presi[oó]n del implemento/i, key: "implementPressure" },
+    { re: /^equipo de aplicaci[oó]n$/i, key: "equipment" },
+    { re: /^implementos? de aplicaci[oó]n$/i, key: "implement" },
+    { re: /^volumen por cama/i, key: "volume" },
+    { re: /^tiempo por cama/i, key: "time" },
+  ];
+
+  function measureKeyFromLabel(label) {
+    var t = String(label || "").trim();
+    for (var i = 0; i < MEASURE_LABELS.length; i++) {
+      if (MEASURE_LABELS[i].re.test(t)) return MEASURE_LABELS[i].key;
+    }
+    return "";
+  }
+
   /** Align a parsed visit with device-runtime saveVisit validation. */
   function sanitizeVisit(visit, warnings, opts) {
     warnings = warnings || [];
@@ -177,12 +256,15 @@
       delivery: normalizeDate(visit.delivery) || "",
       followup: normalizeDate(visit.followup) || "",
       conclusion: clampStr(visit.conclusion || "Informe histórico importado. Revisar y completar en Visitas.", 15000),
-      photos: [],
+      photos: normalizePhotos(visit.photos),
       reviewed: true,
       serviceKind: "assurance",
-      actions: {},
+      actions: normalizeActions(visit.actions),
     };
     if (visit.farmId && /^[a-f0-9-]{36}$/i.test(visit.farmId)) out.farmId = visit.farmId;
+    if (Array.isArray(visit._importPhotos) && visit._importPhotos.length) {
+      out._importPhotos = visit._importPhotos.slice(0, 60);
+    }
     return out;
   }
 
@@ -421,11 +503,39 @@
   }
 
   async function docxToText(file) {
+    var parsed = await parseDocx(file);
+    return parsed.text;
+  }
+
+  function mimeFromPath(path) {
+    var lower = String(path || "").toLowerCase();
+    if (lower.endsWith(".png")) return "image/png";
+    if (lower.endsWith(".webp")) return "image/webp";
+    if (lower.endsWith(".gif")) return "image/gif";
+    return "image/jpeg";
+  }
+
+  async function parseDocx(file) {
     var entries = await readZipEntries(await file.arrayBuffer());
     var docBytes = entries.get("word/document.xml");
     if (!docBytes) throw new Error("El Word no tiene document.xml válido.");
     var xml = new TextDecoder("utf-8").decode(docBytes);
-    return xml
+    var relBytes = entries.get("word/_rels/document.xml.rels");
+    var ridMap = {};
+    if (relBytes) {
+      var relXml = new TextDecoder("utf-8").decode(relBytes);
+      var relRe = /Id="(rId\d+)"[^>]*Target="([^"]+)"/g;
+      var rm;
+      while ((rm = relRe.exec(relXml))) {
+        ridMap[rm[1]] = rm[2].replace(/^\//, "");
+      }
+    }
+    var embeds = [];
+    var embedRe = /a:blip[^>]*r:embed="(rId\d+)"/g;
+    var em;
+    while ((em = embedRe.exec(xml))) embeds.push(em[1]);
+
+    var text = xml
       .replace(/<w:tab\/>/g, "\t")
       .replace(/<\/w:p>/g, "\n")
       .replace(/<br\s*\/>/gi, "\n")
@@ -434,7 +544,24 @@
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
       .replace(/\n{3,}/g, "\n\n");
+
+    var photoBlobs = [];
+    embeds.forEach(function (rid) {
+      var target = ridMap[rid];
+      if (!target || !/^media\//i.test(target)) return;
+      var bytes = entries.get("word/" + target) || entries.get(target);
+      if (!bytes || !bytes.length) return;
+      if (bytes.length > 8388608) return;
+      photoBlobs.push({
+        rid: rid,
+        bytes: bytes,
+        mime: mimeFromPath(target),
+      });
+    });
+
+    return { text: text, photoBlobs: photoBlobs };
   }
 
   async function pdfToText(file) {
@@ -473,7 +600,8 @@
     return "";
   }
 
-  function parseReportText(text) {
+  function parseReportText(text, photoBlobs) {
+    photoBlobs = photoBlobs || [];
     var farm = parseHeaderField(text, ["Nombre de la finca", "Finca"]);
     var date = normalizeDate(parseHeaderField(text, ["Fecha de visita", "Fecha"]));
     var city = parseHeaderField(text, ["Ciudad / departamento", "Departamento / ciudad", "Departamento", "Ciudad"]);
@@ -483,14 +611,46 @@
     var responsible =
       parseHeaderField(text, ["Responsable técnico", "Responsable tecnico"]) || "Histórico importado";
     var rtc = parseHeaderField(text, ["Representante técnico comercial", "RTC"]);
+
+    var delivery = "";
+    var followup = "";
+    var crono = text.match(
+      /Entrega del informe\s*\n\s*([^\n]+)\s*\n\s*Seguimiento\s*\n\s*([^\n]+)/i
+    );
+    if (crono) {
+      delivery = normalizeDate(crono[1]);
+      if (!/no programado|sin fecha|pendiente/i.test(crono[2])) {
+        followup = normalizeDate(crono[2]);
+      }
+    }
+    if (!delivery) {
+      delivery = normalizeDate(parseHeaderField(text, ["Entrega del informe", "Fecha de entrega"]));
+    }
+    if (!followup) {
+      var fuRaw = parseHeaderField(text, ["Fecha de seguimiento", "Seguimiento"]);
+      if (fuRaw && !/no programado|sin fecha|pendiente/i.test(fuRaw)) {
+        followup = normalizeDate(fuRaw);
+      }
+    }
+
     var conclusion =
-      parseHeaderField(text, ["Conclusión", "Conclusion", "Alcance"]) ||
-      "Informe importado completo. Puedes editarlo en Visitas.";
+      parseHeaderField(text, ["Conclusión", "Conclusion", "Conclusiones y seguimiento"]) || "";
+    if (!conclusion) {
+      var ind = text.match(/Indicador de la visita\s*\n\s*([^\n]{10,240})/i);
+      var alc = text.match(/Alcance de la evaluaci[oó]n\s*\n\s*([^\n]{10,240})/i);
+      var bits = [];
+      if (ind) bits.push(ind[1].trim());
+      if (alc) bits.push(alc[1].trim());
+      conclusion =
+        bits.join(" ") ||
+        "Informe importado completo. Revisar plan de acción y evidencias fotográficas en Seguimiento.";
+    }
 
     var answers = {};
     var notes = {};
     var recommendations = {};
     var measurements = {};
+    var actions = {};
     var re =
       /(\d+\.\d+)\s*(?:·|-|:)?\s*(Sí cumple|No cumple|No aplica|Sin evaluar|Sí|No)/gi;
     var match;
@@ -502,7 +662,7 @@
       if (!ALL_ITEM_IDS[m.id]) return;
       var value = normalizeAnswer(m.answer);
       if (!value) return;
-      var chunk = text.slice(m.end, matches[i + 1] ? matches[i + 1].index : m.end + 1200);
+      var chunk = text.slice(m.end, matches[i + 1] ? matches[i + 1].index : m.end + 1800);
       var observation = (chunk.match(/Hallazgo\s*\/?\s*observaci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
       var recommendation = (chunk.match(/Recomendaci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
       answers[m.id] = {
@@ -512,24 +672,112 @@
       };
     });
 
-    // Chapter notes / measurements when present in Word exports.
+    // Plan de acción → Seguimiento
+    var planRe =
+      /Hallazgo\s+(\d+\.\d+)\s*·\s*(Propuesta|Aceptada|En proceso|Completado|Cerrado|Cancelado)([\s\S]*?)(?=Hallazgo\s+\d+\.\d+\s*·|Registro fotogr[aá]fico|Responsables\b|$)/gi;
+    var planMatch;
+    while ((planMatch = planRe.exec(text))) {
+      var pid = planMatch[1];
+      if (!ALL_ITEM_IDS[pid]) continue;
+      var block = planMatch[3] || "";
+      var ownerLine =
+        (block.match(/Responsable\s*[:：]?\s*([^\n]+)/i) || [])[1] || "";
+      var owner = ownerLine.split(/·|Fecha l[ií]mite/i)[0].trim();
+      var due =
+        normalizeDate((ownerLine.match(/Fecha l[ií]mite\s*[:：]?\s*([0-9\/\-.]+)/i) || [])[1]) ||
+        normalizeDate((block.match(/Fecha l[ií]mite\s*[:：]?\s*([0-9\/\-.]+)/i) || [])[1]) ||
+        "";
+      var closure = ((block.match(/Seguimiento\s*\/?\s*cierre\s*[:：]?\s*([^\n]+)/i) || [])[1] || "").trim();
+      var actionText = ((block.match(/Acci[oó]n\s*[:：]?\s*([^\n]+)/i) || [])[1] || "").trim();
+      if (!answers[pid] && actionText) {
+        // Keep action even if criterion answer missing from chapters 1-2.
+      }
+      actions[pid] = {
+        owner: owner,
+        due: due,
+        status: planMatch[2],
+        closure: closure,
+        photoId: "",
+        beforePhotoId: "",
+      };
+      if (answers[pid] && actionText && !answers[pid].recommendation) {
+        answers[pid].recommendation = actionText;
+      }
+    }
+
     for (var ch = 1; ch <= 5; ch++) {
       var noteRe = new RegExp(
-        "(?:Cap[ií]tulo\\s*" + ch + "[^\\n]{0,80}|Observaciones?\\s*(?:cap[ií]tulo\\s*" + ch + ")?)\\s*[:：]?\\s*([^\\n]{8,})" ,
+        "(?:Cap[ií]tulo\\s*" +
+          ch +
+          "[^\\n]{0,80}|Observaciones?\\s*(?:cap[ií]tulo\\s*" +
+          ch +
+          ")?)\\s*[:：]?\\s*([^\\n]{8,})",
         "i"
       );
       var nm = text.match(noteRe);
       if (nm) notes[String(ch)] = nm[1].trim().slice(0, 12000);
     }
-    var measurePairs = text.matchAll
-      ? text.matchAll(/(Presi[oó]n[^:\n]{0,40}|pH|Dureza|Caudal|Temperatura|Humedad)[:：]?\s*([^\n]{1,80})/gi)
-      : [];
+
+    // Pair label/value lines (tables flatten to consecutive lines in text).
+    var lines = text.split(/\n+/);
+    for (var li = 0; li < lines.length - 1; li++) {
+      var key = measureKeyFromLabel(lines[li]);
+      if (!key) continue;
+      var val = String(lines[li + 1] || "").trim();
+      if (!val) continue;
+      if (measureKeyFromLabel(val)) continue;
+      if (norm(val) === norm(lines[li])) continue;
+      if (/^(pH|Dureza|Conductividad|Presi|Equipo|Implement|Volumen|Tiempo|Capítulo|Hallazgo|Fotografía|Registro|Sí cumple|No cumple|No aplica|\d+\.\d+)/i.test(val)) {
+        continue;
+      }
+      measurements[key] = val.slice(0, 300);
+    }
+    // Fallback regex pairs
     try {
+      var measurePairs = text.matchAll
+        ? text.matchAll(
+            /(?:^|\n)(pH del agua|Dureza\s*\(ppm\)|Conductividad(?:\s+mezcla final)?|pH mezcla final|Presi[oó]n de la bomba[^:\n]{0,20}|Equipo de aplicaci[oó]n|Implementos? de aplicaci[oó]n|Volumen por cama[^:\n]{0,10}|Tiempo por cama[^:\n]{0,10})\s*\n\s*([^\n]{1,80})/gi
+          )
+        : [];
       for (var mm of measurePairs) {
-        var key = norm(mm[1]).replace(/\s+/g, ".").slice(0, 40) || "medida";
-        measurements[key] = String(mm[2] || "").trim();
+        var mk = measureKeyFromLabel(mm[1]);
+        var mv = String(mm[2] || "").trim();
+        if (!mk || !mv) continue;
+        if (measureKeyFromLabel(mv) || norm(mv) === norm(mm[1])) continue;
+        measurements[mk] = mv.slice(0, 300);
       }
     } catch (err) {}
+
+    // Fotos: captions "Fotografía N · Capítulo X · Subcapítulo Y.Z. …"
+    var captions = [];
+    var capRe =
+      /Fotograf[ií]a\s+(\d+)\s*·\s*Cap[ií]tulo\s+(\d+)\s*·\s*Subcap[ií]tulo\s+(\d+\.\d+)\.\s*([^\n]*)/gi;
+    var cm;
+    while ((cm = capRe.exec(text))) {
+      captions[Number(cm[1])] = {
+        chapter: Number(cm[2]),
+        criterionId: cm[3],
+        caption: ("Fotografía " + cm[1] + " · " + cm[3] + ". " + (cm[4] || "")).trim(),
+      };
+    }
+    var importPhotos = [];
+    photoBlobs.forEach(function (blob, idx) {
+      var meta = captions[idx + 1] || {};
+      var criterionId = ALL_ITEM_IDS[meta.criterionId] ? meta.criterionId : "";
+      var chapter =
+        meta.chapter ||
+        (criterionId ? Number(String(criterionId).split(".")[0]) : "");
+      importPhotos.push({
+        bytes: blob.bytes,
+        mime: blob.mime || "image/jpeg",
+        caption: meta.caption || "Fotografía " + (idx + 1) + " importada del informe Word",
+        chapter: chapter || "",
+        criterionId: criterionId,
+      });
+      if (criterionId && actions[criterionId] && !actions[criterionId].photoId) {
+        actions[criterionId]._pendingPhotoIndex = idx;
+      }
+    });
 
     if (!farm || !date) {
       throw new Error(
@@ -541,6 +789,13 @@
     }
 
     var warnings = [];
+    if (importPhotos.length) {
+      warnings.push(importPhotos.length + " fotografía(s) detectadas en el Word.");
+    }
+    if (Object.keys(actions).length) {
+      warnings.push(Object.keys(actions).length + " acción(es) de seguimiento leídas del plan.");
+    }
+
     var visit = sanitizeVisit(
       {
         farm: farm,
@@ -556,6 +811,11 @@
         recommendations: recommendations,
         measurements: measurements,
         conclusion: conclusion,
+        delivery: delivery,
+        followup: followup,
+        actions: actions,
+        photos: [],
+        _importPhotos: importPhotos,
       },
       warnings,
       { complete: true }
@@ -566,6 +826,8 @@
       errors: warnings,
       rows: Object.keys(visit.answers).length,
       farmMeta: { name: farm, zone: zone || "Importado", city: city, crop: crop },
+      photoCount: importPhotos.length,
+      actionCount: Object.keys(visit.actions || {}).length,
     };
   }
 
@@ -613,6 +875,23 @@
     return body.id || null;
   }
 
+  async function uploadPhoto(bytes, farmId) {
+    var url = "/api/photos" + (farmId ? "?farmId=" + encodeURIComponent(farmId) : "");
+    var res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: bytes,
+    });
+    var body = await res.json().catch(function () {
+      return {};
+    });
+    if (!res.ok) {
+      throw new Error(String(body.error || "No se pudo guardar una fotografía").replace(/^\d+:/, ""));
+    }
+    if (!body.id) throw new Error("La API de fotos no devolvió un id.");
+    return body.id;
+  }
+
   async function saveVisits(visits) {
     var listRes = await fetch("/api/visits");
     var existing = await listRes.json();
@@ -627,7 +906,9 @@
     var prepErrors = [];
     (visits || []).forEach(function (v, idx) {
       try {
-        prepared.push(sanitizeVisit(v, prepErrors, { complete: true }));
+        var copy = Object.assign({}, v);
+        if (Array.isArray(v._importPhotos)) copy._importPhotos = v._importPhotos;
+        prepared.push(sanitizeVisit(copy, prepErrors, { complete: true }));
       } catch (err) {
         prepErrors.push("Visita " + (idx + 1) + ": " + (err.message || String(err)));
       }
@@ -646,8 +927,35 @@
         todo[i].responsible || todo[i].technician,
         todo[i].zone
       );
-      var payload = Object.assign({}, todo[i]);
+      var photos = [];
+      var importPhotos = Array.isArray(todo[i]._importPhotos) ? todo[i]._importPhotos : [];
+      for (var p = 0; p < importPhotos.length; p++) {
+        var blob = importPhotos[p];
+        if (!blob || !blob.bytes) continue;
+        var photoId = await uploadPhoto(blob.bytes, farmId);
+        var chapter = Number(blob.chapter);
+        photos.push({
+          id: photoId,
+          caption: clampStr(blob.caption, 2000),
+          chapter: Number.isFinite(chapter) && chapter >= 1 && chapter <= 5 ? chapter : "",
+          criterionId: ALL_ITEM_IDS[blob.criterionId] ? blob.criterionId : "",
+        });
+      }
+      var actions = Object.assign({}, todo[i].actions || {});
+      photos.forEach(function (ph) {
+        if (!ph.criterionId || !actions[ph.criterionId]) return;
+        if (!actions[ph.criterionId].photoId) {
+          actions[ph.criterionId] = Object.assign({}, actions[ph.criterionId], { photoId: ph.id });
+        }
+      });
+      var payload = Object.assign({}, todo[i], {
+        photos: photos,
+        actions: actions,
+      });
+      delete payload._importPhotos;
       if (farmId) payload.farmId = farmId;
+      payload = sanitizeVisit(payload, [], { complete: true });
+      delete payload._importPhotos;
       var res = await fetch("/api/visits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -676,7 +984,8 @@
       if (name.endsWith(".csv")) {
         parsed = rowsToVisits(parseCsv(await file.text()));
       } else if (name.endsWith(".docx")) {
-        parsed = parseReportText(await docxToText(file));
+        var docx = await parseDocx(file);
+        parsed = parseReportText(docx.text, docx.photoBlobs);
       } else if (name.endsWith(".pdf")) {
         parsed = parseReportText(await pdfToText(file));
       } else if (name.endsWith(".xlsx")) {
@@ -753,22 +1062,41 @@
       setPreview: function (parsed) {
         pending = parsed;
         preview.hidden = false;
-        var warn = (parsed.errors || []).slice(0, 3).join(" · ");
+        var warn = (parsed.errors || []).slice(0, 4).join(" · ");
+        var v0 = (parsed.visits && parsed.visits[0]) || {};
+        var photoCount =
+          parsed.photoCount ||
+          (v0._importPhotos && v0._importPhotos.length) ||
+          (v0.photos && v0.photos.length) ||
+          0;
+        var actionCount = parsed.actionCount || Object.keys(v0.actions || {}).length || 0;
+        var measureCount = Object.keys(v0.measurements || {}).length || 0;
+        var scheduleBits = [];
+        if (v0.delivery) scheduleBits.push("Entrega " + v0.delivery);
+        if (v0.followup) scheduleBits.push("Seguimiento " + v0.followup);
+        else if (v0.delivery) scheduleBits.push("Seguimiento sin programar");
         preview.innerHTML =
           "<p><strong>" +
           parsed.visits.length +
           "</strong> aseguramiento(s) listos · " +
           parsed.rows +
-          " filas/criterios leídos.</p>" +
-          (warn ? "<p class=\"notice error\">" + warn + "</p>" : "") +
+          " criterios · <strong>" +
+          photoCount +
+          "</strong> foto(s) · <strong>" +
+          actionCount +
+          "</strong> acción(es) de seguimiento" +
+          (measureCount ? " · " + measureCount + " mediciones" : "") +
+          ".</p>" +
+          (scheduleBits.length ? "<p class=\"muted\">" + scheduleBits.join(" · ") + "</p>" : "") +
+          (warn ? "<p class=\"notice\">" + warn + "</p>" : "") +
           '<button type="button" class="primary c360-import-go">Importar finca e informes</button>';
         q(".c360-import-go", preview).addEventListener("click", async function () {
           try {
-            ui.setStatus("Importando…", false);
+            ui.setStatus("Importando finca, informe, fotos y seguimiento…", false);
             var saved = await saveVisits(pending.visits);
             ui.setStatus(
               saved.length +
-                " informe(s) importados. Ábrelos en Visitas para editar finca, criterios y conclusiones.",
+                " informe(s) importados con evidencias. Ábrelos en Visitas o revisa el plan en Seguimiento.",
               false
             );
             preview.hidden = true;
@@ -807,7 +1135,7 @@
     details.innerHTML =
       "<summary>Importar finca e informes</summary>" +
       '<div class="c360-import-box">' +
-      '<p class="c360-import-lead">Sube Excel/CSV, Word o PDF. Se crea la finca si falta y el informe queda editable en Visitas.</p>' +
+      '<p class="c360-import-lead">Sube Excel/CSV, Word o PDF. Se crea la finca si falta; el informe queda editable en Visitas con fotos, mediciones y plan de seguimiento.</p>' +
       '<label class="c360-import-file"><span>Elegir archivo</span>' +
       '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
       "</label>" +

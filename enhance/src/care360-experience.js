@@ -1680,6 +1680,158 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Seguimiento más completo (acciones + fotos importadas)
+   * ------------------------------------------------------------------ */
+
+  var ACTION_LABELS = {
+    proposed: "Propuesta",
+    pending: "Aceptada",
+    progress: "En proceso",
+    closed: "Completado",
+    cancelled: "Cancelado",
+  };
+
+  function onFollowupTab() {
+    var tabs = qa('.module-nav [role="tab"], .module-nav [data-slot="tabs-trigger"]');
+    for (var i = 0; i < tabs.length; i++) {
+      var el = tabs[i];
+      if (!/Seguimiento/i.test(el.textContent || "")) continue;
+      return (
+        el.getAttribute("aria-selected") === "true" ||
+        el.getAttribute("data-state") === "active" ||
+        !!el.hasAttribute("data-active")
+      );
+    }
+    return !!q(".followup-panel") && /Seguimiento|Plan de acci/i.test(document.body.innerText || "");
+  }
+
+  function enhanceFollowupSummary() {
+    var existing = q("#c360-followup-summary");
+    if (!onFollowupTab()) {
+      if (existing) existing.remove();
+      return;
+    }
+    var host =
+      q(".followup-panel") ||
+      q("main") ||
+      q("#root");
+    if (!host) return;
+    if (!existing) {
+      existing = document.createElement("section");
+      existing.id = "c360-followup-summary";
+      existing.className = "c360-followup-summary no-print";
+      existing.setAttribute("aria-label", "Resumen de seguimiento");
+      var heading = q("h1, h2, .page-heading", host);
+      if (heading && heading.parentElement) {
+        heading.parentElement.insertBefore(existing, heading.nextSibling);
+      } else {
+        host.insertAdjacentElement("afterbegin", existing);
+      }
+    }
+    if (existing.getAttribute("data-loading") === "1") return;
+    existing.setAttribute("data-loading", "1");
+    apiJson("/api/visits")
+      .then(function (data) {
+        var visits = Array.isArray(data) ? data : data.visits || [];
+        var open = [];
+        var photos = 0;
+        visits.forEach(function (v) {
+          photos += Array.isArray(v.photos) ? v.photos.length : 0;
+          var actions = v.actions || {};
+          Object.keys(actions).forEach(function (id) {
+            var a = actions[id] || {};
+            if (a.status === "closed" || a.status === "cancelled") return;
+            var ans = (v.answers && v.answers[id]) || {};
+            open.push({
+              id: id,
+              farm: v.farm || "",
+              date: v.date || "",
+              status: a.status || "proposed",
+              owner: a.owner || "",
+              due: a.due || "",
+              closure: a.closure || "",
+              observation: ans.observation || "",
+              recommendation: ans.recommendation || "",
+              hasPhoto: !!(a.photoId || (v.photos || []).some(function (p) {
+                return p && p.criterionId === id;
+              })),
+            });
+          });
+        });
+        open.sort(function (a, b) {
+          return String(a.due || "9999").localeCompare(String(b.due || "9999"));
+        });
+        if (!open.length && !photos) {
+          existing.innerHTML =
+            '<div class="c360-followup-summary-card">' +
+            "<strong>Seguimiento</strong>" +
+            "<p>Importa un informe Word CARE 360 para traer el plan de acción, fechas y evidencias fotográficas.</p>" +
+            "</div>";
+          return;
+        }
+        var rows = open
+          .slice(0, 12)
+          .map(function (item) {
+            return (
+              '<article class="c360-followup-item tone-' +
+              (item.status || "proposed") +
+              '">' +
+              "<header><strong>" +
+              escapeHtml(item.id) +
+              " · " +
+              escapeHtml(ACTION_LABELS[item.status] || item.status) +
+              "</strong><span>" +
+              escapeHtml(item.farm) +
+              (item.due ? " · límite " + escapeHtml(item.due) : "") +
+              (item.hasPhoto ? " · con foto" : "") +
+              "</span></header>" +
+              "<p>" +
+              escapeHtml(item.observation || item.recommendation || "Sin detalle") +
+              "</p>" +
+              (item.owner || item.closure
+                ? "<p class=\"muted\">" +
+                  escapeHtml(
+                    [item.owner ? "Resp. " + item.owner : "", item.closure ? "Cierre: " + item.closure : ""]
+                      .filter(Boolean)
+                      .join(" · ")
+                  ) +
+                  "</p>"
+                : "") +
+              "</article>"
+            );
+          })
+          .join("");
+        existing.innerHTML =
+          '<div class="c360-followup-summary-card">' +
+          "<strong>Seguimiento activo</strong>" +
+          "<p>" +
+          open.length +
+          " hallazgo(s) abiertos · " +
+          photos +
+          " foto(s) en informes importados/revisados.</p>" +
+          '<div class="c360-followup-list">' +
+          rows +
+          "</div>" +
+          (open.length > 12 ? "<p class=\"muted\">Mostrando 12 de " + open.length + ".</p>" : "") +
+          "</div>";
+      })
+      .catch(function () {
+        existing.innerHTML = "";
+      })
+      .then(function () {
+        existing.removeAttribute("data-loading");
+      });
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /* ------------------------------------------------------------------ *
    * borrar finca (Directorio de fincas)
    * ------------------------------------------------------------------ */
 
@@ -1879,6 +2031,7 @@
         organizeReportMeasurements();
         enhanceTeamForms();
         enhanceDeleteActions();
+        enhanceFollowupSummary();
       });
     });
     observer.observe(document.body, {
@@ -1901,7 +2054,8 @@
       organizeReportMeasurements();
       enhanceTeamForms();
       enhanceDeleteActions();
-      if (Date.now() - started < 8000 || q(".editor") || q("details") || q(".action-editor") || q(".visit-row")) {
+      enhanceFollowupSummary();
+      if (Date.now() - started < 8000 || q(".editor") || q("details") || q(".action-editor") || q(".visit-row") || q(".followup-panel")) {
         window.setTimeout(poll, 500);
       }
     })();
