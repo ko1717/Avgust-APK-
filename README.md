@@ -9,16 +9,21 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 
 ---
 
-## Entregable (v1.5.12)
+## Entregable (v1.5.13)
 
 | Ruta | Contenido |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.12-Android.apk`](./dist/AVGUST-CARE-360-1.5.12-Android.apk) | **Única APK publicada** (marca Avgust). |
+| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | **Única APK publicada** (marca Avgust). |
 | `enhance/src/` | Capa de mejoras (CSS/JS) que se inyecta sobre el APK base. |
 | `tools/` | Compilación, firma, parches y demos de importación. |
 | `tests/` | Prueba e2e del contenido web. |
 
-Se instala encima de 1.4.x–1.5.11 firmadas con la misma clave (`tools/signing/`).
+Se instala encima de 1.4.x–1.5.12 firmadas con la misma clave (`tools/signing/`).
+
+### Destacados 1.5.13
+
+- El panel **Calidad de la visita** se queda en su sitio (ya no tapa Departamento / Municipio al escribir).
+- Modo oscuro y modo lector (☀) con mejor contraste en capítulos, selectores, pasos e informe.
 
 ### Destacados 1.5.12
 
@@ -56,7 +61,7 @@ Los APKs viven **solo en `dist/`** para no duplicar binarios en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Con marca Avgust (por defecto → dist/AVGUST-CARE-360-1.5.12-Android.apk)
+# Con marca Avgust (por defecto → dist/AVGUST-CARE-360-1.5.13-Android.apk)
 tools/build-apk.sh
 
 # Sin marca Avgust (solo si se necesita; deja esa variante como única en dist/)
