@@ -848,65 +848,87 @@
     render();
   }
 
+  function reportToneClass(status) {
+    if (status === "healthy") return "ok";
+    if (status === "acceptable") return "mid";
+    if (status === "critical") return "bad";
+    return "mute";
+  }
+
+  function reportScoreTone(score) {
+    return reportToneClass(scoreStatus(score));
+  }
+
   function buildExportReportHtml() {
     var snap = exportSnapshot();
     if (!snap) return "";
     var data = snap.data;
     var cmp = snap.cmp;
+    var debrand = window.__C360_DEBRAND === true;
     var title = snap.brand + " · Informe de métricas · " + snap.modeLabel;
-    var body = "";
-    body += "<header class='brand'>";
-    body += "<div class='mark'>" + escapeHtml(snap.brand) + "</div>";
-    body += "<div><h1>" + escapeHtml("Informe de métricas · " + snap.modeLabel) + "</h1>";
-    body +=
-      "<p class='meta'>Periodo: " +
-      escapeHtml(snap.periodFrom) +
-      " → " +
-      escapeHtml(snap.periodTo) +
-      "</p>";
-    if (cmp && cmp.enabled && cmp.prevWin) {
-      body +=
-        "<p class='meta'>Comparado con: " +
-        escapeHtml(formatDateEs(cmp.prevWin.from)) +
-        " → " +
-        escapeHtml(formatDateEs(cmp.prevWin.to)) +
-        "</p>";
+    var generated = formatDateEs(isoDate(new Date()));
+    var accent = debrand ? "#1e7a3c" : "#007fa3";
+    var accentDeep = debrand ? "#14532d" : "#005f7a";
+    var accentSoft = debrand ? "#e7f3ea" : "#e8f6fa";
+
+    function pill(text, tone) {
+      return (
+        "<span class='pill tone-" +
+        (tone || "mute") +
+        "'>" +
+        escapeHtml(String(text == null ? "—" : text)) +
+        "</span>"
+      );
     }
-    body += "</div></header>";
 
-    body += "<div class='kpis'>";
-    body +=
-      "<div><b>Indicador</b><br>" +
-      (snap.score == null ? "—" : snap.score + "%") +
-      (cmp && cmp.enabled
-        ? " <small>(" + fmtDelta(cmp.scoreDelta, " pts") + ")</small>"
-        : "") +
-      "</div>";
-    body +=
-      "<div><b>Mezclas</b><br>" +
-      (snap.mix.score == null ? "—" : snap.mix.score + "%") +
-      "</div>";
-    body +=
-      "<div><b>Dosis</b><br>" +
-      (snap.dose.score == null ? "—" : snap.dose.score + "%") +
-      "</div>";
-    body +=
-      "<div><b>Hallazgos periodo</b><br>" +
-      (data.findings || 0) +
-      (cmp && cmp.enabled
-        ? " <small>(" + fmtDelta(cmp.findingsDelta, "") + ")</small>"
-        : "") +
-      "</div>";
-    body +=
-      "<div><b>Visitas</b><br>" +
-      (data.visits || 0) +
-      (cmp && cmp.enabled ? " <small>(" + fmtDelta(cmp.visitsDelta, "") + ")</small>" : "") +
-      "</div>";
-    body += "</div>";
+    function scoreCell(score) {
+      if (score == null || score === "") return "<span class='muted'>—</span>";
+      var n = Number(score);
+      var tone = reportScoreTone(n);
+      var w = Math.max(0, Math.min(100, n));
+      return (
+        "<div class='score-cell tone-" +
+        tone +
+        "'><strong>" +
+        n +
+        "%</strong><span class='bar'><i style='width:" +
+        w +
+        "%'></i></span></div>"
+      );
+    }
 
-    function table(headers, rows) {
+    function kpiCard(label, value, note, tone) {
+      return (
+        "<article class='kpi tone-" +
+        (tone || "mute") +
+        "'><span class='kpi-label'>" +
+        escapeHtml(label) +
+        "</span><strong class='kpi-value'>" +
+        escapeHtml(String(value == null ? "—" : value)) +
+        "</strong>" +
+        (note ? "<span class='kpi-note'>" + escapeHtml(note) + "</span>" : "") +
+        "</article>"
+      );
+    }
+
+    function section(titleText, lead, inner) {
+      return (
+        "<section class='block'><div class='block-head'><h2>" +
+        escapeHtml(titleText) +
+        "</h2>" +
+        (lead ? "<p>" + escapeHtml(lead) + "</p>" : "") +
+        "</div>" +
+        inner +
+        "</section>"
+      );
+    }
+
+    function table(headers, rows, opts) {
+      opts = opts || {};
       var h =
-        "<table><thead><tr>" +
+        "<div class='table-wrap'><table class='" +
+        (opts.compact ? "compact" : "") +
+        "'><thead><tr>" +
         headers
           .map(function (x) {
             return "<th>" + escapeHtml(x) + "</th>";
@@ -917,120 +939,303 @@
         h +=
           "<tr>" +
           r
-            .map(function (c) {
-              return "<td>" + escapeHtml(String(c == null ? "" : c)) + "</td>";
+            .map(function (c, idx) {
+              var raw = c;
+              var html =
+                opts.htmlCols && opts.htmlCols[idx]
+                  ? String(raw == null ? "" : raw)
+                  : escapeHtml(String(raw == null ? "" : raw));
+              return "<td>" + html + "</td>";
             })
             .join("") +
           "</tr>";
       });
-      return h + "</tbody></table>";
+      return h + "</tbody></table></div>";
     }
 
+    var body = "";
+    body += "<header class='hero'>";
+    body += "<div class='hero-top'>";
+    body += "<div class='lockup'><span class='mark'>" + escapeHtml(snap.brand) + "</span>";
+    body += "<span class='tag'>Acompañamiento en campo</span></div>";
+    body += "<div class='hero-meta'>";
+    body += pill(snap.modeLabel, "info");
+    body += pill("Generado " + generated, "mute");
+    body += "</div></div>";
+    body += "<h1>Informe de métricas</h1>";
+    body +=
+      "<p class='hero-lead'>Lectura del aseguramiento MIPE" +
+      (state.mode === "farm" && state.farm ? " · " + escapeHtml(state.farm) : "") +
+      ".</p>";
+    body += "<div class='hero-chips'>";
+    body +=
+      "<div class='chip'><span>Periodo</span><strong>" +
+      escapeHtml(snap.periodFrom) +
+      " → " +
+      escapeHtml(snap.periodTo) +
+      "</strong></div>";
+    if (cmp && cmp.enabled && cmp.prevWin) {
+      body +=
+        "<div class='chip'><span>Comparado con</span><strong>" +
+        escapeHtml(formatDateEs(cmp.prevWin.from)) +
+        " → " +
+        escapeHtml(formatDateEs(cmp.prevWin.to)) +
+        "</strong></div>";
+    }
+    body +=
+      "<div class='chip'><span>Alcance</span><strong>" +
+      escapeHtml(snap.modeLabel) +
+      "</strong></div>";
+    body += "</div></header>";
+
+    var scoreTone = reportScoreTone(snap.score);
+    body += "<section class='kpi-strip'>";
+    body += kpiCard(
+      "Indicador",
+      snap.score == null ? "—" : snap.score + "%",
+      cmp && cmp.enabled ? fmtDelta(cmp.scoreDelta, " pts") : "Cumplimiento",
+      scoreTone
+    );
+    body += kpiCard(
+      "Mezclas",
+      snap.mix.score == null ? "—" : snap.mix.score + "%",
+      "Capítulo 4",
+      reportScoreTone(snap.mix.score)
+    );
+    body += kpiCard(
+      "Dosis",
+      snap.dose.score == null ? "—" : snap.dose.score + "%",
+      "Capítulo 2",
+      reportScoreTone(snap.dose.score)
+    );
+    body += kpiCard(
+      "Hallazgos",
+      data.findings || 0,
+      cmp && cmp.enabled ? fmtDelta(cmp.findingsDelta, "") : "No cumple en el periodo",
+      data.findings ? "bad" : "ok"
+    );
+    body += kpiCard(
+      "Visitas",
+      data.visits || 0,
+      cmp && cmp.enabled ? fmtDelta(cmp.visitsDelta, "") : "Revisadas",
+      "info"
+    );
+    body += "</section>";
+
     if (snap.alerts.length) {
-      body += "<h2>Qué atender</h2>";
-      body += table(
-        ["Prioridad", "Alerta", "Detalle"],
-        snap.alerts.map(function (a) {
-          return [
-            a.tone === "critical" ? "Crítico" : a.tone === "healthy" ? "OK" : "Atención",
-            a.title || "",
-            a.text || "",
-          ];
-        })
+      body += section(
+        "Qué atender",
+        "Prioridades detectadas en el periodo seleccionado.",
+        "<div class='alert-grid'>" +
+          snap.alerts
+            .map(function (a) {
+              var tone =
+                a.tone === "critical" ? "bad" : a.tone === "healthy" ? "ok" : "mid";
+              var label =
+                a.tone === "critical" ? "Crítico" : a.tone === "healthy" ? "OK" : "Atención";
+              return (
+                "<article class='alert tone-" +
+                tone +
+                "'><header>" +
+                pill(label, tone) +
+                "<strong>" +
+                escapeHtml(a.title || "") +
+                "</strong></header><p>" +
+                escapeHtml(a.text || "") +
+                "</p>" +
+                (a.farm
+                  ? "<footer>" + escapeHtml(a.farm) + (a.chapter != null ? " · Cap. " + a.chapter : "") + "</footer>"
+                  : a.chapter != null
+                    ? "<footer>Capítulo " + a.chapter + "</footer>"
+                    : "") +
+                "</article>"
+              );
+            })
+            .join("") +
+          "</div>"
       );
     }
 
     if (data.farms && data.farms.length) {
-      body += "<h2>Resumen por finca</h2>";
-      body += table(
-        ["Finca", "Visitas", "Indicador", "Hallazgos", "Estado", "Primera", "Última"],
-        data.farms.map(function (f) {
-          return [
-            f.name,
-            f.visits,
-            f.score == null ? "—" : f.score + "%",
-            f.findings,
-            statusLabel(f.status),
-            formatDateEs(f.firstDate),
-            formatDateEs(f.lastDate),
-          ];
-        })
+      body += section(
+        "Resumen por finca",
+        data.farms.length + " finca" + (data.farms.length === 1 ? "" : "s") + " en el periodo.",
+        table(
+          ["Finca", "Visitas", "Indicador", "Hallazgos", "Estado", "Primera", "Última"],
+          data.farms.map(function (f) {
+            return [
+              "<strong>" + escapeHtml(f.name) + "</strong>",
+              f.visits,
+              scoreCell(f.score),
+              f.findings,
+              pill(statusLabel(f.status), reportToneClass(f.status)),
+              formatDateEs(f.firstDate),
+              formatDateEs(f.lastDate),
+            ];
+          }),
+          { htmlCols: { 0: true, 2: true, 4: true } }
+        )
       );
     }
 
     if (data.timeline && data.timeline.length) {
-      body += "<h2>" + (state.mode === "farm" ? "Visitas por fecha" : "Evolución / visitas") + "</h2>";
-      body += table(
-        ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
-        data.timeline.map(function (r) {
-          return [
-            r.label || formatDateEs(r.date),
-            r.score == null ? "—" : r.score + "%",
-            r.findings,
-            statusLabel(r.status),
-            r.responsible || "—",
-            r.farm || state.farm || "—",
-          ];
-        })
+      body += section(
+        state.mode === "farm" ? "Visitas por fecha" : "Evolución / visitas",
+        state.mode === "farm"
+          ? "Historial de la finca seleccionada."
+          : "Puntos del periodo con indicador y hallazgos.",
+        table(
+          ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
+          data.timeline.map(function (r) {
+            return [
+              r.label || formatDateEs(r.date),
+              scoreCell(r.score),
+              r.findings,
+              pill(statusLabel(r.status), reportToneClass(r.status)),
+              r.responsible || "—",
+              state.mode === "farm" ? state.farm || r.farm || "—" : r.farm || state.farm || "—",
+            ];
+          }),
+          { htmlCols: { 1: true, 3: true } }
+        )
       );
     }
 
     if (data.chapters && data.chapters.length) {
-      body += "<h2>" + escapeHtml(snap.chaptersNote) + "</h2>";
-      body += table(
-        ["Capítulo", "Indicador", "Hallazgos", "Aplicables", "Estado"],
-        data.chapters.map(function (c) {
-          return [
-            c.id + ". " + c.title,
-            c.score == null ? "—" : c.score + "%",
-            c.findings,
-            c.applicable,
-            statusLabel(c.status),
-          ];
-        })
+      body += section(
+        snap.chaptersNote,
+        "Meta de referencia: 80% de cumplimiento.",
+        table(
+          ["Capítulo", "Indicador", "Hallazgos", "Aplicables", "Estado"],
+          data.chapters.map(function (c) {
+            return [
+              "<strong>" + escapeHtml(c.id + ". " + c.title) + "</strong>",
+              scoreCell(c.score),
+              c.findings,
+              c.applicable,
+              pill(statusLabel(c.status), reportToneClass(c.status)),
+            ];
+          }),
+          { htmlCols: { 0: true, 1: true, 4: true } }
+        )
       );
     }
 
     if (data.items && data.items.length) {
-      body += "<h2>" + escapeHtml(snap.findingsNote) + "</h2>";
-      body += table(
-        ["Ítem", "Capítulo", "Hallazgos", "Frecuencia", "Observación", "Recomendación"],
-        data.items.map(function (it) {
-          return [
-            it.id,
-            it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
-            it.findings != null ? it.findings : 1,
-            it.rate != null ? it.rate + "%" : "—",
-            it.observation || "—",
-            it.recommendation || "—",
-          ];
-        })
+      body += section(
+        snap.findingsNote,
+        "Criterios con respuesta No cumple.",
+        table(
+          ["Ítem", "Capítulo", "Hallazgos", "Frecuencia", "Observación", "Recomendación"],
+          data.items.map(function (it) {
+            return [
+              "<strong>" + escapeHtml(it.id) + "</strong>",
+              it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
+              it.findings != null ? it.findings : 1,
+              it.rate != null ? it.rate + "%" : "—",
+              it.observation || "—",
+              it.recommendation || "—",
+            ];
+          }),
+          { htmlCols: { 0: true }, compact: true }
+        )
       );
     }
 
     body +=
-      "<p class='meta foot'>Generado " +
-      escapeHtml(formatDateEs(isoDate(new Date()))) +
-      " · " +
+      "<footer class='foot'><div><strong>" +
       escapeHtml(snap.brand) +
-      " · Métricas completas del tablero</p>";
+      "</strong><span>Informe completo de métricas del tablero</span></div><span>Generado " +
+      escapeHtml(generated) +
+      "</span></footer>";
+
+    var css =
+      ":root{--accent:" +
+      accent +
+      ";--accent-deep:" +
+      accentDeep +
+      ";--accent-soft:" +
+      accentSoft +
+      ";--ink:#14262c;--muted:#5b6f76;--line:#d5e3e8;--paper:#f4fafb;--card:#ffffff}" +
+      "*{box-sizing:border-box}" +
+      "body{margin:0 auto;padding:28px 22px 40px;max-width:980px;color:var(--ink);background:" +
+      "linear-gradient(180deg,var(--accent-soft) 0%,#fff 220px,#fff 100%);" +
+      "font-family:'Avenir Next','Segoe UI','Helvetica Neue',sans-serif;line-height:1.45}" +
+      ".hero{margin:0 0 22px;padding:22px 22px 18px;border-radius:20px;background:" +
+      "linear-gradient(135deg,var(--accent-deep) 0%,var(--accent) 58%,#00a0c0 100%);color:#fff;" +
+      "box-shadow:0 18px 40px rgb(0 90 110 / 18%)}" +
+      ".hero-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}" +
+      ".lockup{display:flex;flex-direction:column;gap:4px}" +
+      ".mark{font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;letter-spacing:.02em}" +
+      ".tag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.82}" +
+      ".hero-meta{display:flex;gap:8px;flex-wrap:wrap}" +
+      ".hero h1{margin:18px 0 6px;font-size:28px;line-height:1.15;letter-spacing:-.03em;font-weight:700}" +
+      ".hero-lead{margin:0 0 14px;opacity:.9;font-size:14px;max-width:42rem}" +
+      ".hero-chips{display:flex;gap:10px;flex-wrap:wrap}" +
+      ".chip{min-width:140px;padding:10px 12px;border-radius:12px;background:rgb(255 255 255 / 14%);backdrop-filter:blur(4px)}" +
+      ".chip span{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.8;margin-bottom:2px}" +
+      ".chip strong{font-size:13px;font-weight:600}" +
+      ".kpi-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 22px}" +
+      ".kpi{padding:14px 14px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);" +
+      "box-shadow:0 8px 24px rgb(20 38 44 / 4%)}" +
+      ".kpi-label{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}" +
+      ".kpi-value{display:block;font-size:28px;line-height:1;letter-spacing:-.03em;font-weight:700}" +
+      ".kpi-note{display:block;margin-top:8px;font-size:12px;color:var(--muted)}" +
+      ".kpi.tone-ok{border-color:#b7e0c5;background:linear-gradient(180deg,#f3fbf6,#fff)}" +
+      ".kpi.tone-mid{border-color:#f0d59a;background:linear-gradient(180deg,#fff9ef,#fff)}" +
+      ".kpi.tone-bad{border-color:#f0b4ae;background:linear-gradient(180deg,#fff5f3,#fff)}" +
+      ".kpi.tone-info{border-color:#b7dceb;background:linear-gradient(180deg,#f3fafc,#fff)}" +
+      ".block{margin:0 0 18px;padding:16px 16px 14px;border:1px solid var(--line);border-radius:18px;background:var(--card)}" +
+      ".block-head{margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--line)}" +
+      ".block-head h2{margin:0 0 4px;font-size:16px;letter-spacing:-.01em;color:var(--accent-deep)}" +
+      ".block-head p{margin:0;font-size:13px;color:var(--muted)}" +
+      ".alert-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}" +
+      ".alert{padding:12px;border-radius:14px;border:1px solid var(--line);background:#fbfefe}" +
+      ".alert header{display:flex;gap:8px;align-items:center;margin-bottom:6px}" +
+      ".alert strong{font-size:13px}" +
+      ".alert p{margin:0;font-size:12.5px;color:var(--muted)}" +
+      ".alert footer{margin-top:8px;font-size:11px;color:var(--muted)}" +
+      ".alert.tone-bad{border-color:#f0b4ae;background:#fff7f6}" +
+      ".alert.tone-mid{border-color:#f0d59a;background:#fffaf0}" +
+      ".alert.tone-ok{border-color:#b7e0c5;background:#f5fbf7}" +
+      ".pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10.5px;" +
+      "font-weight:700;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}" +
+      ".pill.tone-ok{background:#d9f2e3;color:#146b45}" +
+      ".pill.tone-mid{background:#f8e7b8;color:#8a5a00}" +
+      ".pill.tone-bad{background:#f8d4cf;color:#9b1c1c}" +
+      ".pill.tone-info{background:#d7eef6;color:#0b5f74}" +
+      ".pill.tone-mute{background:#e8eef1;color:#4d6168}" +
+      ".hero .pill.tone-info,.hero .pill.tone-mute{background:rgb(255 255 255 / 18%);color:#fff}" +
+      ".table-wrap{overflow:auto;border-radius:12px;border:1px solid var(--line)}" +
+      "table{width:100%;border-collapse:collapse;font-size:12.5px}" +
+      "th,td{padding:10px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}" +
+      "th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--paper)}" +
+      "tbody tr:nth-child(even) td{background:#fafcfd}" +
+      "tbody tr:last-child td{border-bottom:0}" +
+      "table.compact td,table.compact th{padding:8px}" +
+      ".score-cell{min-width:88px}" +
+      ".score-cell strong{display:block;font-size:13px;margin-bottom:4px}" +
+      ".bar{display:block;height:6px;border-radius:999px;background:#e6eef1;overflow:hidden}" +
+      ".bar i{display:block;height:100%;border-radius:inherit;background:var(--accent)}" +
+      ".score-cell.tone-ok .bar i{background:#1f8a5b}" +
+      ".score-cell.tone-mid .bar i{background:#c98512}" +
+      ".score-cell.tone-bad .bar i{background:#c23b2e}" +
+      ".muted{color:var(--muted)}" +
+      ".foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;" +
+      "margin-top:8px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}" +
+      ".foot strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}" +
+      "@media (max-width:820px){.kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:first-child{grid-column:1/-1}}" +
+      "@media print{body{padding:12px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+      ".hero{box-shadow:none;break-inside:avoid}.kpi,.block,.alert{break-inside:avoid}" +
+      ".kpi-strip{gap:8px}.block{box-shadow:none}}";
+
     return (
-      "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>" +
+      "<!doctype html><html lang='es'><head><meta charset='utf-8'>" +
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+      "<title>" +
       escapeHtml(title) +
       "</title><style>" +
-      "body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1c2b32;padding:24px;max-width:960px;margin:0 auto;}" +
-      ".brand{display:flex;gap:16px;align-items:flex-start;margin-bottom:8px;padding-bottom:14px;border-bottom:2px solid #007fa3}" +
-      ".brand .mark{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#007fa3;padding-top:4px;white-space:nowrap}" +
-      "h1{font-size:20px;margin:0 0 4px;color:#1c2b32}h2{font-size:15px;margin:22px 0 8px;color:#00647f}" +
-      ".meta{color:#58696d;font-size:13px;margin:4px 0}" +
-      ".foot{margin-top:28px;padding-top:12px;border-top:1px solid #dbe4e8}" +
-      ".kpis{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}" +
-      ".kpis>div{border:1px solid #dbe4e8;border-radius:12px;padding:12px 14px;min-width:110px;background:linear-gradient(180deg,#f3fafc,transparent)}" +
-      ".kpis b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d;margin-bottom:4px}" +
-      "table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}" +
-      "th,td{border-bottom:1px solid #dbe4e8;text-align:left;padding:8px 6px;vertical-align:top}" +
-      "th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d;background:#f7fbfc}" +
-      "@media print{body{padding:12px}.brand{border-color:#007fa3}}" +
+      css +
       "</style></head><body>" +
       body +
       "</body></html>"
