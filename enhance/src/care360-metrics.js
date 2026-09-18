@@ -65,9 +65,24 @@
   }
 
   function answerValue(ans) {
-    if (!ans) return "";
-    var v = ans.value || ans;
-    return String(v || "").toUpperCase();
+    if (ans == null || ans === "") return "";
+    var raw = typeof ans === "object" ? ans.value : ans;
+    var t = String(raw == null ? "" : raw)
+      .trim()
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!t) return "";
+    if (t === "si" || t === "si cumple" || t === "cumple" || t === "yes" || t === "s") return "SI";
+    if (t === "no" || t === "no cumple" || t === "incumple" || t === "n") return "NO";
+    if (t === "na" || t === "n/a" || t === "no aplica" || t === "sin evaluar") return "NA";
+    var up = String(raw).trim().toUpperCase();
+    if (up === "SI" || up === "NO" || up === "NA") return up;
+    return up;
+  }
+
+  function appBrandName() {
+    return window.__C360_DEBRAND === true ? "CARE 360" : "AVGUST CARE 360";
   }
 
   function chapterScore(answers, chapterId, catalog) {
@@ -612,36 +627,86 @@
 
   function exportStampName(ext) {
     var stamp = isoDate(new Date());
+    var prefix = window.__C360_DEBRAND === true ? "CARE360" : "AVGUST-CARE360";
     return (
-      "CARE360-metricas-" +
+      prefix +
+      "-metricas-" +
       (state.mode === "farm" ? normFarm(state.farm).replace(/\s+/g, "-") + "-" : "todas-") +
       stamp +
       ext
     );
   }
 
-  async function exportBoardCsv() {
+  function exportSnapshot() {
     var data = state._viewData;
-    if (!data) {
+    if (!data) return null;
+    var mix = chapterKpi(data.chapters || [], 4);
+    var dose = chapterKpi(data.chapters || [], 2);
+    var alerts =
+      state.mode === "farm" ? buildAlerts(null, data) : buildAlerts(data, null);
+    var score =
+      state.mode === "farm"
+        ? data.timeline && data.timeline.length
+          ? data.timeline[data.timeline.length - 1].score
+          : null
+        : data.score;
+    return {
+      data: data,
+      cmp: state._compare,
+      mix: mix,
+      dose: dose,
+      alerts: alerts || [],
+      score: score,
+      brand: appBrandName(),
+      modeLabel: state.mode === "farm" ? "Por finca · " + (state.farm || "") : "Todas las fincas",
+      periodFrom: formatDateEs(state.dateFrom) || "Todo",
+      periodTo: formatDateEs(state.dateTo) || "Todo",
+      chaptersNote:
+        state.mode === "farm"
+          ? "Capítulos de la última visita" +
+            (data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "")
+          : "Capítulos del periodo (todas las visitas)",
+      findingsNote:
+        state.mode === "farm"
+          ? "No cumple de la última visita (el KPI de hallazgos suma todo el periodo)"
+          : "Criterios con más hallazgos en el periodo",
+    };
+  }
+
+  function fmtDelta(delta, suffix) {
+    if (delta == null || isNaN(delta)) return "—";
+    return (delta > 0 ? "+" : "") + delta + (suffix || "");
+  }
+
+  async function exportBoardCsv() {
+    var snap = exportSnapshot();
+    if (!snap) {
       setNotice("No hay datos para exportar.", true);
       render();
       return;
     }
     try {
+      var data = snap.data;
+      var cmp = snap.cmp;
       var lines = [];
-      lines.push("CARE 360 · Exportación de métricas");
+      lines.push(snap.brand + " · Informe completo de métricas");
+      lines.push("Modo," + csvEscape(snap.modeLabel));
+      lines.push("Periodo," + csvEscape(snap.periodFrom) + "," + csvEscape(snap.periodTo));
       lines.push(
-        "Modo," +
-          csvEscape(state.mode === "farm" ? "Una finca" : "Todas las fincas") +
-          (state.mode === "farm" ? "," + csvEscape(state.farm) : "")
+        "KPIs,Indicador %,Mezclas %,Dosis %,Hallazgos periodo,Visitas"
       );
       lines.push(
-        "Periodo," +
-          csvEscape(formatDateEs(state.dateFrom) || "Todo") +
-          "," +
-          csvEscape(formatDateEs(state.dateTo) || "Todo")
+        [
+          "",
+          snap.score == null ? "" : snap.score,
+          snap.mix.score == null ? "" : snap.mix.score,
+          snap.dose.score == null ? "" : snap.dose.score,
+          data.findings || 0,
+          data.visits || 0,
+        ]
+          .map(csvEscape)
+          .join(",")
       );
-      var cmp = state._compare;
       if (cmp && cmp.enabled && cmp.prevWin) {
         lines.push(
           "Periodo anterior," +
@@ -650,10 +715,11 @@
             csvEscape(formatDateEs(cmp.prevWin.to))
         );
         lines.push(
-          "Indicador actual,Indicador anterior,Delta pts,Hallazgos actual,Hallazgos anterior,Visitas actual,Visitas anterior"
+          "Comparación,Indicador actual,Indicador anterior,Delta pts,Hallazgos actual,Hallazgos anterior,Visitas actual,Visitas anterior"
         );
         lines.push(
           [
+            "",
             cmp.score,
             cmp.prevScore,
             cmp.scoreDelta,
@@ -665,6 +731,18 @@
             .map(csvEscape)
             .join(",")
         );
+      }
+      if (snap.alerts.length) {
+        lines.push("");
+        lines.push("Qué atender");
+        lines.push("Prioridad,Título,Detalle,Finca,Capítulo");
+        snap.alerts.forEach(function (a) {
+          lines.push(
+            [a.tone || "", a.title || "", a.text || "", a.farm || "", a.chapter || ""]
+              .map(csvEscape)
+              .join(",")
+          );
+        });
       }
       lines.push("");
       if (data.farms && data.farms.length) {
@@ -688,7 +766,7 @@
         lines.push("");
       }
       if (data.timeline && data.timeline.length) {
-        lines.push("Evolución / visitas");
+        lines.push(state.mode === "farm" ? "Visitas por fecha" : "Evolución / visitas");
         lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable,Finca");
         data.timeline.forEach(function (r) {
           lines.push(
@@ -707,15 +785,19 @@
         lines.push("");
       }
       if (data.chapters && data.chapters.length) {
-        lines.push("Capítulos");
-        lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables");
+        lines.push(snap.chaptersNote);
+        lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables,Estado");
         data.chapters.forEach(function (c) {
-          lines.push([c.id, c.title, c.score, c.findings, c.applicable].map(csvEscape).join(","));
+          lines.push(
+            [c.id, c.title, c.score, c.findings, c.applicable, statusLabel(c.status)]
+              .map(csvEscape)
+              .join(",")
+          );
         });
         lines.push("");
       }
       if (data.items && data.items.length) {
-        lines.push("Hallazgos / criterios");
+        lines.push(snap.findingsNote);
         lines.push("Ítem,Capítulo,Hallazgos,Frecuencia %,Observación,Recomendación");
         data.items.forEach(function (it) {
           lines.push(
@@ -751,18 +833,20 @@
   }
 
   function buildExportReportHtml() {
-    var data = state._viewData;
-    var cmp = state._compare;
-    var title =
-      "CARE 360 · Métricas" +
-      (state.mode === "farm" ? " · " + (state.farm || "") : " · Todas las fincas");
+    var snap = exportSnapshot();
+    if (!snap) return "";
+    var data = snap.data;
+    var cmp = snap.cmp;
+    var title = snap.brand + " · Informe de métricas · " + snap.modeLabel;
     var body = "";
-    body += "<h1>" + escapeHtml(title) + "</h1>";
+    body += "<header class='brand'>";
+    body += "<div class='mark'>" + escapeHtml(snap.brand) + "</div>";
+    body += "<div><h1>" + escapeHtml("Informe de métricas · " + snap.modeLabel) + "</h1>";
     body +=
       "<p class='meta'>Periodo: " +
-      escapeHtml(formatDateEs(state.dateFrom) || "Todo") +
+      escapeHtml(snap.periodFrom) +
       " → " +
-      escapeHtml(formatDateEs(state.dateTo) || "Todo") +
+      escapeHtml(snap.periodTo) +
       "</p>";
     if (cmp && cmp.enabled && cmp.prevWin) {
       body +=
@@ -771,41 +855,39 @@
         " → " +
         escapeHtml(formatDateEs(cmp.prevWin.to)) +
         "</p>";
-      body += "<div class='kpis'>";
-      body +=
-        "<div><b>Indicador</b><br>" +
-        (cmp.score == null ? "—" : cmp.score + "%") +
-        " <small>(" +
-        (cmp.scoreDelta == null ? "sin base" : (cmp.scoreDelta > 0 ? "+" : "") + cmp.scoreDelta + " pts") +
-        ")</small></div>";
-      body +=
-        "<div><b>Hallazgos</b><br>" +
-        cmp.findings +
-        " <small>(" +
-        (cmp.findingsDelta > 0 ? "+" : "") +
-        cmp.findingsDelta +
-        ")</small></div>";
-      body +=
-        "<div><b>Visitas</b><br>" +
-        cmp.visits +
-        " <small>(" +
-        (cmp.visitsDelta > 0 ? "+" : "") +
-        cmp.visitsDelta +
-        ")</small></div>";
-      body += "</div>";
-    } else if (data) {
-      var score =
-        state.mode === "farm"
-          ? data.timeline && data.timeline.length
-            ? data.timeline[data.timeline.length - 1].score
-            : null
-          : data.score;
-      body += "<div class='kpis'>";
-      body += "<div><b>Indicador</b><br>" + (score == null ? "—" : score + "%") + "</div>";
-      body += "<div><b>Hallazgos</b><br>" + (data.findings || 0) + "</div>";
-      body += "<div><b>Visitas</b><br>" + (data.visits || 0) + "</div>";
-      body += "</div>";
     }
+    body += "</div></header>";
+
+    body += "<div class='kpis'>";
+    body +=
+      "<div><b>Indicador</b><br>" +
+      (snap.score == null ? "—" : snap.score + "%") +
+      (cmp && cmp.enabled
+        ? " <small>(" + fmtDelta(cmp.scoreDelta, " pts") + ")</small>"
+        : "") +
+      "</div>";
+    body +=
+      "<div><b>Mezclas</b><br>" +
+      (snap.mix.score == null ? "—" : snap.mix.score + "%") +
+      "</div>";
+    body +=
+      "<div><b>Dosis</b><br>" +
+      (snap.dose.score == null ? "—" : snap.dose.score + "%") +
+      "</div>";
+    body +=
+      "<div><b>Hallazgos periodo</b><br>" +
+      (data.findings || 0) +
+      (cmp && cmp.enabled
+        ? " <small>(" + fmtDelta(cmp.findingsDelta, "") + ")</small>"
+        : "") +
+      "</div>";
+    body +=
+      "<div><b>Visitas</b><br>" +
+      (data.visits || 0) +
+      (cmp && cmp.enabled ? " <small>(" + fmtDelta(cmp.visitsDelta, "") + ")</small>" : "") +
+      "</div>";
+    body += "</div>";
+
     function table(headers, rows) {
       var h =
         "<table><thead><tr>" +
@@ -827,6 +909,21 @@
       });
       return h + "</tbody></table>";
     }
+
+    if (snap.alerts.length) {
+      body += "<h2>Qué atender</h2>";
+      body += table(
+        ["Prioridad", "Alerta", "Detalle"],
+        snap.alerts.map(function (a) {
+          return [
+            a.tone === "critical" ? "Crítico" : a.tone === "healthy" ? "OK" : "Atención",
+            a.title || "",
+            a.text || "",
+          ];
+        })
+      );
+    }
+
     if (data.farms && data.farms.length) {
       body += "<h2>Resumen por finca</h2>";
       body += table(
@@ -844,10 +941,11 @@
         })
       );
     }
+
     if (data.timeline && data.timeline.length) {
-      body += "<h2>Evolución / visitas</h2>";
+      body += "<h2>" + (state.mode === "farm" ? "Visitas por fecha" : "Evolución / visitas") + "</h2>";
       body += table(
-        ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
+        ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
         data.timeline.map(function (r) {
           return [
             r.label || formatDateEs(r.date),
@@ -855,46 +953,68 @@
             r.findings,
             statusLabel(r.status),
             r.responsible || "—",
+            r.farm || state.farm || "—",
           ];
         })
       );
     }
+
     if (data.chapters && data.chapters.length) {
-      body += "<h2>Capítulos</h2>";
+      body += "<h2>" + escapeHtml(snap.chaptersNote) + "</h2>";
       body += table(
-        ["Capítulo", "Indicador", "Hallazgos"],
+        ["Capítulo", "Indicador", "Hallazgos", "Aplicables", "Estado"],
         data.chapters.map(function (c) {
-          return [c.id + ". " + c.title, c.score == null ? "—" : c.score + "%", c.findings];
+          return [
+            c.id + ". " + c.title,
+            c.score == null ? "—" : c.score + "%",
+            c.findings,
+            c.applicable,
+            statusLabel(c.status),
+          ];
         })
       );
     }
+
     if (data.items && data.items.length) {
-      body += "<h2>Hallazgos</h2>";
+      body += "<h2>" + escapeHtml(snap.findingsNote) + "</h2>";
       body += table(
-        ["Ítem", "Capítulo", "Detalle"],
-        data.items.slice(0, 40).map(function (it) {
+        ["Ítem", "Capítulo", "Hallazgos", "Frecuencia", "Observación", "Recomendación"],
+        data.items.map(function (it) {
           return [
             it.id,
             it.chapterTitle || CHAPTER_TITLES[it.chapter] || it.chapter || "",
-            it.observation || (it.findings != null ? it.findings + " hallazgos" : it.recommendation || ""),
+            it.findings != null ? it.findings : 1,
+            it.rate != null ? it.rate + "%" : "—",
+            it.observation || "—",
+            it.recommendation || "—",
           ];
         })
       );
     }
-    body += "<p class='meta'>Generado " + escapeHtml(formatDateEs(isoDate(new Date()))) + " · CARE 360</p>";
+
+    body +=
+      "<p class='meta foot'>Generado " +
+      escapeHtml(formatDateEs(isoDate(new Date()))) +
+      " · " +
+      escapeHtml(snap.brand) +
+      " · Métricas completas del tablero</p>";
     return (
       "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>" +
       escapeHtml(title) +
       "</title><style>" +
-      "body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1c2b32;padding:24px;}" +
-      "h1{font-size:22px;margin:0 0 8px}h2{font-size:16px;margin:22px 0 8px}" +
+      "body{font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1c2b32;padding:24px;max-width:960px;margin:0 auto;}" +
+      ".brand{display:flex;gap:16px;align-items:flex-start;margin-bottom:8px;padding-bottom:14px;border-bottom:2px solid #007fa3}" +
+      ".brand .mark{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#007fa3;padding-top:4px;white-space:nowrap}" +
+      "h1{font-size:20px;margin:0 0 4px;color:#1c2b32}h2{font-size:15px;margin:22px 0 8px;color:#00647f}" +
       ".meta{color:#58696d;font-size:13px;margin:4px 0}" +
-      ".kpis{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}" +
-      ".kpis>div{border:1px solid #dbe4e8;border-radius:12px;padding:12px 14px;min-width:120px}" +
+      ".foot{margin-top:28px;padding-top:12px;border-top:1px solid #dbe4e8}" +
+      ".kpis{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}" +
+      ".kpis>div{border:1px solid #dbe4e8;border-radius:12px;padding:12px 14px;min-width:110px;background:linear-gradient(180deg,#f3fafc,transparent)}" +
+      ".kpis b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d;margin-bottom:4px}" +
       "table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}" +
       "th,td{border-bottom:1px solid #dbe4e8;text-align:left;padding:8px 6px;vertical-align:top}" +
-      "th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d}" +
-      "@media print{body{padding:12px}}" +
+      "th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#58696d;background:#f7fbfc}" +
+      "@media print{body{padding:12px}.brand{border-color:#007fa3}}" +
       "</style></head><body>" +
       body +
       "</body></html>"
@@ -960,8 +1080,8 @@
   }
 
   async function exportBoardPrint() {
-    var data = state._viewData;
-    if (!data) {
+    var snap = exportSnapshot();
+    if (!snap) {
       setNotice("No hay datos para exportar.", true);
       render();
       return;
@@ -974,7 +1094,7 @@
       if (fileBridge()) {
         await saveOrDownloadBlob(blob, name);
         setNotice(
-          "Informe listo para Guardar / Compartir (" +
+          "Informe completo listo (" +
             name +
             "). Ábrelo y usa Imprimir → Guardar como PDF.",
           false
@@ -992,7 +1112,7 @@
               )
             );
             w.document.close();
-            setNotice("Informe listo para imprimir o guardar como PDF.", false);
+            setNotice("Informe completo listo para imprimir o guardar como PDF.", false);
           } else {
             await saveOrDownloadBlob(blob, name);
             setNotice(
@@ -1005,7 +1125,7 @@
         }
       }
     } catch (err) {
-      setNotice(err && err.message ? err.message : "No se pudo generar el PDF/informe.", true);
+      setNotice(err && err.message ? err.message : "No se pudo generar el informe de métricas.", true);
     }
     render();
   }
@@ -2001,9 +2121,9 @@
       (state.compare ? "true" : "false") +
       '" title="Comparar con periodo anterior">Comparar</button>';
     html +=
-      '<button type="button" class="c360-action-btn" data-act="export-csv" title="Exportar Excel">Excel</button>';
+      '<button type="button" class="c360-action-btn" data-act="export-csv" title="Exportar Excel/CSV con todas las métricas visibles">Excel</button>';
     html +=
-      '<button type="button" class="c360-action-btn primary" data-act="export-print" title="Exportar PDF">PDF</button>';
+      '<button type="button" class="c360-action-btn primary" data-act="export-print" title="Informe completo de métricas (imprimir o guardar PDF)">Informe</button>';
     html += "</div></div>";
     if (state.compare && (!state.dateFrom || !state.dateTo || state.range === "all")) {
       html +=
@@ -2134,8 +2254,8 @@
         : "";
     var findingsNote =
       data.visits != null
-        ? "en " + data.visits + " visita" + (data.visits === 1 ? "" : "s")
-        : "";
+        ? "suma del periodo · " + data.visits + " visita" + (data.visits === 1 ? "" : "s")
+        : "suma del periodo";
     var alerts = buildAlerts(data, null);
     var html = "";
     html += '<div class="c360-metrics-hero">';
@@ -2289,8 +2409,12 @@
         : "";
     var findingsNote =
       data.visits != null
-        ? "en " + data.visits + " visita" + (data.visits === 1 ? "" : "s")
-        : "";
+        ? "suma del periodo · " +
+          data.visits +
+          " visita" +
+          (data.visits === 1 ? "" : "s") +
+          " (detalle = última)"
+        : "suma del periodo";
     var alerts = buildAlerts(null, data);
     var html = "";
     html += '<div class="c360-metrics-hero">';
