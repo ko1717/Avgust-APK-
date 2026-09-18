@@ -4013,6 +4013,42 @@ html.c360-metrics-lite .metrics-actions {
   color: var(--c360-ink-soft, #58696d);
 }
 
+.c360-agenda-live {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 10px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--c360-line-soft, #d7e2e6);
+  border-radius: 16px;
+  background: var(--c360-surface, #fff);
+}
+
+.c360-agenda-live-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-agenda-block h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.c360-agenda-block .muted {
+  margin: 0;
+}
+
+/* Oculta la agenda nativa vacía/desactualizada cuando ya mostramos la en vivo. */
+.followup-panel.c360-agenda-host .fields.section-gap > section {
+  display: none;
+}
+
+html.dark .c360-agenda-live {
+  background: var(--c360-surface, #1a2428);
+  border-color: var(--c360-line-soft, #2f3d42);
+}
+
 .c360-followup-item header {
   display: flex;
   flex-wrap: wrap;

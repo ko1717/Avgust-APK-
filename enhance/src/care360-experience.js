@@ -1749,8 +1749,53 @@
         !!el.hasAttribute("data-active")
       );
     }
-    return !!q(".followup-panel") && /Seguimiento|Plan de acci/i.test(document.body.innerText || "");
+    return !!q("#followup-title");
   }
+
+  function followupSeguimientoHost() {
+    var title = q("#followup-title");
+    if (title) {
+      var panel = title.closest(".followup-panel");
+      if (panel) return panel;
+    }
+    var panels = qa(".followup-panel");
+    for (var i = 0; i < panels.length; i++) {
+      var p = panels[i];
+      if (p.offsetHeight < 40) continue;
+      if (/De los hallazgos a los resultados|SEGUIMIENTO DE FINCAS/i.test(p.innerText || "")) return p;
+    }
+    return null;
+  }
+
+  function onAgendaSubtab(host) {
+    if (!host) return false;
+    var sub = q(".module-subtabs", host) || host;
+    var tabs = qa('[role="tab"], button, [data-slot="tabs-trigger"]', sub);
+    for (var i = 0; i < tabs.length; i++) {
+      if (!/Agenda y revisión/i.test(tabs[i].textContent || "")) continue;
+      return (
+        tabs[i].getAttribute("aria-selected") === "true" ||
+        tabs[i].getAttribute("data-state") === "active" ||
+        !!tabs[i].hasAttribute("data-active") ||
+        /active|selected/i.test(tabs[i].className || "")
+      );
+    }
+    return /Seguimientos programados/i.test(host.innerText || "");
+  }
+
+  var REQUEST_KIND_LABELS = {
+    assurance: "Aseguramiento",
+    training: "Capacitación",
+    calibration: "Aforo de equipos",
+    followup: "Seguimiento",
+  };
+
+  var REQUEST_STATUS_LABELS = {
+    requested: "Solicitada",
+    scheduled: "Programada",
+    done: "Realizada",
+    cancelled: "Cancelada",
+  };
 
   function todayIsoDate() {
     var d = new Date();
@@ -1759,58 +1804,111 @@
     return d.getFullYear() + "-" + m + "-" + day;
   }
 
+  function farmNameById(farms, farmId) {
+    if (!farmId || !farms || !farms.length) return "";
+    for (var i = 0; i < farms.length; i++) {
+      if (farms[i].id === farmId) return farms[i].name || "";
+    }
+    return "";
+  }
+
   function enhanceFollowupSummary() {
     var existing = q("#c360-followup-summary");
+    var agendaLive = q("#c360-agenda-live");
     if (!onFollowupTab()) {
       if (existing) existing.remove();
+      if (agendaLive) agendaLive.remove();
+      document.documentElement.classList.remove("c360-agenda-live-on");
+      qa(".followup-panel").forEach(function (p) {
+        p.classList.remove("c360-agenda-host");
+      });
       return;
     }
-    var host =
-      q(".followup-panel") ||
-      q("main") ||
-      q("#root");
+    var host = followupSeguimientoHost();
     if (!host) return;
+
     if (!existing) {
       existing = document.createElement("section");
       existing.id = "c360-followup-summary";
       existing.className = "c360-followup-summary no-print";
       existing.setAttribute("aria-label", "Resumen de seguimiento");
-      var heading = q("h1, h2, .page-heading", host);
+      var heading = q(".page-heading", host) || q("h1, h2", host);
       if (heading && heading.parentElement) {
         heading.parentElement.insertBefore(existing, heading.nextSibling);
       } else {
         host.insertAdjacentElement("afterbegin", existing);
       }
     }
+
+    var showAgenda = onAgendaSubtab(host);
+    if (!showAgenda) {
+      if (agendaLive) agendaLive.remove();
+      document.documentElement.classList.remove("c360-agenda-live-on");
+      host.classList.remove("c360-agenda-host");
+    }
+
     if (existing.getAttribute("data-loading") === "1") return;
     existing.setAttribute("data-loading", "1");
-    apiJson("/api/visits")
-      .then(function (data) {
-        var visits = Array.isArray(data) ? data : data.visits || [];
+
+    Promise.all([
+      apiJson("/api/visits").catch(function () {
+        return [];
+      }),
+      apiJson("/api/requests").catch(function () {
+        return [];
+      }),
+      apiJson("/api/team").catch(function () {
+        return { farms: [] };
+      }),
+    ])
+      .then(function (parts) {
+        var visitsRaw = parts[0];
+        var requestsRaw = parts[1];
+        var team = parts[2] || {};
+        var visits = Array.isArray(visitsRaw) ? visitsRaw : visitsRaw.visits || visitsRaw.items || [];
+        var requests = Array.isArray(requestsRaw)
+          ? requestsRaw
+          : requestsRaw.requests || requestsRaw.items || [];
+        var farms = Array.isArray(team.farms) ? team.farms : [];
+
         var open = [];
         var scheduled = [];
+        var drafts = [];
         var photos = 0;
         var today = todayIsoDate();
+
         visits.forEach(function (v) {
           photos += Array.isArray(v.photos) ? v.photos.length : 0;
+          if (!v.reviewed) {
+            drafts.push({
+              farm: v.farm || "",
+              date: v.date || "",
+              responsible: v.responsible || "",
+              id: v.id || "",
+            });
+          }
           var followupDate = String(v.followup || "").trim();
           if (followupDate) {
             scheduled.push({
+              source: "visit",
               farm: v.farm || "",
               date: v.date || "",
               followup: followupDate,
               past: followupDate < today,
-              kind: v.serviceKind === "followup" ? "Seguimiento" : "Revisión programada",
+              kind: v.serviceKind === "followup" ? "Seguimiento (visita)" : "Revisión programada",
               responsible: v.responsible || "",
+              id: v.id || "",
             });
           } else if (v.serviceKind === "followup") {
             scheduled.push({
+              source: "visit",
               farm: v.farm || "",
               date: v.date || "",
               followup: v.date || "",
               past: !!(v.date && v.date < today),
               kind: "Visita de seguimiento",
               responsible: v.responsible || "",
+              id: v.id || "",
             });
           }
           var actions = v.actions || {};
@@ -1828,110 +1926,176 @@
               closure: a.closure || "",
               observation: ans.observation || "",
               recommendation: ans.recommendation || "",
-              hasPhoto: !!(a.photoId || (v.photos || []).some(function (p) {
-                return p && p.criterionId === id;
-              })),
+              hasPhoto: !!(
+                a.photoId ||
+                (v.photos || []).some(function (p) {
+                  return p && p.criterionId === id;
+                })
+              ),
             });
           });
         });
+
+        // Solicitudes de servicio (incl. tipo Seguimiento) → Agenda
+        var requestRows = [];
+        requests.forEach(function (req) {
+          if (!req || req.status === "done" || req.status === "cancelled") return;
+          var farm = farmNameById(farms, req.farmId) || req.farm || "";
+          var when = String(req.date || "").trim();
+          requestRows.push({
+            source: "request",
+            farm: farm,
+            date: when,
+            followup: when,
+            past: !!(when && when < today),
+            kind: (REQUEST_KIND_LABELS[req.kind] || req.kind || "Solicitud") + " · solicitud",
+            responsible: REQUEST_STATUS_LABELS[req.status] || req.status || "",
+            reason: req.reason || "",
+            id: req.id || "",
+            status: req.status || "",
+          });
+          if (req.kind === "followup" || req.status === "scheduled") {
+            scheduled.push({
+              source: "request",
+              farm: farm,
+              date: when,
+              followup: when || "Sin fecha",
+              past: !!(when && when < today),
+              kind:
+                req.kind === "followup"
+                  ? "Solicitud de seguimiento"
+                  : "Solicitud " + (REQUEST_STATUS_LABELS[req.status] || "").toLowerCase(),
+              responsible: REQUEST_STATUS_LABELS[req.status] || "",
+              reason: req.reason || "",
+              id: req.id || "",
+            });
+          }
+        });
+
         scheduled.sort(function (a, b) {
           return String(a.followup || "9999").localeCompare(String(b.followup || "9999"));
         });
         open.sort(function (a, b) {
           return String(a.due || "9999").localeCompare(String(b.due || "9999"));
         });
-        if (!open.length && !scheduled.length && !photos) {
+        drafts.sort(function (a, b) {
+          return String(b.date || "").localeCompare(String(a.date || ""));
+        });
+        requestRows.sort(function (a, b) {
+          return String(a.date || "9999").localeCompare(String(b.date || "9999"));
+        });
+
+        if (!open.length && !scheduled.length && !photos && !drafts.length && !requestRows.length) {
           existing.innerHTML =
             '<div class="c360-followup-summary-card">' +
             "<strong>Seguimiento</strong>" +
-            "<p>Agenda una fecha de seguimiento en la visita, o importa un informe Word CARE 360 con el plan de acción.</p>" +
+            "<p>Agenda una fecha de seguimiento en la visita, crea una solicitud de seguimiento, o importa un informe Word CARE 360 con el plan de acción.</p>" +
             "</div>";
-          return;
+        } else {
+          var scheduledRows = scheduled
+            .slice(0, 8)
+            .map(function (item) {
+              return (
+                '<article class="c360-followup-item tone-scheduled' +
+                (item.past ? " is-past" : "") +
+                '">' +
+                "<header><strong>" +
+                escapeHtml(item.kind) +
+                "</strong><span>" +
+                escapeHtml(item.farm) +
+                (item.followup ? " · " + escapeHtml(item.followup) : "") +
+                (item.past ? " · fecha pasada" : "") +
+                "</span></header>" +
+                "<p>" +
+                escapeHtml(
+                  item.reason ||
+                    (item.date
+                      ? "Origen visita " + item.date + (item.responsible ? " · " + item.responsible : "")
+                      : item.responsible || "Revisión agendada")
+                ) +
+                "</p>" +
+                "</article>"
+              );
+            })
+            .join("");
+          var rows = open
+            .slice(0, 12)
+            .map(function (item) {
+              return (
+                '<article class="c360-followup-item tone-' +
+                (item.status || "proposed") +
+                '">' +
+                "<header><strong>" +
+                escapeHtml(item.id) +
+                " · " +
+                escapeHtml(ACTION_LABELS[item.status] || item.status) +
+                "</strong><span>" +
+                escapeHtml(item.farm) +
+                (item.due ? " · límite " + escapeHtml(item.due) : "") +
+                (item.hasPhoto ? " · con foto" : "") +
+                "</span></header>" +
+                "<p>" +
+                escapeHtml(item.observation || item.recommendation || "Sin detalle") +
+                "</p>" +
+                (item.owner || item.closure
+                  ? "<p class=\"muted\">" +
+                    escapeHtml(
+                      [item.owner ? "Resp. " + item.owner : "", item.closure ? "Cierre: " + item.closure : ""]
+                        .filter(Boolean)
+                        .join(" · ")
+                    ) +
+                    "</p>"
+                  : "") +
+                "</article>"
+              );
+            })
+            .join("");
+          existing.innerHTML =
+            '<div class="c360-followup-summary-card">' +
+            "<strong>Seguimiento activo</strong>" +
+            "<p>" +
+            scheduled.length +
+            " en agenda · " +
+            open.length +
+            " hallazgo(s) abiertos · " +
+            drafts.length +
+            " informe(s) por revisar · " +
+            photos +
+            " foto(s).</p>" +
+            (scheduledRows
+              ? "<p class=\"c360-followup-section-label\">Agenda</p>" +
+                '<div class="c360-followup-list">' +
+                scheduledRows +
+                "</div>" +
+                (scheduled.length > 8
+                  ? "<p class=\"muted\">Mostrando 8 de " + scheduled.length + ".</p>"
+                  : "")
+              : "") +
+            (rows
+              ? "<p class=\"c360-followup-section-label\">Compromisos abiertos</p>" +
+                '<div class="c360-followup-list">' +
+                rows +
+                "</div>" +
+                (open.length > 12 ? "<p class=\"muted\">Mostrando 12 de " + open.length + ".</p>" : "")
+              : "") +
+            "</div>";
         }
-        var scheduledRows = scheduled
-          .slice(0, 8)
-          .map(function (item) {
-            return (
-              '<article class="c360-followup-item tone-scheduled' +
-              (item.past ? " is-past" : "") +
-              '">' +
-              "<header><strong>" +
-              escapeHtml(item.kind) +
-              "</strong><span>" +
-              escapeHtml(item.farm) +
-              (item.followup ? " · " + escapeHtml(item.followup) : "") +
-              (item.past ? " · fecha pasada" : "") +
-              "</span></header>" +
-              "<p>" +
-              escapeHtml(
-                item.date
-                  ? "Origen visita " + item.date + (item.responsible ? " · " + item.responsible : "")
-                  : item.responsible || "Revisión agendada en la visita"
-              ) +
-              "</p>" +
-              "</article>"
-            );
-          })
-          .join("");
-        var rows = open
-          .slice(0, 12)
-          .map(function (item) {
-            return (
-              '<article class="c360-followup-item tone-' +
-              (item.status || "proposed") +
-              '">' +
-              "<header><strong>" +
-              escapeHtml(item.id) +
-              " · " +
-              escapeHtml(ACTION_LABELS[item.status] || item.status) +
-              "</strong><span>" +
-              escapeHtml(item.farm) +
-              (item.due ? " · límite " + escapeHtml(item.due) : "") +
-              (item.hasPhoto ? " · con foto" : "") +
-              "</span></header>" +
-              "<p>" +
-              escapeHtml(item.observation || item.recommendation || "Sin detalle") +
-              "</p>" +
-              (item.owner || item.closure
-                ? "<p class=\"muted\">" +
-                  escapeHtml(
-                    [item.owner ? "Resp. " + item.owner : "", item.closure ? "Cierre: " + item.closure : ""]
-                      .filter(Boolean)
-                      .join(" · ")
-                  ) +
-                  "</p>"
-                : "") +
-              "</article>"
-            );
-          })
-          .join("");
-        existing.innerHTML =
-          '<div class="c360-followup-summary-card">' +
-          "<strong>Seguimiento activo</strong>" +
-          "<p>" +
-          scheduled.length +
-          " revisión(es) programada(s) · " +
-          open.length +
-          " hallazgo(s) abiertos · " +
-          photos +
-          " foto(s).</p>" +
-          (scheduledRows
-            ? "<p class=\"c360-followup-section-label\">Revisiones programadas</p>" +
-              '<div class="c360-followup-list">' +
-              scheduledRows +
-              "</div>" +
-              (scheduled.length > 8
-                ? "<p class=\"muted\">Mostrando 8 de " + scheduled.length + " revisiones.</p>"
-                : "")
-            : "") +
-          (rows
-            ? "<p class=\"c360-followup-section-label\">Compromisos abiertos</p>" +
-              '<div class="c360-followup-list">' +
-              rows +
-              "</div>" +
-              (open.length > 12 ? "<p class=\"muted\">Mostrando 12 de " + open.length + ".</p>" : "")
-            : "") +
-          "</div>";
+
+        if (onAgendaSubtab(host)) {
+          renderLiveAgenda(host, {
+            scheduled: scheduled.filter(function (item) {
+              // Visitas con fecha de seguimiento + solicitudes tipo Seguimiento/programadas
+              return item.source === "visit" || item.source === "request";
+            }),
+            drafts: drafts,
+            requests: requestRows,
+          });
+        } else {
+          var stale = q("#c360-agenda-live", host);
+          if (stale) stale.remove();
+          document.documentElement.classList.remove("c360-agenda-live-on");
+          host.classList.remove("c360-agenda-host");
+        }
       })
       .catch(function () {
         existing.innerHTML = "";
@@ -1939,6 +2103,110 @@
       .then(function () {
         existing.removeAttribute("data-loading");
       });
+  }
+
+  function renderLiveAgenda(host, data) {
+    if (!host) return;
+    var box = q("#c360-agenda-live", host);
+    if (!box) {
+      box = document.createElement("section");
+      box.id = "c360-agenda-live";
+      box.className = "c360-agenda-live no-print";
+      box.setAttribute("aria-label", "Agenda en vivo");
+      var sub = q(".module-subtabs", host);
+      if (sub && sub.parentElement) {
+        sub.parentElement.insertBefore(box, sub.nextSibling);
+      } else {
+        host.appendChild(box);
+      }
+    }
+    document.documentElement.classList.add("c360-agenda-live-on");
+    host.classList.add("c360-agenda-host");
+
+    function listBlock(title, empty, items, renderItem) {
+      if (!items.length) {
+        return (
+          '<section class="c360-agenda-block"><h3>' +
+          escapeHtml(title) +
+          '</h3><p class="muted">' +
+          escapeHtml(empty) +
+          "</p></section>"
+        );
+      }
+      return (
+        '<section class="c360-agenda-block"><h3>' +
+        escapeHtml(title) +
+        '</h3><div class="c360-followup-list">' +
+        items.map(renderItem).join("") +
+        "</div></section>"
+      );
+    }
+
+    var scheduledHtml = listBlock(
+      "Seguimientos programados",
+      "No hay fechas de seguimiento ni solicitudes de seguimiento pendientes.",
+      data.scheduled || [],
+      function (item) {
+        return (
+          '<article class="c360-followup-item tone-scheduled' +
+          (item.past ? " is-past" : "") +
+          '"><header><strong>' +
+          escapeHtml(item.farm || "Sin finca") +
+          "</strong><span>" +
+          escapeHtml(item.followup || "") +
+          (item.past ? " · Fecha pasada" : "") +
+          "</span></header><p>" +
+          escapeHtml(item.kind + (item.responsible ? " · " + item.responsible : "")) +
+          (item.reason ? " — " + escapeHtml(item.reason) : "") +
+          "</p></article>"
+        );
+      }
+    );
+
+    var draftsHtml = listBlock(
+      "Informes por revisar",
+      "No hay borradores pendientes.",
+      data.drafts || [],
+      function (item) {
+        return (
+          '<article class="c360-followup-item tone-progress"><header><strong>' +
+          escapeHtml(item.farm || "Sin finca") +
+          "</strong><span>" +
+          escapeHtml(item.date || "") +
+          "</span></header><p>" +
+          escapeHtml(item.responsible ? "Borrador · " + item.responsible : "Informe en borrador") +
+          "</p></article>"
+        );
+      }
+    );
+
+    var openRequests = (data.requests || []).filter(function (r) {
+      // Las programadas/tipo seguimiento ya salen arriba; aquí las recién solicitadas.
+      return r.status === "requested";
+    });
+    var requestsHtml = listBlock(
+      "Solicitudes abiertas",
+      "No hay solicitudes pendientes.",
+      openRequests,
+      function (item) {
+        return (
+          '<article class="c360-followup-item tone-proposed"><header><strong>' +
+          escapeHtml(item.kind || "Solicitud") +
+          "</strong><span>" +
+          escapeHtml(item.farm || "") +
+          (item.date ? " · " + escapeHtml(item.date) : "") +
+          "</span></header><p>" +
+          escapeHtml(item.reason || item.responsible || "Sin detalle") +
+          "</p></article>"
+        );
+      }
+    );
+
+    box.innerHTML =
+      '<p class="c360-agenda-live-note">Agenda actualizada desde visitas y solicitudes guardadas.</p>' +
+      scheduledHtml +
+      draftsHtml +
+      requestsHtml;
   }
 
   function escapeHtml(value) {
@@ -2202,7 +2470,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-active"],
+      attributeFilter: ["data-active", "data-state", "aria-selected", "hidden"],
     });
 
     window.addEventListener("resize", syncChromeSizes, { passive: true });
