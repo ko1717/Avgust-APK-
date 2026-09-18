@@ -9,72 +9,74 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 
 ---
 
-## Entregable (v1.5.13)
+## Una sola APK
 
-| Ruta | Contenido |
+Este repositorio publica **una única APK**. Las versiones anteriores
+(1.1.0-rc.5 hasta 1.5.12, y las variantes sin marca) están **retiradas**.
+No se instalan ni se vuelven a subir.
+
+| Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | **Única APK publicada** (marca Avgust). |
-| `enhance/src/` | Capa de mejoras (CSS/JS) que se inyecta sobre el APK base. |
-| `tools/` | Compilación, firma, parches y demos de importación. |
-| `tests/` | Prueba e2e del contenido web. |
+| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-Se instala encima de 1.4.x–1.5.12 firmadas con la misma clave (`tools/signing/`).
+En la cabecera de la app debe verse **v1.5.13**. Se instala encima de 1.4.x–1.5.12
+firmadas con la misma clave (`tools/signing/`).
 
-### Destacados 1.5.13
-
-- El panel **Calidad de la visita** se queda en su sitio (ya no tapa Departamento / Municipio al escribir).
-- Modo oscuro y modo lector (☀) con mejor contraste en capítulos, selectores, pasos e informe.
-
-### Destacados 1.5.12
-
-- **Seguimiento** sin el muro de tarjetas de hallazgos: resumen compacto con KPIs; compromisos en la lista nativa (más clara en móvil).
-- Al **borrar una solicitud**, desaparece de Agenda/Seguimiento de inmediato.
-- Agenda rediseñada (fichas con fecha y estado).
-
-### Destacados previos
-
-- Agenda y revisión en vivo (visitas + solicitudes).
-- Una sola APK en `dist/`; métricas Por finca sin mezclar.
+`tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
+semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Estructura del repositorio
+## Qué incluye 1.5.13
+
+- **Borrar visita** (lista y editor): elimina la visita y sus informes.
+- **Borrar versión de informe**.
+- **Borrar solicitud**: desaparece de Agenda y Seguimiento.
+- **Borrar finca**: también elimina visitas, informes y solicitudes de esa finca.
+- Panel **Calidad de la visita** fijo (ya no tapa Departamento / Municipio).
+- Modo oscuro y modo lector (☀).
+- Seguimiento compacto, agenda en vivo y métricas Por finca sin mezclar.
+
+---
+
+## Estructura
 
 ```
-dist/                 ← una sola APK (versión actual)
+dist/                 ← única APK instalable (versión actual)
 enhance/src/          ← capa de interfaz y experiencia
 tools/
-  base/               ← APK base Capacitor
+  base/               ← semilla de compilación (no instalar)
   signing/            ← keystore de release
   demo/               ← CSV/Word de ejemplo + scripts de captura
-  build-apk.sh        ← genera el APK
+  build-apk.sh        ← genera la APK y borra las demás de dist/
   patch_*.py          ← parches sobre el bundle compilado
 tests/                ← e2e
 ```
 
-Los APKs viven **solo en `dist/`** para no duplicar binarios en la raíz.
+`tools/build-apk.sh` deja **exactamente un** `.apk` en `dist/` y no permite
+APKs sueltas en la raíz.
 
 ---
 
-## Generar el APK
+## Generar la APK
 
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Con marca Avgust (por defecto → dist/AVGUST-CARE-360-1.5.13-Android.apk)
+# Publica dist/AVGUST-CARE-360-1.5.13-Android.apk y retira cualquier otra
 tools/build-apk.sh
-
-# Sin marca Avgust (solo si se necesita; deja esa variante como única en dist/)
-C360_DEBRAND=1 tools/build-apk.sh
 ```
 
-Parámetros opcionales: `tools/build-apk.sh <apk-base> <version-name> <version-code>`.
+Parámetros opcionales: `tools/build-apk.sh <apk-semilla> <version-name> <version-code>`.
+
+La variante sin marca (`C360_DEBRAND=1`) solo se usa si hace falta un paquete
+neutro; en ese caso **esa** queda como la única APK en `dist/`. El flujo normal
+de campo es la APK Avgust.
 
 ### Vista previa sin instalar
 
 ```bash
 tools/dev-preview.sh                 # http://localhost:8080
-C360_DEBRAND=1 tools/dev-preview.sh  # sin marca
 ```
 
 ### Pruebas

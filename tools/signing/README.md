@@ -17,7 +17,7 @@ CARE360_KEY_ALIAS=... \
 tools/build-apk.sh
 ```
 
-La primera instalación encima de 1.1.0-rc.5 sí exige desinstalar la anterior,
-porque el paquete original venía firmado con la clave de depuración del equipo
-donde se compiló y esa clave no está disponible. Antes de desinstalar, crear un
-respaldo completo desde *Inicio → Crear respaldo completo* y restaurarlo después.
+La semilla `tools/base/capacitor-seed.apk` (el paquete original 1.1.0-rc.5)
+está firmada con otra clave. No se instala en campo. Quien aún tenga esa
+versión de depuración debe desinstalarla, crear antes un respaldo desde
+*Inicio → Crear respaldo completo* y restaurarlo después.

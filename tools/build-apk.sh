@@ -11,7 +11,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
+BASE_APK="${1:-$ROOT/tools/base/capacitor-seed.apk}"
 # Resolve before cd into the temp workdir (relative paths break after that).
 if [[ "$BASE_APK" != /* ]]; then
   BASE_APK="$(cd "$(dirname "$BASE_APK")" && pwd)/$(basename "$BASE_APK")"
@@ -264,6 +264,13 @@ else
   find "$ROOT" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' -delete
 fi
 find "$ROOT" -maxdepth 1 -name '*.idsig' -delete
+
+apk_count="$(find "$OUT_DIR" -maxdepth 1 -name '*.apk' | wc -l)"
+if [[ "$apk_count" -ne 1 ]]; then
+  echo "ERROR: dist/ debe quedar con una sola APK (hay $apk_count)." >&2
+  find "$OUT_DIR" -maxdepth 1 -name '*.apk' -print >&2
+  exit 1
+fi
 
 echo
 echo "==> APK generado: $FINAL"

@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASE_APK="${1:-$ROOT/tools/base/AVGUST-CARE-360-1.1.0-rc.5-Android.apk}"
+BASE_APK="${1:-$ROOT/tools/base/capacitor-seed.apk}"
 PORT="${2:-8080}"
 OUT="${CARE360_PREVIEW_DIR:-/tmp/care360-preview}"
 

@@ -7,3 +7,6 @@ tools/__pycache__/
 **/__pycache__/
 *.pyc
 tests/package-lock.json
+
+# Una sola APK publicada, siempre en dist/
+/*.apk
