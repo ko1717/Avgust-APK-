@@ -60,6 +60,22 @@
       .replace(/[\u0300-\u036f]/g, "");
   }
 
+  function visitFarmId(v) {
+    if (!v) return "";
+    return String(v.farmId || v.farm_id || "").trim();
+  }
+
+  /** Misma finca por nombre normalizado o por farmId. */
+  function sameFarm(visit, farmName, farmId) {
+    if (!visit) return false;
+    var wantId = String(farmId || "").trim();
+    var gotId = visitFarmId(visit);
+    if (wantId && gotId && wantId === gotId) return true;
+    var want = normFarm(farmName);
+    if (!want) return false;
+    return normFarm(visit.farm) === want;
+  }
+
   function visitUsable(v) {
     return !!(v && v.reviewed && (!v.serviceKind || v.serviceKind === "assurance"));
   }
@@ -481,8 +497,8 @@
   function filterByWindow(visits, win, farmName) {
     return (visits || []).filter(function (v) {
       if (!visitUsable(v)) return false;
-      if (farmName && normFarm(v.farm) !== normFarm(farmName)) return false;
-      return inDateRange(v.date, win.from, win.to);
+      if (farmName && !sameFarm(v, farmName, state.farmId)) return false;
+      return inDateRange(v.date, win && win.from, win && win.to);
     });
   }
 
@@ -1173,7 +1189,7 @@
   function aggregateFarm(visits, farmName, dateFrom, dateTo) {
     var filtered = visits.filter(function (v) {
       if (!visitUsable(v)) return false;
-      if (normFarm(v.farm) !== normFarm(farmName)) return false;
+      if (!sameFarm(v, farmName, state.farmId)) return false;
       return inDateRange(v.date, dateFrom, dateTo);
     });
     filtered.sort(function (a, b) {
@@ -1211,11 +1227,12 @@
         };
       });
 
+    var canonical = String(farmName || "").trim();
     var timeline = filtered.map(function (v) {
       var st = visitScore(v);
       return {
         id: v.id || "",
-        farm: v.farm || farmName,
+        farm: canonical || v.farm || "",
         date: v.date,
         label: formatDateEs(v.date),
         shortLabel: formatDateShort(v.date),
@@ -1961,6 +1978,7 @@
   var state = {
     mode: "all",
     farm: "",
+    farmId: "",
     range: "all",
     dateFrom: "",
     dateTo: "",
@@ -2005,6 +2023,11 @@
     state.focus = null;
     if (detail && detail.farm && state.farm && normFarm(state.farm) === normFarm(detail.farm)) {
       state.farm = "";
+      state.farmId = "";
+    }
+    if (detail && detail.farmId && state.farmId && detail.farmId === state.farmId) {
+      state.farm = "";
+      state.farmId = "";
     }
     if (onMetricsTab()) loadVisits();
   }
@@ -2013,13 +2036,48 @@
     var map = {};
     visits.forEach(function (v) {
       if (!v.farm) return;
-      map[normFarm(v.farm)] = v.farm;
+      var key = normFarm(v.farm);
+      if (!key) return;
+      if (!map[key]) {
+        map[key] = { name: v.farm, farmId: visitFarmId(v) };
+      } else if (!map[key].farmId) {
+        map[key].farmId = visitFarmId(v);
+      }
     });
     return Object.keys(map)
       .sort()
       .map(function (k) {
         return map[k];
       });
+  }
+
+  function pickFarmOption(farms, farmName, farmId) {
+    if (!farms || !farms.length) return null;
+    var wantId = String(farmId || "").trim();
+    if (wantId) {
+      for (var i = 0; i < farms.length; i++) {
+        if (farms[i].farmId && farms[i].farmId === wantId) return farms[i];
+      }
+    }
+    var want = normFarm(farmName);
+    if (want) {
+      for (var j = 0; j < farms.length; j++) {
+        if (normFarm(farms[j].name) === want) return farms[j];
+      }
+    }
+    return null;
+  }
+
+  function syncSelectedFarm(farms) {
+    if (!farms.length) {
+      state.farm = "";
+      state.farmId = "";
+      return;
+    }
+    var hit = pickFarmOption(farms, state.farm, state.farmId);
+    if (!hit) hit = farms[0];
+    state.farm = hit.name;
+    state.farmId = hit.farmId || "";
   }
 
   function ensureRoot() {
@@ -2084,9 +2142,11 @@
       usable = filterUsableByRange(visits);
     }
     var farms = farmOptions(usable.length ? usable : filterUsableByRange(visits));
-    if (!state.farm && farms.length) state.farm = farms[0];
-    if (state.mode === "farm" && farms.length && farms.indexOf(state.farm) === -1) {
-      state.farm = farms[0];
+    if (state.mode === "farm") {
+      syncSelectedFarm(farms);
+    } else if (!state.farm && farms.length) {
+      state.farm = farms[0].name;
+      state.farmId = farms[0].farmId || "";
     }
 
     var html = "";
@@ -2096,7 +2156,7 @@
     html +=
       "<p>" +
       (state.mode === "farm" && state.farm
-        ? escapeHtml(state.farm)
+        ? "Solo · " + escapeHtml(state.farm)
         : "Indicador de aseguramientos por finca y periodo") +
       "</p>";
     html += "</div>";
@@ -2181,14 +2241,14 @@
       '">';
     if (state.mode === "farm") {
       html += '<label class="c360-filter-farm">Finca<select data-field="farm">';
-      farms.forEach(function (name) {
+      farms.forEach(function (opt) {
         html +=
           '<option value="' +
-          escapeHtml(name) +
+          escapeHtml(opt.name) +
           '"' +
-          (name === state.farm ? " selected" : "") +
+          (normFarm(opt.name) === normFarm(state.farm) ? " selected" : "") +
           ">" +
-          escapeHtml(name) +
+          escapeHtml(opt.name) +
           "</option>";
       });
       html += "</select></label>";
@@ -2216,8 +2276,11 @@
 
     if (state.mode === "farm") {
       var farmWin = state.compare ? win : { from: state.dateFrom, to: state.dateTo };
+      var farmVisits = (visits || []).filter(function (v) {
+        return sameFarm(v, state.farm, state.farmId);
+      });
       html += renderFarmView(
-        aggregateFarm(visits, state.farm, farmWin.from || "", farmWin.to || "")
+        aggregateFarm(farmVisits, state.farm, farmWin.from || "", farmWin.to || "")
       );
     } else {
       html += renderAllView(aggregateAll(usable));
@@ -2781,7 +2844,7 @@
     var list = filterUsableByRange(state.visits || []);
     if (state.mode === "farm" && state.farm) {
       list = list.filter(function (v) {
-        return normFarm(v.farm) === normFarm(state.farm);
+        return sameFarm(v, state.farm, state.farmId);
       });
     }
     var exact = list.filter(function (v) {
@@ -2936,10 +2999,12 @@
         html += '<div class="c360-focus-list">';
         refs.forEach(function (v) {
           var st = visitScore(v);
+          var farmLabel =
+            state.mode === "farm" ? state.farm || v.farm || "Finca" : v.farm || state.farm || "Finca";
           html += '<article class="c360-focus-item">';
           html +=
             '<div class="c360-focus-item-main"><strong>' +
-            escapeHtml(v.farm || state.farm || "Finca") +
+            escapeHtml(farmLabel) +
             "</strong><p>" +
             escapeHtml(formatDateEs(v.date)) +
             (v.responsible || v.technician ? " · " + escapeHtml(v.responsible || v.technician) : "") +
@@ -2949,7 +3014,7 @@
             st.findings +
             " hallazgos</p></div>";
           html += '<div class="c360-focus-actions">';
-          if (v.farm) {
+          if (v.farm && state.mode !== "farm") {
             html +=
               '<button type="button" class="c360-alert-btn" data-open-farm="' +
               escapeHtml(v.farm) +
@@ -2957,7 +3022,7 @@
           }
           html +=
             '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
-            escapeHtml(v.farm || state.farm || "") +
+            escapeHtml(farmLabel) +
             '" data-open-date="' +
             escapeHtml(v.date || "") +
             '">Abrir informe</button>';
@@ -3065,8 +3130,13 @@
         findings = chRow.findings;
       }
     } else {
-      var usable = filterUsableByRange(state.visits || []);
-      usable.forEach(function (v) {
+      var usableCh = filterUsableByRange(state.visits || []);
+      if (state.mode === "farm" && state.farm) {
+        usableCh = usableCh.filter(function (v) {
+          return sameFarm(v, state.farm, state.farmId);
+        });
+      }
+      usableCh.forEach(function (v) {
         Object.keys(v.answers || {}).forEach(function (id) {
           if (Number(String(id).split(".")[0]) !== ch) return;
           if (answerValue(v.answers[id]) !== "NO") return;
@@ -3074,7 +3144,7 @@
             id: id,
             observation: v.answers[id].observation || "",
             recommendation: v.answers[id].recommendation || "",
-            farm: v.farm,
+            farm: state.mode === "farm" ? state.farm || v.farm : v.farm,
             date: v.date,
           });
         });
@@ -3123,8 +3193,21 @@
     });
     qa("[data-field]", root).forEach(function (el) {
       el.addEventListener("change", function () {
-        state[el.getAttribute("data-field")] = el.value;
-        if (el.getAttribute("data-field") === "dateFrom" || el.getAttribute("data-field") === "dateTo") {
+        var field = el.getAttribute("data-field");
+        state[field] = el.value;
+        if (field === "farm") {
+          var opt = pickFarmOption(farmOptions(state.visits || []), el.value, "");
+          state.farm = opt ? opt.name : el.value;
+          state.farmId = opt ? opt.farmId || "" : "";
+          // Si no hay farmId en el catálogo, toma el de la primera visita coincidente.
+          if (!state.farmId) {
+            var hit = (state.visits || []).find(function (v) {
+              return sameFarm(v, state.farm, "");
+            });
+            state.farmId = visitFarmId(hit);
+          }
+        }
+        if (field === "dateFrom" || field === "dateTo") {
           state.range = "custom";
           state._showDates = true;
         }
@@ -3134,8 +3217,17 @@
     });
     qa("[data-open-farm]", root).forEach(function (el) {
       function openFarm() {
+        var name = el.getAttribute("data-open-farm") || "";
+        var opt = pickFarmOption(farmOptions(state.visits || []), name, "");
         state.mode = "farm";
-        state.farm = el.getAttribute("data-open-farm") || "";
+        state.farm = opt ? opt.name : name;
+        state.farmId = opt ? opt.farmId || "" : "";
+        if (!state.farmId) {
+          var hit = (state.visits || []).find(function (v) {
+            return sameFarm(v, state.farm, "");
+          });
+          state.farmId = visitFarmId(hit);
+        }
         state.focus = null;
         render();
       }

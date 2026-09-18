@@ -1443,7 +1443,13 @@ html.dark .c360-confirm-keep {
 }
 
 /* —— Tablero de métricas simple —— */
+/* Oculta por completo el tablero nativo (Por finca / Consolidado); solo queda el nuestro. */
 html.c360-metrics-lite .metric-view-switch {
+  display: none !important;
+}
+
+html.c360-metrics-lite .metrics-panel,
+html.c360-metrics-lite .consolidated-panel {
   display: none !important;
 }
 
@@ -1479,6 +1485,15 @@ html.c360-metrics-lite .metrics-area > :not(.c360-metrics-board):not(.metrics-pa
 html.c360-metrics-lite #farm-metrics-title,
 html.c360-metrics-lite .metrics-actions {
   display: none !important;
+}
+
+@media print {
+  html.c360-metrics-lite .metrics-panel,
+  html.c360-metrics-lite .consolidated-panel,
+  html.c360-metrics-lite .metric-view-switch,
+  html.c360-metrics-lite .c360-metric-findings {
+    display: none !important;
+  }
 }
 
 .c360-metrics-board {
