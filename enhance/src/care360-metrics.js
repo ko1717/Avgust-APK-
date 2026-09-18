@@ -65,15 +65,16 @@
     return String(v.farmId || v.farm_id || "").trim();
   }
 
-  /** Misma finca por nombre normalizado o por farmId. */
+  /** Misma finca: el nombre normalizado manda; farmId solo si falta el nombre. */
   function sameFarm(visit, farmName, farmId) {
     if (!visit) return false;
+    var want = normFarm(farmName);
+    var got = normFarm(visit.farm);
+    if (want && got) return want === got;
     var wantId = String(farmId || "").trim();
     var gotId = visitFarmId(visit);
-    if (wantId && gotId && wantId === gotId) return true;
-    var want = normFarm(farmName);
-    if (!want) return false;
-    return normFarm(visit.farm) === want;
+    if (wantId && gotId) return wantId === gotId;
+    return false;
   }
 
   function visitUsable(v) {
@@ -783,21 +784,38 @@
       }
       if (data.timeline && data.timeline.length) {
         lines.push(state.mode === "farm" ? "Visitas por fecha" : "Evolución / visitas");
-        lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable,Finca");
-        data.timeline.forEach(function (r) {
-          lines.push(
-            [
-              formatDateEs(r.date) || r.label,
-              r.score,
-              r.findings,
-              statusLabel(r.status),
-              r.responsible || "",
-              r.farm || state.farm || "",
-            ]
-              .map(csvEscape)
-              .join(",")
-          );
-        });
+        if (state.mode === "farm") {
+          lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable");
+          data.timeline.forEach(function (r) {
+            lines.push(
+              [
+                formatDateEs(r.date) || r.label,
+                r.score,
+                r.findings,
+                statusLabel(r.status),
+                r.responsible || "",
+              ]
+                .map(csvEscape)
+                .join(",")
+            );
+          });
+        } else {
+          lines.push("Fecha,Indicador %,Hallazgos,Estado,Responsable,Finca");
+          data.timeline.forEach(function (r) {
+            lines.push(
+              [
+                formatDateEs(r.date) || r.label,
+                r.score,
+                r.findings,
+                statusLabel(r.status),
+                r.responsible || "",
+                r.farm || state.farm || "",
+              ]
+                .map(csvEscape)
+                .join(",")
+            );
+          });
+        }
         lines.push("");
       }
       if (data.chapters && data.chapters.length) {
@@ -1043,7 +1061,7 @@
                 "</strong></header><p>" +
                 escapeHtml(a.text || "") +
                 "</p>" +
-                (a.farm
+                (a.farm && state.mode !== "farm"
                   ? "<footer>" + escapeHtml(a.farm) + (a.chapter != null ? " · Cap. " + a.chapter : "") + "</footer>"
                   : a.chapter != null
                     ? "<footer>Capítulo " + a.chapter + "</footer>"
@@ -1079,25 +1097,40 @@
     }
 
     if (data.timeline && data.timeline.length) {
+      var farmOnly = state.mode === "farm";
       body += section(
-        state.mode === "farm" ? "Visitas por fecha" : "Evolución / visitas",
-        state.mode === "farm"
-          ? "Historial de la finca seleccionada."
+        farmOnly ? "Visitas por fecha" : "Evolución / visitas",
+        farmOnly
+          ? "Historial de «" + (state.farm || "la finca seleccionada") + "»."
           : "Puntos del periodo con indicador y hallazgos.",
-        table(
-          ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
-          data.timeline.map(function (r) {
-            return [
-              r.label || formatDateEs(r.date),
-              scoreCell(r.score),
-              r.findings,
-              pill(statusLabel(r.status), reportToneClass(r.status)),
-              r.responsible || "—",
-              state.mode === "farm" ? state.farm || r.farm || "—" : r.farm || state.farm || "—",
-            ];
-          }),
-          { htmlCols: { 1: true, 3: true } }
-        )
+        farmOnly
+          ? table(
+              ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
+              data.timeline.map(function (r) {
+                return [
+                  r.label || formatDateEs(r.date),
+                  scoreCell(r.score),
+                  r.findings,
+                  pill(statusLabel(r.status), reportToneClass(r.status)),
+                  r.responsible || "—",
+                ];
+              }),
+              { htmlCols: { 1: true, 3: true } }
+            )
+          : table(
+              ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
+              data.timeline.map(function (r) {
+                return [
+                  r.label || formatDateEs(r.date),
+                  scoreCell(r.score),
+                  r.findings,
+                  pill(statusLabel(r.status), reportToneClass(r.status)),
+                  r.responsible || "—",
+                  r.farm || state.farm || "—",
+                ];
+              }),
+              { htmlCols: { 1: true, 3: true } }
+            )
       );
     }
 
@@ -2766,7 +2799,12 @@
     html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
-    html += cardHead("Visitas por fecha", "Abrí la visita en Visitas para ver el informe completo.");
+    html += cardHead(
+      "Visitas por fecha",
+      state.farm
+        ? "Historial de «" + escapeHtml(state.farm) + "». Abrí la visita para ver el informe."
+        : "Abrí la visita en Visitas para ver el informe completo."
+    );
     html += legendHtml("status");
     if (!data.timeline.length) {
       html += '<p class="muted">No hay visitas revisadas para esta finca en el rango.</p>';
