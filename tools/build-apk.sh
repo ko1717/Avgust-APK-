@@ -18,11 +18,11 @@ if [[ "$BASE_APK" != /* ]]; then
 fi
 DEBRAND="${C360_DEBRAND:-0}"
 if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.5.1}"
-  VERSION_CODE="${3:-49}"
+  VERSION_NAME="${2:-1.5.2}"
+  VERSION_CODE="${3:-50}"
 else
-  VERSION_NAME="${2:-1.4.2}"
-  VERSION_CODE="${3:-14}"
+  VERSION_NAME="${2:-1.5.2}"
+  VERSION_CODE="${3:-50}"
 fi
 BASE_VERSION_NAME="1.1.0-rc.5"
 
@@ -52,7 +52,9 @@ APKSIGNER="$(find_tool apksigner)"
 echo "==> APK base:  $BASE_APK"
 echo "==> Versión:   $VERSION_NAME (código $VERSION_CODE)"
 if [[ "$DEBRAND" == "1" ]]; then
-  echo "==> Marca:      sin Avgust (logos y nombre visibles)"
+  echo "==> Marca:      sin Avgust (CARE 360 / verde agro)"
+else
+  echo "==> Marca:      AVGUST CARE 360 (logos visibles)"
 fi
 
 # --------------------------------------------------------------------------
@@ -249,12 +251,11 @@ PY
 find "$OUT_DIR" -maxdepth 1 -name '*.idsig' -delete
 if [[ "$DEBRAND" == "1" ]]; then
   find "$OUT_DIR" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' ! -name "CARE-360-$VERSION_NAME-sin-marca-Android.apk" -delete
-  cp "$FINAL" "$ROOT/CARE-360-$VERSION_NAME-sin-marca-Android.apk"
-  find "$ROOT" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' ! -name "CARE-360-$VERSION_NAME-sin-marca-Android.apk" -delete
+  # Retirar copias sueltas en la raíz del repo (solo dist/ es la fuente de verdad).
+  find "$ROOT" -maxdepth 1 -name 'CARE-360-*-sin-marca-Android.apk' -delete
 else
   find "$OUT_DIR" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
-  cp "$FINAL" "$ROOT/AVGUST-CARE-360-$VERSION_NAME-Android.apk"
-  find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' ! -name "AVGUST-CARE-360-$VERSION_NAME-Android.apk" -delete
+  find "$ROOT" -maxdepth 1 -name 'AVGUST-CARE-360-*-Android.apk' -delete
 fi
 find "$ROOT" -maxdepth 1 -name '*.idsig' -delete
 

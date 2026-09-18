@@ -1,16 +1,17 @@
 /*
- * CARE 360 — capa profesional 1.5.0 (edición sin marca).
+ * AVGUST CARE 360 — capa profesional 1.5.2.
  *
- * Comportamiento aditivo sobre la aplicación compilada: marca de cabecera,
+ * Comportamiento aditivo sobre la aplicación compilada: lockup de marca,
  * píldora de conexión, espejo de guardado, buscadores en listas, resaltado
  * de obligatorios, encabezado de informe, modo sol para exteriores y botón
- * de volver arriba. Todo defensivo: si el DOM cambia, estas funciones
- * simplemente no hacen nada en lugar de romper la aplicación.
+ * de volver arriba. Con C360_DEBRAND=1 se usa la identidad CARE 360 en verde
+ * agro. Todo defensivo: si el DOM cambia, estas funciones simplemente no
+ * hacen nada en lugar de romper la aplicación.
  */
 (function () {
   "use strict";
 
-  var PRO_VERSION = "1.5.0";
+  var PRO_VERSION = "1.5.2";
   var SUN_KEY = "c360-sun";
 
   var BRAND_SVG =
@@ -20,6 +21,9 @@
     '<path d="M32 14v30M32 30l-8-8M32 26l8-8" stroke="#14532d" stroke-width="2.6" stroke-linecap="round" fill="none"/>' +
     '<path d="M24 44l5 5 11-12" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' +
     "</svg>";
+
+  var AVGUST_LOGO =
+    '<img class="c360-pro-logo" src="/avgust-logo.svg" alt="Avgust Crop Protection">';
 
   function q(sel, root) {
     return (root || document).querySelector(sel);
@@ -38,33 +42,53 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * marca de cabecera + píldoras
+   * marca de cabecera + píldolas
    * ------------------------------------------------------------------ */
 
-  function markDebrand() {
-    if (isDebrand()) document.documentElement.classList.add("c360-debrand");
+  function markBrandMode() {
+    var root = document.documentElement;
+    if (isDebrand()) {
+      root.classList.add("c360-debrand");
+      root.classList.remove("c360-branded");
+    } else {
+      root.classList.add("c360-branded");
+      root.classList.remove("c360-debrand");
+    }
   }
 
   function brandTopbar() {
     var bar = q(".topbar .brand") || q(".topbar");
     if (!bar || bar.getAttribute("data-c360-pro") === "1") return;
     bar.setAttribute("data-c360-pro", "1");
-    if (document.title && /avgust/i.test(document.title)) {
-      document.title = "CARE 360";
+
+    var debrand = isDebrand();
+    if (debrand) {
+      if (document.title && /avgust/i.test(document.title)) {
+        document.title = "CARE 360";
+      }
+    } else if (!document.title || /^(CARE 360|CARE360)/i.test(document.title)) {
+      document.title = "AVGUST CARE 360";
     }
 
     var host = q(".brand", bar) || bar;
     if (!q(".c360-pro-mark", host)) {
       var mark = document.createElement("span");
-      mark.className = "c360-pro-mark";
-      mark.innerHTML =
-        BRAND_SVG +
-        '<span class="c360-pro-name">CARE 360</span>' +
-        '<span class="c360-pro-tag">MIPE · Campo</span>' +
-        '<span class="c360-pro-ver">v' +
-        PRO_VERSION +
-        " Pro</span>";
-      // La edición sin marca ya oculta el logo por CSS; el lockup se antepone.
+      mark.className = "c360-pro-mark" + (debrand ? "" : " is-avgust");
+      mark.innerHTML = debrand
+        ? BRAND_SVG +
+          '<span class="c360-pro-name">CARE 360</span>' +
+          '<span class="c360-pro-tag">MIPE · Campo</span>' +
+          '<span class="c360-pro-ver">v' +
+          PRO_VERSION +
+          " Pro</span>"
+        : AVGUST_LOGO +
+          '<span class="c360-pro-lockup">' +
+          '<span class="c360-pro-name">AVGUST CARE 360</span>' +
+          '<span class="c360-pro-tag">MIPE · Campo</span>' +
+          "</span>" +
+          '<span class="c360-pro-ver">v' +
+          PRO_VERSION +
+          "</span>";
       host.insertBefore(mark, host.firstChild);
     }
     if (!q(".c360-pro-conn", bar)) {
@@ -342,9 +366,12 @@
           month: "long",
           day: "numeric",
         });
+        var debrand = isDebrand();
         head.innerHTML =
-          BRAND_SVG +
-          "<div><b>CARE 360 · Informe técnico MIPE</b><small>Acompañamiento en campo · " +
+          (debrand ? BRAND_SVG : AVGUST_LOGO) +
+          "<div><b>" +
+          (debrand ? "CARE 360" : "AVGUST CARE 360") +
+          " · Informe técnico MIPE</b><small>Acompañamiento en campo · " +
           today +
           "</small></div>";
         box.insertBefore(head, box.firstChild);
@@ -393,7 +420,7 @@
   function pass() {
     scheduled = false;
     try {
-      markDebrand();
+      markBrandMode();
       brandTopbar();
       paintConn();
       mirrorSaveStatus();
@@ -418,7 +445,7 @@
 
   function boot() {
     restoreSun();
-    markDebrand();
+    markBrandMode();
     schedule();
     try {
       var observer = new MutationObserver(schedule);

@@ -1,14 +1,13 @@
 /*
- * CARE 360 — capa profesional 1.5.0 (edición sin marca).
+ * AVGUST CARE 360 — capa profesional 1.5.2.
  *
  * Se carga después de care360-enhance.css, por lo que sus reglas ganan por
  * cascada ante igual especificidad. Todo es aditivo: no modifica el código
  * compilado de la aplicación, solo pule identidad, legibilidad en campo,
  * productividad de listas, informe impreso y accesibilidad.
  *
- * El tema verde agro solo aplica cuando el documento lleva
- * `html.c360-debrand` (lo pone care360-pro.js al detectar la edición sin
- * marca). En la edición con marca se conservan los azules originales.
+ * El tema verde agro solo aplica con `html.c360-debrand`. Con marca Avgust
+ * (`html.c360-branded`) se conservan los azules teal y el lockup con logo.
  */
 
 /* ------------------------------------------------------------------ *
@@ -50,17 +49,19 @@ html.dark.c360-debrand {
 }
 
 .brand[data-c360-pro="1"] > span:not(.c360-pro-mark),
-.brand[data-c360-pro="1"] > small {
+.brand[data-c360-pro="1"] > small,
+.brand[data-c360-pro="1"] > img {
   display: none !important;
 }
 
 .c360-pro-mark {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
+.c360-pro-mark.svg,
 .c360-pro-mark svg {
   flex: none;
   width: 26px;
@@ -69,12 +70,61 @@ html.dark.c360-debrand {
   box-shadow: 0 1px 3px rgb(20 83 45 / 25%);
 }
 
+.c360-pro-logo {
+  flex: none;
+  height: 34px;
+  width: auto;
+  max-width: 132px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgb(0 127 163 / 18%));
+}
+
+.c360-pro-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.c360-pro-mark.is-avgust .c360-pro-tag {
+  margin-left: 0;
+  background: linear-gradient(90deg, rgb(0 127 163 / 14%), rgb(141 198 63 / 16%));
+  color: #007fa3;
+}
+
 .c360-pro-name {
   font-weight: 800;
-  font-size: 17px;
-  letter-spacing: 0.03em;
+  font-size: 16px;
+  letter-spacing: 0.02em;
   color: var(--c360-ink);
   white-space: nowrap;
+}
+
+.c360-pro-mark.is-avgust .c360-pro-name {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: #007fa3;
+}
+
+html.dark .c360-pro-mark.is-avgust .c360-pro-name,
+html.dark .c360-pro-mark.is-avgust .c360-pro-tag {
+  color: #7ed0ea;
+}
+
+@media (max-width: 700px) {
+  .c360-pro-logo {
+    height: 28px;
+    max-width: 96px;
+  }
+
+  .c360-pro-mark.is-avgust .c360-pro-name {
+    font-size: 13px;
+  }
+
+  .c360-pro-tag {
+    display: none;
+  }
 }
 
 .c360-pro-tag {
@@ -322,10 +372,18 @@ html.dark .c360-pro-missing {
   box-shadow: var(--c360-shadow-1);
 }
 
-.c360-pro-report-head svg {
+.c360-pro-report-head svg,
+.c360-pro-report-head .c360-pro-logo {
   flex: none;
   width: 34px;
   height: 34px;
+}
+
+.c360-pro-report-head .c360-pro-logo {
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 .c360-pro-report-head b {
@@ -340,8 +398,39 @@ html.dark .c360-pro-missing {
   opacity: 0.88;
 }
 
+html.c360-branded .c360-pro-report-head {
+  background: linear-gradient(135deg, #00647f 0%, #007fa3 55%, #8dc63f 160%);
+}
+
 html.dark .c360-pro-report-head {
   box-shadow: none;
+}
+
+html.c360-branded .topbar .brand[data-c360-pro="1"] {
+  gap: 12px;
+}
+
+html.c360-branded .c360-pro-mark.is-avgust {
+  padding: 4px 2px;
+  animation: c360-brand-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes c360-brand-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.c360-branded .c360-pro-mark.is-avgust {
+    animation: none;
+  }
 }
 
 /* ------------------------------------------------------------------ *

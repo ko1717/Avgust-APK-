@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Genera CSV importables (Fincas → Importar finca e informes) a partir de
- * tools/metrics-demo-4-informes/visits.json
+ * tools/demo/metrics/visits.json
  */
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../metrics-demo-4-informes/visits.json'), 'utf8')
+  fs.readFileSync(path.join(__dirname, 'metrics/visits.json'), 'utf8')
 );
 
 // Must match enhance/src/care360-import.js CHAPTER_ITEMS

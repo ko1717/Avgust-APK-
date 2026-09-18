@@ -3,3 +3,7 @@
 /tmp/
 *.idsig
 tests/node_modules/
+tools/__pycache__/
+**/__pycache__/
+*.pyc
+tests/package-lock.json

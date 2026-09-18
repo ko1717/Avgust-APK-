@@ -4,11 +4,11 @@
  * y captura capturas del tablero de Métricas en viewport tablet (~820px).
  *
  * Uso:
- *   CARE360_URL=http://127.0.0.1:8080/index.html node tools/seed-4-informes.mjs
+ *   CARE360_URL=http://127.0.0.1:8080/index.html node tools/demo/seed-4-informes.mjs
  *
- * Demo estática (sin IndexedDB): tools/metrics-demo-4-informes/
+ * Demo estática (sin IndexedDB): tools/demo/metrics/
  */
-import puppeteer from '../tests/node_modules/puppeteer/lib/esm/puppeteer/puppeteer.js';
+import puppeteer from '../../tests/node_modules/puppeteer/lib/esm/puppeteer/puppeteer.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const URL = process.env.CARE360_URL || 'http://127.0.0.1:8080/index.html';
 const OUT = process.env.C360_ARTIFACTS || '/opt/cursor/artifacts';
-const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'metrics-demo-4-informes/visits.json'), 'utf8'));
+const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'metrics/visits.json'), 'utf8'));
 
 fs.mkdirSync(OUT, { recursive: true });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
