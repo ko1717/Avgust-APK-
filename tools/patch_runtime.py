@@ -81,14 +81,16 @@ DELETE_METHODS = (
     "for(let n of e)this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(n.id);"
     "this.db.prepare(`DELETE FROM report_versions WHERE visit_id = ?`).run(t);"
     "this.db.prepare(`DELETE FROM visits WHERE id = ?`).run(t);"
-    "for(let e of i)this.db.prepare(`DELETE FROM photos WHERE id = ?`).run(e)"
+    "for(let e of i)this.db.prepare(`DELETE FROM photos WHERE id = ?`).run(e);"
+    "this.db.prepare(`DELETE FROM drafts WHERE id = ?`).run(`current`)"
     "}),this.save(),{ok:!0,id:t}}"
     "deleteReport(e){let t=typeof e==`string`?e:g(e,`id`,36);"
     "let n=this.db.prepare(`SELECT * FROM report_versions WHERE id = ?`).get(t);"
     "if(!n)throw Error(`404:Versión de informe no encontrada.`);"
     "return this.transaction(()=>{"
     "this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(t);"
-    "this.db.prepare(`DELETE FROM report_versions WHERE id = ?`).run(t)"
+    "this.db.prepare(`DELETE FROM report_versions WHERE id = ?`).run(t);"
+    "this.db.prepare(`DELETE FROM drafts WHERE id = ?`).run(`current`)"
     "}),this.save(),{ok:!0,id:t}}"
     "deleteRequest(e){let t=typeof e==`string`?e:g(e,`id`,36);"
     "if(!this.db.prepare(`SELECT id FROM service_requests WHERE id = ?`).get(t))"
@@ -141,6 +143,12 @@ def already_has(name: str, source: str) -> bool:
         return "deleteFarm(" in source
     if name == "borrar finca por nombre de visita":
         return "deleteFarm(" in source and "_fn=String(n.name" in source
+    if name == "limpiar borrador al borrar":
+        return (
+            "deleteVisit(" in source
+            and "DELETE FROM drafts WHERE id = ?" in source[source.find("deleteVisit(") : source.find("deleteVisit(") + 900]
+            and "DELETE FROM drafts WHERE id = ?" in source[source.find("deleteReport(") : source.find("deleteReport(") + 500]
+        )
     if name == "rutas DELETE de visitas informes y solicitudes":
         return "e.deleteVisit(" in source and "e.deleteReport(" in source and "e.deleteRequest(" in source
     if name == "ruta DELETE de fincas":
@@ -213,6 +221,37 @@ def patch_file(path: Path) -> list[str]:
         if old_select in source:
             source = source.replace(old_select, new_select, 1)
             applied.append("borrar finca por nombre de visita")
+
+    # Upgrade: al borrar visita o versión de informe, limpiar el borrador local.
+    if "deleteVisit(" in source and not already_has("limpiar borrador al borrar", source):
+        old_visit_tail = (
+            "this.db.prepare(`DELETE FROM visits WHERE id = ?`).run(t);"
+            "for(let e of i)this.db.prepare(`DELETE FROM photos WHERE id = ?`).run(e)"
+            "}),this.save(),{ok:!0,id:t}}deleteReport"
+        )
+        new_visit_tail = (
+            "this.db.prepare(`DELETE FROM visits WHERE id = ?`).run(t);"
+            "for(let e of i)this.db.prepare(`DELETE FROM photos WHERE id = ?`).run(e);"
+            "this.db.prepare(`DELETE FROM drafts WHERE id = ?`).run(`current`)"
+            "}),this.save(),{ok:!0,id:t}}deleteReport"
+        )
+        old_report_tail = (
+            "this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(t);"
+            "this.db.prepare(`DELETE FROM report_versions WHERE id = ?`).run(t)"
+            "}),this.save(),{ok:!0,id:t}}deleteRequest"
+        )
+        new_report_tail = (
+            "this.db.prepare(`DELETE FROM report_events WHERE report_version_id = ?`).run(t);"
+            "this.db.prepare(`DELETE FROM report_versions WHERE id = ?`).run(t);"
+            "this.db.prepare(`DELETE FROM drafts WHERE id = ?`).run(`current`)"
+            "}),this.save(),{ok:!0,id:t}}deleteRequest"
+        )
+        if old_visit_tail in source:
+            source = source.replace(old_visit_tail, new_visit_tail, 1)
+            applied.append("limpiar borrador al borrar visita")
+        if old_report_tail in source:
+            source = source.replace(old_report_tail, new_report_tail, 1)
+            applied.append("limpiar borrador al borrar informe")
 
     if applied:
         path.write_text(source, encoding="utf-8")

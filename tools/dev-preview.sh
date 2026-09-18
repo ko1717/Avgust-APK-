@@ -68,6 +68,8 @@ python3 "$ROOT/tools/patch_measurements.py" "$OUT"
 python3 "$ROOT/tools/patch_report.py" "$OUT"
 python3 "$ROOT/tools/patch_import.py" "$OUT"
 python3 "$ROOT/tools/patch_runtime.py" "$OUT"
+python3 "$ROOT/tools/patch_followup.py" "$OUT"
+python3 "$ROOT/tools/patch_draft.py" "$OUT"
 python3 "$ROOT/tools/patch_crop.py" "$OUT"
 
 echo "Vista previa lista en $OUT"

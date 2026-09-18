@@ -1215,7 +1215,8 @@ html.c360-query-typing .c360-to-top {
   .c360-help-btn,
   .c360-net-badge,
   .c360-intro,
-  .c360-crash {
+  .c360-crash,
+  .c360-confirm {
     display: none !important;
   }
 }
@@ -1359,6 +1360,71 @@ html.dark .c360-help-btn:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.c360-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(14 27 31 / 55%);
+  backdrop-filter: blur(3px);
+}
+
+.c360-confirm-card {
+  width: min(400px, 100%);
+  padding: 22px;
+  border-radius: 16px;
+  background: var(--c360-surface, #fff);
+  color: var(--c360-ink, #142226);
+  box-shadow: var(--c360-shadow-2, 0 18px 40px rgb(0 0 0 / 18%));
+}
+
+.c360-confirm-card p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.c360-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.c360-confirm-keep,
+.c360-confirm-go {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.c360-confirm-keep {
+  background: rgb(20 34 38 / 8%);
+  color: var(--c360-ink, #142226);
+}
+
+.c360-confirm-go {
+  background: #b42318;
+  color: #fff;
+}
+
+html.dark .c360-confirm-card {
+  background: #1b2a2e;
+  color: #e8f0f2;
+}
+
+html.dark .c360-confirm-keep {
+  background: rgb(255 255 255 / 10%);
+  color: #e8f0f2;
 }
 
 /* ------------------------------------------------------------------ *
@@ -3920,6 +3986,17 @@ html.c360-metrics-lite .metrics-actions {
 .c360-followup-item.tone-progress { border-left-color: #c98512; }
 .c360-followup-item.tone-proposed { border-left-color: #007fa3; }
 .c360-followup-item.tone-pending { border-left-color: #1f8a5b; }
+.c360-followup-item.tone-scheduled { border-left-color: #0b6e4f; }
+.c360-followup-item.tone-scheduled.is-past { border-left-color: #b45309; }
+
+.c360-followup-section-label {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--c360-ink-soft, #58696d);
+}
 
 .c360-followup-item header {
   display: flex;

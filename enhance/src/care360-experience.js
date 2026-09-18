@@ -1419,7 +1419,15 @@
 
   function apiJson(url, init) {
     return fetch(url, init).then(function (res) {
-      return res.json().then(function (body) {
+      return res.text().then(function (raw) {
+        var body = null;
+        if (raw) {
+          try {
+            body = JSON.parse(raw);
+          } catch (err) {
+            body = { error: raw };
+          }
+        }
         if (!res.ok) throw new Error((body && body.error) || "No se pudo completar la operación.");
         return body;
       });
@@ -1507,21 +1515,58 @@
   }
 
   function confirmDelete(message) {
-    return window.confirm(message);
+    return new Promise(function (resolve) {
+      var existing = q("#c360-confirm");
+      if (existing) existing.remove();
+      var panel = document.createElement("div");
+      panel.id = "c360-confirm";
+      panel.className = "c360-confirm";
+      panel.setAttribute("role", "alertdialog");
+      panel.setAttribute("aria-modal", "true");
+      panel.setAttribute("aria-label", "Confirmar");
+      panel.innerHTML =
+        '<div class="c360-confirm-card">' +
+        "<p></p>" +
+        '<div class="c360-confirm-actions">' +
+        '<button type="button" class="c360-confirm-keep" data-act="keep">Conservar</button>' +
+        '<button type="button" class="c360-confirm-go" data-act="go">Borrar</button>' +
+        "</div></div>";
+      panel.querySelector("p").textContent = message;
+      function finish(ok) {
+        panel.remove();
+        resolve(ok);
+      }
+      panel.addEventListener("click", function (event) {
+        var act = event.target.closest("[data-act]");
+        if (!act) return;
+        finish(act.getAttribute("data-act") === "go");
+      });
+      document.body.appendChild(panel);
+      var go = panel.querySelector(".c360-confirm-go");
+      if (go) go.focus();
+    });
+  }
+
+  function clearLocalDraft() {
+    return apiJson("/api/draft", { method: "DELETE" }).catch(function () {
+      return null;
+    });
   }
 
   function refreshAfterDelete() {
     invalidateDeleteCache();
-    if (clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) return;
-    if (clickButtonByLabel(/^cerrar$/i, true)) {
+    clearLocalDraft().finally(function () {
+      if (clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) return;
+      if (clickButtonByLabel(/^cerrar$/i, true)) {
+        window.setTimeout(function () {
+          if (!clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) window.location.reload();
+        }, 200);
+        return;
+      }
       window.setTimeout(function () {
-        if (!clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) window.location.reload();
-      }, 200);
-      return;
-    }
-    window.setTimeout(function () {
-      window.location.reload();
-    }, 120);
+        window.location.reload();
+      }, 120);
+    });
   }
 
   function deleteByUrl(url, label) {
@@ -1543,18 +1588,20 @@
       event.preventDefault();
       event.stopPropagation();
       if (button.disabled) return;
-      if (!confirmDelete(options.confirm)) return;
-      button.disabled = true;
-      Promise.resolve()
-        .then(options.resolve)
-        .then(function (target) {
-          if (!target || !target.url) throw new Error("No se encontró el registro a borrar.");
-          return deleteByUrl(target.url, target.name || "Registro");
-        })
-        .catch(function (err) {
-          button.disabled = false;
-          toast((err && err.message) || "No se pudo borrar.", "info", 3600);
-        });
+      Promise.resolve(confirmDelete(options.confirm)).then(function (ok) {
+        if (!ok) return;
+        button.disabled = true;
+        Promise.resolve()
+          .then(options.resolve)
+          .then(function (target) {
+            if (!target || !target.url) throw new Error("No se encontró el registro a borrar.");
+            return deleteByUrl(target.url, target.name || "Registro");
+          })
+          .catch(function (err) {
+            button.disabled = false;
+            toast((err && err.message) || "No se pudo borrar.", "info", 3600);
+          });
+      });
     });
     host.appendChild(button);
   }
@@ -1705,6 +1752,13 @@
     return !!q(".followup-panel") && /Seguimiento|Plan de acci/i.test(document.body.innerText || "");
   }
 
+  function todayIsoDate() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
   function enhanceFollowupSummary() {
     var existing = q("#c360-followup-summary");
     if (!onFollowupTab()) {
@@ -1734,9 +1788,31 @@
       .then(function (data) {
         var visits = Array.isArray(data) ? data : data.visits || [];
         var open = [];
+        var scheduled = [];
         var photos = 0;
+        var today = todayIsoDate();
         visits.forEach(function (v) {
           photos += Array.isArray(v.photos) ? v.photos.length : 0;
+          var followupDate = String(v.followup || "").trim();
+          if (followupDate) {
+            scheduled.push({
+              farm: v.farm || "",
+              date: v.date || "",
+              followup: followupDate,
+              past: followupDate < today,
+              kind: v.serviceKind === "followup" ? "Seguimiento" : "Revisión programada",
+              responsible: v.responsible || "",
+            });
+          } else if (v.serviceKind === "followup") {
+            scheduled.push({
+              farm: v.farm || "",
+              date: v.date || "",
+              followup: v.date || "",
+              past: !!(v.date && v.date < today),
+              kind: "Visita de seguimiento",
+              responsible: v.responsible || "",
+            });
+          }
           var actions = v.actions || {};
           Object.keys(actions).forEach(function (id) {
             var a = actions[id] || {};
@@ -1758,17 +1834,45 @@
             });
           });
         });
+        scheduled.sort(function (a, b) {
+          return String(a.followup || "9999").localeCompare(String(b.followup || "9999"));
+        });
         open.sort(function (a, b) {
           return String(a.due || "9999").localeCompare(String(b.due || "9999"));
         });
-        if (!open.length && !photos) {
+        if (!open.length && !scheduled.length && !photos) {
           existing.innerHTML =
             '<div class="c360-followup-summary-card">' +
             "<strong>Seguimiento</strong>" +
-            "<p>Importa un informe Word CARE 360 para traer el plan de acción, fechas y evidencias fotográficas.</p>" +
+            "<p>Agenda una fecha de seguimiento en la visita, o importa un informe Word CARE 360 con el plan de acción.</p>" +
             "</div>";
           return;
         }
+        var scheduledRows = scheduled
+          .slice(0, 8)
+          .map(function (item) {
+            return (
+              '<article class="c360-followup-item tone-scheduled' +
+              (item.past ? " is-past" : "") +
+              '">' +
+              "<header><strong>" +
+              escapeHtml(item.kind) +
+              "</strong><span>" +
+              escapeHtml(item.farm) +
+              (item.followup ? " · " + escapeHtml(item.followup) : "") +
+              (item.past ? " · fecha pasada" : "") +
+              "</span></header>" +
+              "<p>" +
+              escapeHtml(
+                item.date
+                  ? "Origen visita " + item.date + (item.responsible ? " · " + item.responsible : "")
+                  : item.responsible || "Revisión agendada en la visita"
+              ) +
+              "</p>" +
+              "</article>"
+            );
+          })
+          .join("");
         var rows = open
           .slice(0, 12)
           .map(function (item) {
@@ -1805,14 +1909,28 @@
           '<div class="c360-followup-summary-card">' +
           "<strong>Seguimiento activo</strong>" +
           "<p>" +
+          scheduled.length +
+          " revisión(es) programada(s) · " +
           open.length +
           " hallazgo(s) abiertos · " +
           photos +
-          " foto(s) en informes importados/revisados.</p>" +
-          '<div class="c360-followup-list">' +
-          rows +
-          "</div>" +
-          (open.length > 12 ? "<p class=\"muted\">Mostrando 12 de " + open.length + ".</p>" : "") +
+          " foto(s).</p>" +
+          (scheduledRows
+            ? "<p class=\"c360-followup-section-label\">Revisiones programadas</p>" +
+              '<div class="c360-followup-list">' +
+              scheduledRows +
+              "</div>" +
+              (scheduled.length > 8
+                ? "<p class=\"muted\">Mostrando 8 de " + scheduled.length + " revisiones.</p>"
+                : "")
+            : "") +
+          (rows
+            ? "<p class=\"c360-followup-section-label\">Compromisos abiertos</p>" +
+              '<div class="c360-followup-list">' +
+              rows +
+              "</div>" +
+              (open.length > 12 ? "<p class=\"muted\">Mostrando 12 de " + open.length + ".</p>" : "")
+            : "") +
           "</div>";
       })
       .catch(function () {
@@ -1979,31 +2097,33 @@
       var message =
         '¿Borrar la finca «' +
         name +
-        '»?\n\nSe eliminarán también sus visitas, informes y solicitudes vinculadas. Esta acción no se puede deshacer.';
-      if (!confirmDelete(message)) return;
-      button.disabled = true;
-      apiJson("/api/farms/" + farm.id, { method: "DELETE" })
-        .then(function () {
-          return purgeOrphanVisitsForFarm(farm);
-        })
-        .then(function () {
-          invalidateDeleteCache();
-          try {
-            window.dispatchEvent(
-              new CustomEvent("care360:data-changed", {
-                detail: { type: "farm-deleted", farmId: farm.id, farm: farm.name },
-              })
-            );
-          } catch (err) {
-            /* sin CustomEvent */
-          }
-          toast("Finca eliminada.", "ok");
-          refreshAfterDelete();
-        })
-        .catch(function (err) {
-          button.disabled = false;
-          toast((err && err.message) || "No se pudo borrar la finca.", "info", 3600);
-        });
+        '»? Se eliminarán también sus visitas, informes y solicitudes vinculadas. Esta acción no se puede deshacer.';
+      Promise.resolve(confirmDelete(message)).then(function (ok) {
+        if (!ok) return;
+        button.disabled = true;
+        apiJson("/api/farms/" + farm.id, { method: "DELETE" })
+          .then(function () {
+            return purgeOrphanVisitsForFarm(farm);
+          })
+          .then(function () {
+            invalidateDeleteCache();
+            try {
+              window.dispatchEvent(
+                new CustomEvent("care360:data-changed", {
+                  detail: { type: "farm-deleted", farmId: farm.id, farm: farm.name },
+                })
+              );
+            } catch (err) {
+              /* sin CustomEvent */
+            }
+            toast("Finca eliminada.", "ok");
+            refreshAfterDelete();
+          })
+          .catch(function (err) {
+            button.disabled = false;
+            toast((err && err.message) || "No se pudo borrar la finca.", "info", 3600);
+          });
+      });
     });
   }
 
