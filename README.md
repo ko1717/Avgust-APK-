@@ -13,12 +13,15 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 
 | Ruta | Contenido |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | **Única APK publicada** (marca Avgust). |
+| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | **APK Android** (marca Avgust). |
+| [`dist/AVGUST-CARE-360-1.5.13-Windows-portable.zip`](./dist/AVGUST-CARE-360-1.5.13-Windows-portable.zip) | **Windows v1.5.13** (portable Edge/Chrome; misma UI que el APK). |
 | `enhance/src/` | Capa de mejoras (CSS/JS) que se inyecta sobre el APK base. |
 | `tools/` | Compilación, firma, parches y demos de importación. |
 | `tests/` | Prueba e2e del contenido web. |
 
-Se instala encima de 1.4.x–1.5.12 firmadas con la misma clave (`tools/signing/`).
+La APK se instala encima de 1.4.x–1.5.12 firmadas con la misma clave (`tools/signing/`).
+Windows portable v1.5.13 usa la misma UI y capa de mejoras que el APK.
+(Opcional) `tools/build-windows.sh` también puede generar un ZIP Electron x64 en local (~100 MB; no se sube a git).
 
 ### Destacados 1.5.13
 
@@ -41,18 +44,20 @@ Se instala encima de 1.4.x–1.5.12 firmadas con la misma clave (`tools/signing/
 ## Estructura del repositorio
 
 ```
-dist/                 ← una sola APK (versión actual)
+dist/                 ← APK Android + paquetes Windows (versión actual)
 enhance/src/          ← capa de interfaz y experiencia
 tools/
   base/               ← APK base Capacitor
   signing/            ← keystore de release
   demo/               ← CSV/Word de ejemplo + scripts de captura
+  windows/            ← shell Electron (AvgustFileBridge)
   build-apk.sh        ← genera el APK
+  build-windows.sh    ← genera Windows alineado al APK
   patch_*.py          ← parches sobre el bundle compilado
 tests/                ← e2e
 ```
 
-Los APKs viven **solo en `dist/`** para no duplicar binarios en la raíz.
+Los binarios publicados viven **solo en `dist/`**.
 
 ---
 
@@ -69,6 +74,18 @@ C360_DEBRAND=1 tools/build-apk.sh
 ```
 
 Parámetros opcionales: `tools/build-apk.sh <apk-base> <version-name> <version-code>`.
+
+### Generar Windows (misma versión que el APK)
+
+```bash
+# Portable Edge/Chrome + (si npm lo permite) Electron x64
+tools/build-windows.sh
+
+# Opcional: tools/build-windows.sh <apk-base> <version-name>
+```
+
+En el PC: descomprimir `dist/AVGUST-CARE-360-1.5.13-Windows-portable.zip` y abrir
+`Iniciar-AVGUST-CARE-360.bat`.
 
 ### Vista previa sin instalar
 

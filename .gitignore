@@ -7,3 +7,9 @@ tools/__pycache__/
 **/__pycache__/
 *.pyc
 tests/package-lock.json
+tools/windows/node_modules/
+tools/windows/ui/
+tools/windows/out/
+tools/windows/package-lock.json
+# Electron Windows supera el límite de 100 MB de GitHub; generar en local
+dist/AVGUST-CARE-360-*-Windows-x64.zip

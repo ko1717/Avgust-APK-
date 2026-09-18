@@ -1,0 +1,48 @@
+{
+  "name": "avgust-care-360",
+  "version": "1.5.13",
+  "description": "AVGUST CARE 360 \u2014 edici\u00f3n Windows (misma base que el APK)",
+  "main": "src/main.js",
+  "author": "Kevin Villamizar",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack:win": "electron-builder --win zip --x64 --publish never"
+  },
+  "build": {
+    "appId": "co.com.avgust.care360",
+    "productName": "AVGUST CARE 360",
+    "copyright": "Copyright \u00a9 Avgust Crop Protection",
+    "directories": {
+      "output": "out",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "ui/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "src/main.js"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "AVGUST-CARE-360-${version}-Windows-${arch}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "asar": true,
+    "compression": "maximum"
+  },
+  "devDependencies": {
+    "electron": "34.5.8",
+    "electron-builder": "26.0.12"
+  }
+}
