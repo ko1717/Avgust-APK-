@@ -3982,10 +3982,53 @@ html.c360-metrics-lite .metrics-actions {
   line-height: 1.4;
 }
 
+.c360-followup-summary-compact > strong {
+  margin-bottom: 10px;
+}
+
+.c360-followup-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.c360-followup-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 10px 9px;
+  border-radius: 12px;
+  background: var(--c360-muted, #f3f8fa);
+  border: 1px solid var(--c360-line-soft, #dbe4e8);
+  min-width: 0;
+}
+
+.c360-followup-kpi > b {
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--c360-ink, #1c2b32);
+  letter-spacing: -0.02em;
+}
+
+.c360-followup-kpi > span {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-followup-hint {
+  margin: 0 !important;
+  font-size: 12.5px !important;
+  line-height: 1.4;
+  color: var(--c360-ink-soft, #58696d);
+}
+
 .c360-followup-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .c360-followup-item {
@@ -4016,12 +4059,11 @@ html.c360-metrics-lite .metrics-actions {
 .c360-agenda-live {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   margin: 10px 0 18px;
-  padding: 12px 14px;
-  border: 1px solid var(--c360-line-soft, #d7e2e6);
-  border-radius: 16px;
-  background: var(--c360-surface, #fff);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .c360-agenda-live-note {
@@ -4031,12 +4073,197 @@ html.c360-metrics-lite .metrics-actions {
 }
 
 .c360-agenda-block h3 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 15px;
+  letter-spacing: -0.01em;
 }
 
 .c360-agenda-block .muted {
   margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--c360-muted, #f3f8fa);
+  border: 1px dashed var(--c360-line-soft, #d7e2e6);
+}
+
+.c360-agenda-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--c360-line-soft, #d7e2e6);
+  border-radius: 16px;
+  background: var(--c360-surface, #fff);
+  box-shadow: 0 1px 0 rgba(28, 43, 50, 0.04);
+}
+
+.c360-agenda-card.tone-scheduled {
+  border-left: 3px solid #0b6e4f;
+}
+.c360-agenda-card.tone-scheduled.is-past {
+  border-left-color: #b45309;
+}
+.c360-agenda-card.tone-draft {
+  border-left: 3px solid #c98512;
+}
+.c360-agenda-card.tone-request {
+  border-left: 3px solid #007fa3;
+}
+
+.c360-agenda-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.c360-agenda-card-top strong {
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--c360-ink, #1c2b32);
+  letter-spacing: -0.01em;
+}
+
+.c360-agenda-pill {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #0b6e4f;
+  background: rgba(11, 110, 79, 0.1);
+}
+
+.c360-agenda-pill.past {
+  color: #9a3412;
+  background: rgba(180, 83, 9, 0.12);
+}
+
+.c360-agenda-pill.draft {
+  color: #9a6700;
+  background: rgba(201, 133, 18, 0.14);
+}
+
+.c360-agenda-pill.request {
+  color: #007fa3;
+  background: rgba(0, 127, 163, 0.12);
+}
+
+.c360-agenda-card-kind {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-agenda-card-detail {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--c360-ink, #1c2b32);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Compromisos nativos: más legibles en móvil (tabla → fichas). */
+.followup-panel .followup-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.followup-panel .followup-table thead {
+  display: none;
+}
+
+.followup-panel .followup-table tbody tr {
+  display: block;
+  padding: 14px;
+  border: 1px solid var(--c360-line-soft, #d7e2e6);
+  border-radius: 16px;
+  background: var(--c360-surface, #fff);
+  box-shadow: 0 1px 0 rgba(28, 43, 50, 0.04);
+}
+
+.followup-panel .followup-table tbody td {
+  display: block;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.followup-panel .followup-table tbody td strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.followup-panel .followup-table tbody td span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--c360-ink, #1c2b32);
+  margin: 0 0 6px;
+}
+
+.followup-panel .followup-table tbody td small {
+  display: block;
+  font-size: 12px;
+  color: var(--c360-ink-soft, #58696d);
+  margin-bottom: 8px;
+}
+
+.followup-panel .followup-table tbody td:nth-child(2),
+.followup-panel .followup-table tbody td:nth-child(3),
+.followup-panel .followup-table tbody td:nth-child(4) {
+  font-size: 12.5px;
+  color: var(--c360-ink-soft, #58696d);
+  margin-top: 2px;
+}
+
+.followup-panel .followup-table tbody td:nth-child(2)::before {
+  content: "Responsable · ";
+  font-weight: 600;
+}
+.followup-panel .followup-table tbody td:nth-child(3)::before {
+  content: "Límite · ";
+  font-weight: 600;
+}
+.followup-panel .followup-table tbody td:nth-child(4)::before {
+  content: "Estado · ";
+  font-weight: 600;
+}
+
+.followup-panel .followup-table tbody td:last-child {
+  margin-top: 10px;
+}
+
+.followup-panel .followup-table tbody td:last-child .secondary {
+  width: 100%;
+}
+
+.followup-panel .followup-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.followup-panel .followup-stats > div {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--c360-line-soft, #d7e2e6);
+  background: var(--c360-muted, #f3f8fa);
+}
+
+.followup-panel .followup-stats > div > b {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 2px;
 }
 
 /* Oculta la agenda nativa vacía/desactualizada cuando ya mostramos la en vivo. */
@@ -4044,9 +4271,23 @@ html.c360-metrics-lite .metrics-actions {
   display: none;
 }
 
-html.dark .c360-agenda-live {
+html.dark .c360-agenda-live,
+html.dark .c360-agenda-card,
+html.dark .c360-followup-kpi,
+html.dark .followup-panel .followup-table tbody tr,
+html.dark .followup-panel .followup-stats > div {
   background: var(--c360-surface, #1a2428);
   border-color: var(--c360-line-soft, #2f3d42);
+}
+
+html.dark .c360-agenda-block .muted {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 380px) {
+  .c360-followup-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .c360-followup-item header {

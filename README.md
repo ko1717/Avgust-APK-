@@ -9,27 +9,27 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 
 ---
 
-## Entregable (v1.5.11)
+## Entregable (v1.5.12)
 
 | Ruta | Contenido |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.11-Android.apk`](./dist/AVGUST-CARE-360-1.5.11-Android.apk) | **Única APK publicada** (marca Avgust). |
+| [`dist/AVGUST-CARE-360-1.5.12-Android.apk`](./dist/AVGUST-CARE-360-1.5.12-Android.apk) | **Única APK publicada** (marca Avgust). |
 | `enhance/src/` | Capa de mejoras (CSS/JS) que se inyecta sobre el APK base. |
 | `tools/` | Compilación, firma, parches y demos de importación. |
 | `tests/` | Prueba e2e del contenido web. |
 
 Se instala encima de 1.4.x–1.5.11 firmadas con la misma clave (`tools/signing/`).
 
-### Destacados 1.5.11
+### Destacados 1.5.12
 
-- **Seguimiento → Agenda y revisión** lee visitas y solicitudes en vivo: aparecen seguimientos programados, informes por revisar y solicitudes abiertas (incl. tipo Seguimiento).
-- Corrige el vacío cuando el tablero nativo no refrescaba tras crear una solicitud.
+- **Seguimiento** sin el muro de tarjetas de hallazgos: resumen compacto con KPIs; compromisos en la lista nativa (más clara en móvil).
+- Al **borrar una solicitud**, desaparece de Agenda/Seguimiento de inmediato.
+- Agenda rediseñada (fichas con fecha y estado).
 
-### Destacados 1.5.11
+### Destacados previos
 
-- **dist/** deja solo la APK más actual (AVGUST CARE 360).
-- **Por finca**: cada tarjeta muestra la finca seleccionada + «Responsable técnico».
-- Filtro por finca más estricto.
+- Agenda y revisión en vivo (visitas + solicitudes).
+- Una sola APK en `dist/`; métricas Por finca sin mezclar.
 
 ---
 
@@ -56,7 +56,7 @@ Los APKs viven **solo en `dist/`** para no duplicar binarios en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Con marca Avgust (por defecto → dist/AVGUST-CARE-360-1.5.11-Android.apk)
+# Con marca Avgust (por defecto → dist/AVGUST-CARE-360-1.5.12-Android.apk)
 tools/build-apk.sh
 
 # Sin marca Avgust (solo si se necesita; deja esa variante como única en dist/)

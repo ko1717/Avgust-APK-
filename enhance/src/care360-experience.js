@@ -1390,6 +1390,18 @@
         if (method === "DELETE" && /\/api\/(visits|requests|reports|farms)\//.test(path)) {
           invalidateDeleteCache();
           if (/\/api\/visits\//.test(path)) window.__C360_CURRENT_VISIT = "";
+          if (response && response.ok && /\/api\/(visits|requests)\//.test(path)) {
+            window.setTimeout(function () {
+              clearFollowupUi();
+              enhanceFollowupSummary();
+            }, 60);
+          }
+        }
+        if (method === "POST" && response && response.ok && /\/api\/requests(?:\/|$)/.test(path)) {
+          window.setTimeout(function () {
+            clearFollowupUi();
+            enhanceFollowupSummary();
+          }, 60);
         }
       } catch (err) {
         /* no interrumpir la respuesta */
@@ -1553,19 +1565,44 @@
     });
   }
 
+  function clearFollowupUi() {
+    qa("#c360-followup-summary, #c360-agenda-live").forEach(function (el) {
+      el.remove();
+    });
+    document.documentElement.classList.remove("c360-agenda-live-on");
+    qa(".followup-panel").forEach(function (p) {
+      p.classList.remove("c360-agenda-host");
+    });
+  }
+
+  function refreshFollowupUi() {
+    clearFollowupUi();
+    window.setTimeout(function () {
+      enhanceFollowupSummary();
+    }, 80);
+  }
+
   function refreshAfterDelete() {
     invalidateDeleteCache();
+    clearFollowupUi();
     clearLocalDraft().finally(function () {
-      if (clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) return;
+      // Forzar refresco del resumen de Seguimiento sin depender de «Actualizar equipo».
+      refreshFollowupUi();
+      if (clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) {
+        window.setTimeout(refreshFollowupUi, 400);
+        return;
+      }
       if (clickButtonByLabel(/^cerrar$/i, true)) {
         window.setTimeout(function () {
-          if (!clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) window.location.reload();
+          if (!clickButtonByLabel(/^actualizar(?:\s+equipo)?$/i)) {
+            refreshFollowupUi();
+          } else {
+            window.setTimeout(refreshFollowupUi, 400);
+          }
         }, 200);
         return;
       }
-      window.setTimeout(function () {
-        window.location.reload();
-      }, 120);
+      window.setTimeout(refreshFollowupUi, 120);
     });
   }
 
@@ -1992,92 +2029,28 @@
             "<p>Agenda una fecha de seguimiento en la visita, crea una solicitud de seguimiento, o importa un informe Word CARE 360 con el plan de acción.</p>" +
             "</div>";
         } else {
-          var scheduledRows = scheduled
-            .slice(0, 8)
-            .map(function (item) {
-              return (
-                '<article class="c360-followup-item tone-scheduled' +
-                (item.past ? " is-past" : "") +
-                '">' +
-                "<header><strong>" +
-                escapeHtml(item.kind) +
-                "</strong><span>" +
-                escapeHtml(item.farm) +
-                (item.followup ? " · " + escapeHtml(item.followup) : "") +
-                (item.past ? " · fecha pasada" : "") +
-                "</span></header>" +
-                "<p>" +
-                escapeHtml(
-                  item.reason ||
-                    (item.date
-                      ? "Origen visita " + item.date + (item.responsible ? " · " + item.responsible : "")
-                      : item.responsible || "Revisión agendada")
-                ) +
-                "</p>" +
-                "</article>"
-              );
-            })
-            .join("");
-          var rows = open
-            .slice(0, 12)
-            .map(function (item) {
-              return (
-                '<article class="c360-followup-item tone-' +
-                (item.status || "proposed") +
-                '">' +
-                "<header><strong>" +
-                escapeHtml(item.id) +
-                " · " +
-                escapeHtml(ACTION_LABELS[item.status] || item.status) +
-                "</strong><span>" +
-                escapeHtml(item.farm) +
-                (item.due ? " · límite " + escapeHtml(item.due) : "") +
-                (item.hasPhoto ? " · con foto" : "") +
-                "</span></header>" +
-                "<p>" +
-                escapeHtml(item.observation || item.recommendation || "Sin detalle") +
-                "</p>" +
-                (item.owner || item.closure
-                  ? "<p class=\"muted\">" +
-                    escapeHtml(
-                      [item.owner ? "Resp. " + item.owner : "", item.closure ? "Cierre: " + item.closure : ""]
-                        .filter(Boolean)
-                        .join(" · ")
-                    ) +
-                    "</p>"
-                  : "") +
-                "</article>"
-              );
-            })
-            .join("");
+          var agendaN = scheduled.length;
+          var openN = open.length;
+          var draftN = drafts.length;
+          var reqN = requestRows.length;
           existing.innerHTML =
-            '<div class="c360-followup-summary-card">' +
-            "<strong>Seguimiento activo</strong>" +
-            "<p>" +
-            scheduled.length +
-            " en agenda · " +
-            open.length +
-            " hallazgo(s) abiertos · " +
-            drafts.length +
-            " informe(s) por revisar · " +
-            photos +
-            " foto(s).</p>" +
-            (scheduledRows
-              ? "<p class=\"c360-followup-section-label\">Agenda</p>" +
-                '<div class="c360-followup-list">' +
-                scheduledRows +
-                "</div>" +
-                (scheduled.length > 8
-                  ? "<p class=\"muted\">Mostrando 8 de " + scheduled.length + ".</p>"
-                  : "")
-              : "") +
-            (rows
-              ? "<p class=\"c360-followup-section-label\">Compromisos abiertos</p>" +
-                '<div class="c360-followup-list">' +
-                rows +
-                "</div>" +
-                (open.length > 12 ? "<p class=\"muted\">Mostrando 12 de " + open.length + ".</p>" : "")
-              : "") +
+            '<div class="c360-followup-summary-card c360-followup-summary-compact">' +
+            "<strong>Resumen</strong>" +
+            '<div class="c360-followup-kpis">' +
+            '<div class="c360-followup-kpi"><b>' +
+            agendaN +
+            "</b><span>En agenda</span></div>" +
+            '<div class="c360-followup-kpi"><b>' +
+            openN +
+            "</b><span>Hallazgos</span></div>" +
+            '<div class="c360-followup-kpi"><b>' +
+            draftN +
+            "</b><span>Por revisar</span></div>" +
+            '<div class="c360-followup-kpi"><b>' +
+            reqN +
+            "</b><span>Solicitudes</span></div>" +
+            "</div>" +
+            '<p class="c360-followup-hint">Los compromisos detallados están en la lista de abajo. Citas y solicitudes: pestaña <em>Agenda y revisión</em>.</p>' +
             "</div>";
         }
 
@@ -2148,17 +2121,28 @@
       data.scheduled || [],
       function (item) {
         return (
-          '<article class="c360-followup-item tone-scheduled' +
+          '<article class="c360-agenda-card tone-scheduled' +
           (item.past ? " is-past" : "") +
-          '"><header><strong>' +
+          '">' +
+          '<div class="c360-agenda-card-top">' +
+          "<strong>" +
           escapeHtml(item.farm || "Sin finca") +
-          "</strong><span>" +
-          escapeHtml(item.followup || "") +
-          (item.past ? " · Fecha pasada" : "") +
-          "</span></header><p>" +
-          escapeHtml(item.kind + (item.responsible ? " · " + item.responsible : "")) +
-          (item.reason ? " — " + escapeHtml(item.reason) : "") +
-          "</p></article>"
+          "</strong>" +
+          '<span class="c360-agenda-pill' +
+          (item.past ? " past" : "") +
+          '">' +
+          escapeHtml(item.followup || "Sin fecha") +
+          (item.past ? " · pasada" : "") +
+          "</span></div>" +
+          '<p class="c360-agenda-card-kind">' +
+          escapeHtml(item.kind || "Seguimiento") +
+          "</p>" +
+          (item.reason || item.responsible
+            ? "<p class=\"c360-agenda-card-detail\">" +
+              escapeHtml(item.reason || item.responsible) +
+              "</p>"
+            : "") +
+          "</article>"
         );
       }
     );
@@ -2169,19 +2153,24 @@
       data.drafts || [],
       function (item) {
         return (
-          '<article class="c360-followup-item tone-progress"><header><strong>' +
+          '<article class="c360-agenda-card tone-draft">' +
+          '<div class="c360-agenda-card-top">' +
+          "<strong>" +
           escapeHtml(item.farm || "Sin finca") +
-          "</strong><span>" +
-          escapeHtml(item.date || "") +
-          "</span></header><p>" +
-          escapeHtml(item.responsible ? "Borrador · " + item.responsible : "Informe en borrador") +
-          "</p></article>"
+          "</strong>" +
+          '<span class="c360-agenda-pill draft">' +
+          escapeHtml(item.date || "Sin fecha") +
+          "</span></div>" +
+          '<p class="c360-agenda-card-kind">Borrador por revisar</p>' +
+          (item.responsible
+            ? "<p class=\"c360-agenda-card-detail\">" + escapeHtml(item.responsible) + "</p>"
+            : "") +
+          "</article>"
         );
       }
     );
 
     var openRequests = (data.requests || []).filter(function (r) {
-      // Las programadas/tipo seguimiento ya salen arriba; aquí las recién solicitadas.
       return r.status === "requested";
     });
     var requestsHtml = listBlock(
@@ -2190,14 +2179,22 @@
       openRequests,
       function (item) {
         return (
-          '<article class="c360-followup-item tone-proposed"><header><strong>' +
+          '<article class="c360-agenda-card tone-request">' +
+          '<div class="c360-agenda-card-top">' +
+          "<strong>" +
+          escapeHtml(item.farm || "Sin finca") +
+          "</strong>" +
+          '<span class="c360-agenda-pill request">' +
+          escapeHtml(item.responsible || "Solicitada") +
+          "</span></div>" +
+          '<p class="c360-agenda-card-kind">' +
           escapeHtml(item.kind || "Solicitud") +
-          "</strong><span>" +
-          escapeHtml(item.farm || "") +
           (item.date ? " · " + escapeHtml(item.date) : "") +
-          "</span></header><p>" +
-          escapeHtml(item.reason || item.responsible || "Sin detalle") +
-          "</p></article>"
+          "</p>" +
+          (item.reason
+            ? "<p class=\"c360-agenda-card-detail\">" + escapeHtml(item.reason) + "</p>"
+            : "") +
+          "</article>"
         );
       }
     );
