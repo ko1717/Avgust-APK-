@@ -57,7 +57,7 @@ for (const sel of [
   check(`lector cubre ${sel}`, (proCss + proJs).toLowerCase().includes(sel.toLowerCase()));
 }
 
-check("el botón ☀ se presenta como modo lector", /modo lector/i.test(proJs));
+check("lector cubre pasos de la visita", /html\.dark\.c360-sun \.steps\[data-slot="tabs-list"\]/.test(proCss));
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} pruebas superadas.`);

@@ -527,7 +527,21 @@ html.dark.c360-sun .module-nav [data-slot="tabs-trigger"][data-active] {
   color: #fff !important;
 }
 
+html.c360-sun .steps [data-slot="tabs-trigger"],
+html.dark.c360-sun .steps [data-slot="tabs-trigger"] {
+  color: var(--c360-ink);
+}
+
+html.c360-sun .steps [data-slot="tabs-trigger"][data-active],
+html.dark.c360-sun .steps [data-slot="tabs-trigger"][data-active] {
+  color: var(--c360-brand-strong);
+}
+
 html.c360-sun .topbar,
+html.c360-sun .module-nav[data-slot="tabs-list"],
+html.c360-sun .steps[data-slot="tabs-list"],
+html.c360-sun .form-body,
+html.c360-sun .editor-heading,
 html.c360-sun .editor,
 html.c360-sun .visits-list,
 html.c360-sun .followup-panel,
@@ -558,6 +572,10 @@ html.c360-sun .farm-metric-evolution,
 html.c360-sun .evolution-summary article,
 html.c360-sun .home-stats > div,
 html.dark.c360-sun .topbar,
+html.dark.c360-sun .module-nav[data-slot="tabs-list"],
+html.dark.c360-sun .steps[data-slot="tabs-list"],
+html.dark.c360-sun .form-body,
+html.dark.c360-sun .editor-heading,
 html.dark.c360-sun .editor,
 html.dark.c360-sun .visits-list,
 html.dark.c360-sun .followup-panel,
