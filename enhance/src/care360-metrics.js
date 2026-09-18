@@ -65,16 +65,38 @@
     return String(v.farmId || v.farm_id || "").trim();
   }
 
-  /** Misma finca: el nombre normalizado manda; farmId solo si falta el nombre. */
+  /** Claves normalizadas de una finca (con/sin prefijo «finca»). */
+  function farmKeys(name) {
+    var n = normFarm(name);
+    if (!n) return [];
+    var keys = [n];
+    if (n.indexOf("finca ") === 0) {
+      var stripped = n.slice(6).trim();
+      if (stripped) keys.push(stripped);
+    } else {
+      keys.push("finca " + n);
+    }
+    return keys;
+  }
+
+  /**
+   * Misma finca solo por nombre (con alias «finca …»).
+   * El farmId no puede meter visitas de otro nombre.
+   */
   function sameFarm(visit, farmName, farmId) {
     if (!visit) return false;
-    var want = normFarm(farmName);
+    var wantKeys = farmKeys(farmName);
     var got = normFarm(visit.farm);
-    if (want && got) return want === got;
+    if (got) {
+      for (var i = 0; i < wantKeys.length; i++) {
+        if (got === wantKeys[i]) return true;
+      }
+      return false;
+    }
+    // Visita sin nombre: solo si el id coincide y hay id seleccionado.
     var wantId = String(farmId || "").trim();
     var gotId = visitFarmId(visit);
-    if (wantId && gotId) return wantId === gotId;
-    return false;
+    return !!(wantId && gotId && wantId === gotId);
   }
 
   function visitUsable(v) {
@@ -1470,7 +1492,8 @@
       var st = visitScore(v);
       return {
         id: v.id || "",
-        farm: canonical || v.farm || "",
+        farm: canonical,
+        farmActual: String(v.farm || "").trim(),
         date: v.date,
         label: formatDateEs(v.date),
         shortLabel: formatDateShort(v.date),
@@ -2274,12 +2297,16 @@
     var map = {};
     visits.forEach(function (v) {
       if (!v.farm) return;
-      var key = normFarm(v.farm);
-      if (!key) return;
+      var keys = farmKeys(v.farm);
+      if (!keys.length) return;
+      // Clave canónica: sin prefijo «finca», para no duplicar la misma finca.
+      var key = keys.length > 1 && keys[0].indexOf("finca ") === 0 ? keys[1] : keys[0];
       if (!map[key]) {
         map[key] = { name: v.farm, farmId: visitFarmId(v) };
-      } else if (!map[key].farmId) {
-        map[key].farmId = visitFarmId(v);
+      } else {
+        if (!map[key].farmId) map[key].farmId = visitFarmId(v);
+        // Prefiere el nombre más largo / con «Finca» si ya existía el corto.
+        if (String(v.farm).length > String(map[key].name).length) map[key].name = v.farm;
       }
     });
     return Object.keys(map)
@@ -2814,11 +2841,15 @@
         .slice()
         .reverse()
         .forEach(function (row) {
+          // Defensa: no pintar visitas cuyo nombre real no coincida con la finca elegida.
+          if (row.farmActual && state.farm && !sameFarm({ farm: row.farmActual }, state.farm, "")) {
+            return;
+          }
           html += '<article class="c360-visit-card tone-' + (row.status || "pending") + '">';
           html +=
             '<div class="c360-visit-card-top"><div><strong>' +
             escapeHtml(row.label || formatDateEs(row.date)) +
-            "</strong><p>" +
+            "</strong><p class=\"c360-visit-card-meta\">Responsable · " +
             escapeHtml(row.responsible || "Sin responsable") +
             "</p></div>";
           html +=
@@ -2841,10 +2872,12 @@
           html += "</div>";
           html +=
             '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
-            escapeHtml(row.farm || state.farm || "") +
+            escapeHtml(state.farm || row.farm || "") +
             '" data-open-date="' +
             escapeHtml(row.date || "") +
-            '">Abrir visita</button>';
+            '"' +
+            (row.id ? ' data-open-visit-id="' + escapeHtml(row.id) + '"' : "") +
+            ">Abrir visita</button>";
           html += "</article>";
         });
       html += "</div>";
@@ -3015,7 +3048,7 @@
   }
 
   function findVisitRow(farm, date) {
-    var farmKey = normFarm(farm);
+    var wantKeys = farmKeys(farm);
     var dateEs = formatDateEs(date);
     var rows = qa(".visit-row");
     for (var i = 0; i < rows.length; i++) {
@@ -3023,7 +3056,15 @@
       var small = q("small", rows[i]) || rows[i];
       var name = strong ? strong.textContent : "";
       var meta = small ? small.textContent : "";
-      if (normFarm(name) !== farmKey) continue;
+      var got = normFarm(name);
+      var nameOk = false;
+      for (var k = 0; k < wantKeys.length; k++) {
+        if (got === wantKeys[k]) {
+          nameOk = true;
+          break;
+        }
+      }
+      if (!nameOk) continue;
       if (date && meta.indexOf(date) === -1 && meta.indexOf(dateEs) === -1) continue;
       return rows[i];
     }

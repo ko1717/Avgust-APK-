@@ -9,20 +9,21 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 
 ---
 
-## Entregables (v1.5.8)
+## Entregables (v1.5.9)
 
 | Ruta | Contenido |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.8-Android.apk`](./dist/AVGUST-CARE-360-1.5.8-Android.apk) | **Con marca Avgust.** |
-| [`dist/CARE-360-1.5.8-sin-marca-Android.apk`](./dist/CARE-360-1.5.8-sin-marca-Android.apk) | Sin marca Avgust. |
+| [`dist/AVGUST-CARE-360-1.5.9-Android.apk`](./dist/AVGUST-CARE-360-1.5.9-Android.apk) | **Con marca Avgust.** |
+| [`dist/CARE-360-1.5.9-sin-marca-Android.apk`](./dist/CARE-360-1.5.9-sin-marca-Android.apk) | Sin marca Avgust. |
 | `enhance/src/` | Capa de mejoras (CSS/JS) que se inyecta sobre el APK base. |
 | `tools/` | Compilación, firma, parches y demos de importación. |
 | `tests/` | Prueba e2e del contenido web. |
 
-Se instala encima de 1.4.x–1.5.7 firmadas con la misma clave (`tools/signing/`).
+Se instala encima de 1.4.x–1.5.8 firmadas con la misma clave (`tools/signing/`).
 
-### Destacados 1.5.8
+### Destacados 1.5.9
 
+- Por finca: responsable etiquetado (no se confunde con finca); filtro por nombre/alias «Finca …»; dist solo con la versión actual.
 - En **Por finca**, el historial ya no muestra columna Finca (solo la seleccionada) y el filtro prioriza el nombre.
 - **Informe de métricas** rediseñado: portada de marca, KPIs con color, alertas, barras de indicador y tablas más claras (imprimir / PDF).
 - Métricas → Por finca solo muestra la finca seleccionada (1.5.6).
