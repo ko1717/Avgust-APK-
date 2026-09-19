@@ -866,10 +866,18 @@
       }
       if (data.chapters && data.chapters.length) {
         lines.push(snap.chaptersNote);
-        lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables,Estado");
+        lines.push("Capítulo,Título,Indicador %,Subcapítulos %,Hallazgos,Aplicables,Estado");
         data.chapters.forEach(function (c) {
           lines.push(
-            [c.id, c.title, c.score, c.findings, c.applicable, statusLabel(c.status)]
+            [
+              c.id,
+              c.title,
+              c.score,
+              c.subScore != null ? c.subScore : "",
+              c.findings,
+              c.applicable,
+              statusLabel(c.status),
+            ]
               .map(csvEscape)
               .join(",")
           );
@@ -1210,22 +1218,64 @@
     }
 
     if (data.chapters && data.chapters.length) {
+      var capSubHtml = "";
+      var capRows = data.chapters.filter(function (c) {
+        return c && (c.score != null || c.subScore != null);
+      });
+      if (capRows.length) {
+        capSubHtml =
+          "<div class='groupbars capsub'><div class='groupbars-leg'>" +
+          "<span class='cap'><i></i>Capítulos</span>" +
+          "<span class='sub'><i></i>Subcapítulos</span>" +
+          "<span class='t'><i></i>Meta " +
+          META_TARGET +
+          "%</span></div><div class='groupbars-plot pair'>";
+        capRows.forEach(function (c) {
+          var cap = c.score != null ? Number(c.score) : null;
+          var sub = c.subScore != null ? Number(c.subScore) : null;
+          var capH = cap == null ? 0 : Math.max(0, Math.min(100, cap));
+          var subH = sub == null ? 0 : Math.max(0, Math.min(100, sub));
+          capSubHtml +=
+            "<div class='groupbars-col'><div class='groupbars-pair'>" +
+            (cap == null
+              ? ""
+              : "<div class='groupbars-bar cap' style='height:" +
+                Math.max(capH, 4) +
+                "%'><span>" +
+                cap +
+                "%</span></div>") +
+            (sub == null
+              ? ""
+              : "<div class='groupbars-bar sub' style='height:" +
+                Math.max(subH, 4) +
+                "%'><span>" +
+                sub +
+                "%</span></div>") +
+            "</div><div class='groupbars-x'>" +
+            escapeHtml(c.id + ". " + shortTitle(c.title || "")) +
+            "</div></div>";
+        });
+        capSubHtml +=
+          "</div><p class='muted' style='margin:8px 0 0;font-size:11.5px'>Capítulos = indicador del capítulo · Subcapítulos = promedio de cumplimiento de sus criterios.</p></div>";
+      }
       body += section(
-        snap.chaptersNote,
-        "Meta de referencia: 80% de cumplimiento.",
-        table(
-          ["Capítulo", "Indicador", "Hallazgos", "Aplicables", "Estado"],
-          data.chapters.map(function (c) {
-            return [
-              "<strong>" + escapeHtml(c.id + ". " + c.title) + "</strong>",
-              scoreCell(c.score),
-              c.findings,
-              c.applicable,
-              pill(statusLabel(c.status), reportToneClass(c.status)),
-            ];
-          }),
-          { htmlCols: { 0: true, 1: true, 4: true } }
-        )
+        "Capítulos y subcapítulos",
+        snap.chaptersNote + " · comparación lado a lado (meta " + META_TARGET + "%).",
+        capSubHtml +
+          table(
+            ["Capítulo", "Capítulos %", "Subcapítulos %", "Hallazgos", "Aplicables", "Estado"],
+            data.chapters.map(function (c) {
+              return [
+                "<strong>" + escapeHtml(c.id + ". " + c.title) + "</strong>",
+                scoreCell(c.score),
+                scoreCell(c.subScore),
+                c.findings,
+                c.applicable,
+                pill(statusLabel(c.status), reportToneClass(c.status)),
+              ];
+            }),
+            { htmlCols: { 0: true, 1: true, 2: true, 5: true } }
+          )
       );
     }
 
@@ -1333,16 +1383,22 @@
       ".groupbars-leg span{display:inline-flex;align-items:center;gap:6px}" +
       ".groupbars-leg i{width:10px;height:10px;border-radius:3px;background:var(--accent)}" +
       ".groupbars-leg .t i{width:3px;height:12px;border-radius:1px;background:#007fa3}" +
+      ".groupbars-leg .cap i{background:#5b9bd5}" +
+      ".groupbars-leg .sub i{background:#ed7d31}" +
       ".groupbars-plot{display:flex;align-items:flex-end;gap:10px;min-height:160px;padding:8px 4px 0;" +
       "border-bottom:1px solid var(--line);background:linear-gradient(180deg,transparent 19%,#eef4f6 20%,transparent 21%," +
       "transparent 39%,#eef4f6 40%,transparent 41%,transparent 59%,#eef4f6 60%,transparent 61%,transparent 79%,#eef4f6 80%,transparent 81%)}" +
       ".groupbars-col{flex:1 1 0;min-width:36px;display:flex;flex-direction:column;align-items:center;gap:6px}" +
+      ".groupbars-pair{display:flex;align-items:flex-end;justify-content:center;gap:3px;width:100%;height:140px}" +
       ".groupbars-bar{width:100%;max-width:42px;border-radius:8px 8px 3px 3px;min-height:4px;display:flex;align-items:flex-start;" +
       "justify-content:center;padding-top:4px;color:#fff;font-size:10px;font-weight:700;background:var(--accent)}" +
+      ".groupbars-plot.pair .groupbars-bar{max-width:22px;font-size:9px}" +
       ".groupbars-bar.tone-ok{background:linear-gradient(180deg,#3cb87f,#1f8a5b)}" +
       ".groupbars-bar.tone-mid{background:linear-gradient(180deg,#e0a63a,#c98512)}" +
       ".groupbars-bar.tone-bad{background:linear-gradient(180deg,#e06b5c,#c44b3c)}" +
-      ".groupbars-x{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;max-width:64px}" +
+      ".groupbars-bar.cap{background:linear-gradient(180deg,#7eb3de,#5b9bd5)}" +
+      ".groupbars-bar.sub{background:linear-gradient(180deg,#f2a06a,#ed7d31)}" +
+      ".groupbars-x{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;max-width:72px}" +
       ".muted{color:var(--muted)}" +
       ".foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;" +
       "margin-top:8px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}" +
@@ -2002,6 +2058,7 @@
    * Barras agrupadas Capítulos vs Subcapítulos (estilo Excel Fig1/Fig2).
    * Eje X = capítulos; dos barras por grupo: indicador del capítulo y
    * promedio de cumplimiento de sus subcapítulos (criterios).
+   * Tocá un capítulo para abrir el detalle.
    */
   function chartCapitulosSubcapitulos(chapters) {
     var rows = (chapters || []).filter(function (c) {
@@ -2015,12 +2072,29 @@
       );
     }
 
+    var hideCap = !!(state.capSubHide && state.capSubHide.cap);
+    var hideSub = !!(state.capSubHide && state.capSubHide.sub);
+    var focusCh =
+      state.focus && state.focus.type === "chapter" ? Number(state.focus.chapter) : null;
+    var selected = null;
+    rows.forEach(function (c) {
+      if (focusCh != null && Number(c.id) === focusCh) selected = c;
+    });
+
     var html =
-      '<div class="c360-groupbars c360-groupbars-capsub" role="img" aria-label="Indicador por capítulos y subcapítulos">';
+      '<div class="c360-groupbars c360-groupbars-capsub" role="group" aria-label="Indicador por capítulos y subcapítulos">';
     html +=
       '<div class="c360-groupbars-legend" role="list">' +
-      '<span class="c360-groupbars-leg cap" role="listitem"><i></i>Capítulos</span>' +
-      '<span class="c360-groupbars-leg sub" role="listitem"><i></i>Subcapítulos</span>' +
+      '<button type="button" class="c360-groupbars-leg cap' +
+      (hideCap ? " is-off" : "") +
+      '" data-capsub-toggle="cap" role="listitem" aria-pressed="' +
+      (hideCap ? "false" : "true") +
+      '"><i></i>Capítulos</button>' +
+      '<button type="button" class="c360-groupbars-leg sub' +
+      (hideSub ? " is-off" : "") +
+      '" data-capsub-toggle="sub" role="listitem" aria-pressed="' +
+      (hideSub ? "false" : "true") +
+      '"><i></i>Subcapítulos</button>' +
       '<span class="c360-groupbars-leg target" role="listitem"><i></i>Meta ' +
       META_TARGET +
       "%</span>" +
@@ -2046,32 +2120,79 @@
       var capH = cap == null ? 0 : Math.max(0, Math.min(100, cap));
       var subH = sub == null ? 0 : Math.max(0, Math.min(100, sub));
       var label = c.id + ". " + shortTitle(c.title || CHAPTER_TITLES[c.id] || "");
+      var isOn = focusCh != null && Number(c.id) === focusCh;
       html +=
-        '<div class="c360-groupbars-col has-compare" title="' +
+        '<button type="button" class="c360-groupbars-col has-compare c360-groupbars-hit' +
+        (isOn ? " is-selected" : "") +
+        (hideCap ? " hide-cap" : "") +
+        (hideSub ? " hide-sub" : "") +
+        '" data-focus-chapter="' +
+        c.id +
+        '" title="' +
         escapeHtml(label) +
         (cap != null ? " · capítulo " + cap + "%" : "") +
         (sub != null ? " · subcapítulos " + sub + "%" : "") +
+        ' · tocar para detalle" aria-label="Ver detalle de ' +
+        escapeHtml(label) +
+        '" aria-pressed="' +
+        (isOn ? "true" : "false") +
         '">';
       html += '<div class="c360-groupbars-pair">';
-      html +=
-        '<div class="c360-groupbars-bar cap" style="height:' +
-        (cap == null ? 0 : Math.max(capH, 3)) +
-        '%"><span>' +
-        (cap == null ? "" : cap + "%") +
-        "</span></div>";
-      html +=
-        '<div class="c360-groupbars-bar sub" style="height:' +
-        (sub == null ? 0 : Math.max(subH, 3)) +
-        '%"><span>' +
-        (sub == null ? "" : sub + "%") +
-        "</span></div>";
+      if (!hideCap) {
+        html +=
+          '<div class="c360-groupbars-bar cap" style="height:' +
+          (cap == null ? 0 : Math.max(capH, 3)) +
+          '%"><span>' +
+          (cap == null ? "" : cap + "%") +
+          "</span></div>";
+      }
+      if (!hideSub) {
+        html +=
+          '<div class="c360-groupbars-bar sub" style="height:' +
+          (sub == null ? 0 : Math.max(subH, 3)) +
+          '%"><span>' +
+          (sub == null ? "" : sub + "%") +
+          "</span></div>";
+      }
       html += "</div>";
       html += '<div class="c360-groupbars-xlabel">' + escapeHtml(label) + "</div>";
-      html += "</div>";
+      html += "</button>";
     });
     html += "</div></div>";
-    html +=
-      '<p class="c360-groupbars-note">Capítulos = indicador del capítulo · Subcapítulos = promedio de cumplimiento de sus criterios.</p>';
+
+    if (selected) {
+      var delta =
+        selected.score != null && selected.subScore != null
+          ? selected.score - selected.subScore
+          : null;
+      html += '<div class="c360-capsub-peek" role="status">';
+      html +=
+        "<strong>" +
+        escapeHtml(selected.id + ". " + (selected.title || CHAPTER_TITLES[selected.id] || "")) +
+        "</strong>";
+      html += '<div class="c360-capsub-peek-metrics">';
+      html +=
+        '<span class="cap"><i></i>Capítulo <b>' +
+        (selected.score == null ? "—" : selected.score + "%") +
+        "</b></span>";
+      html +=
+        '<span class="sub"><i></i>Subcapítulos <b>' +
+        (selected.subScore == null ? "—" : selected.subScore + "%") +
+        "</b></span>";
+      if (delta != null) {
+        html +=
+          '<span class="delta">' +
+          (delta === 0 ? "Iguales" : (delta > 0 ? "+" : "") + delta + " pts cap vs sub") +
+          "</span>";
+      }
+      html += "</div>";
+      html +=
+        '<p>Tocá de nuevo u otro capítulo · el detalle completo queda abajo con hallazgos y criterios.</p>';
+      html += "</div>";
+    } else {
+      html +=
+        '<p class="c360-groupbars-note">Tocá un capítulo para comparar Capítulos vs Subcapítulos y ver el detalle. La leyenda oculta/muestra cada serie.</p>';
+    }
     html += "</div>";
     return html;
   }
@@ -2542,6 +2663,7 @@
     openChapter: null,
     focus: null,
     compare: false,
+    capSubHide: { cap: false, sub: false },
     notice: "",
     noticeError: false,
     importExpanded: false,
@@ -2971,7 +3093,7 @@
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead(
       "Capítulos y subcapítulos",
-      "Indicador de cada capítulo frente al promedio de sus subcapítulos (criterios)."
+      "Tocá un capítulo para ver el detalle. La leyenda oculta o muestra cada serie."
     );
     html += chartCapitulosSubcapitulos(data.chapters);
     html += "</section>";
@@ -3139,7 +3261,7 @@
     html += cardHead(
       "Capítulos y subcapítulos",
       (data.lastDate ? "Última visita del " + formatDateEs(data.lastDate) + ". " : "") +
-        "Indicador de cada capítulo frente al promedio de sus subcapítulos."
+        "Tocá un capítulo para ver el detalle. La leyenda oculta o muestra cada serie."
     );
     html += chartCapitulosSubcapitulos(data.chapters);
     html += "</section>";
@@ -3659,6 +3781,22 @@
         "</strong> hallazgo" +
         ((focus.findings || 0) === 1 ? "" : "s") +
         "</p></div>";
+      if (focus.score != null || focus.subScore != null) {
+        html += '<div class="c360-capsub-compare" role="group" aria-label="Capítulos vs subcapítulos">';
+        html +=
+          '<div class="c360-capsub-compare-item cap"><span>Capítulos</span><strong>' +
+          (focus.score == null ? "—" : focus.score + "%") +
+          "</strong>" +
+          barHtml(focus.score, scoreStatus(focus.score)) +
+          "</div>";
+        html +=
+          '<div class="c360-capsub-compare-item sub"><span>Subcapítulos</span><strong>' +
+          (focus.subScore == null ? "—" : focus.subScore + "%") +
+          "</strong>" +
+          barHtml(focus.subScore, scoreStatus(focus.subScore)) +
+          "</div>";
+        html += "</div>";
+      }
       if (!items.length) {
         html += '<p class="muted">Sin respuestas No cumple en este capítulo para el corte actual.</p>';
       } else {
@@ -3718,9 +3856,15 @@
 
   function focusChapter(chapterId, contextData) {
     var ch = Number(chapterId);
+    if (state.focus && state.focus.type === "chapter" && Number(state.focus.chapter) === ch) {
+      state.focus = null;
+      render();
+      return;
+    }
     var title = CHAPTER_TITLES[ch] || "Capítulo " + ch;
     var items = [];
     var score = null;
+    var subScore = null;
     var findings = 0;
     if (state.mode === "farm" && contextData && contextData.last) {
       var last = contextData.last;
@@ -3741,6 +3885,7 @@
       });
       if (chRow) {
         score = chRow.score;
+        subScore = chRow.subScore;
         findings = chRow.findings;
       }
     } else {
@@ -3769,22 +3914,30 @@
         contextData.chapters.forEach(function (c) {
           if (c.id === ch) row = c;
         });
-        if (row) score = row.score;
+        if (row) {
+          score = row.score;
+          subScore = row.subScore;
+          if (row.findings != null) findings = row.findings;
+        }
       }
     }
     state.focus = {
       type: "chapter",
       title: ch + ". " + title,
-      subtitle: state.mode === "farm" ? "Última visita de la finca" : "Hallazgos del periodo",
+      subtitle:
+        (score == null ? "Sin indicador" : "Capítulo " + score + "%") +
+        (subScore == null ? "" : " · Subcapítulos " + subScore + "%") +
+        (state.mode === "farm" ? " · última visita" : " · periodo"),
       chapter: ch,
       items: items.slice(0, 20),
       score: score,
+      subScore: subScore,
       findings: findings,
     };
     if (state.mode === "farm") state.nocumpleOpen = true;
     render();
     window.setTimeout(function () {
-      var el = q("#c360-metrics-focus");
+      var el = q("#c360-metrics-focus") || q(".c360-capsub-peek");
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 40);
   }
@@ -3891,6 +4044,22 @@
           ev.preventDefault();
           go();
         }
+      });
+    });
+    qa("[data-capsub-toggle]", root).forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var key = btn.getAttribute("data-capsub-toggle");
+        if (!state.capSubHide) state.capSubHide = { cap: false, sub: false };
+        var next = !state.capSubHide[key];
+        // No apagar ambas series a la vez.
+        if (next) {
+          var other = key === "cap" ? "sub" : "cap";
+          if (state.capSubHide[other]) return;
+        }
+        state.capSubHide[key] = next;
+        render();
       });
     });
     qa("[data-open-visit]", root).forEach(function (btn) {

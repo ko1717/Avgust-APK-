@@ -17,9 +17,9 @@ No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.15-Android.apk`](./dist/AVGUST-CARE-360-1.5.15-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.16-Android.apk`](./dist/AVGUST-CARE-360-1.5.16-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.15**. Se instala encima de 1.4.x–1.5.14
+En la cabecera de la app debe verse **v1.5.16**. Se instala encima de 1.4.x–1.5.15
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,10 +27,11 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.15
+## Qué incluye 1.5.16
 
-- **Evolución** otra vez como gráfico de línea (como en 1.5.13).
-- Nueva métrica **Capítulos y subcapítulos**: barras agrupadas (capítulo vs promedio de criterios), estilo comparación lado a lado.
+- **Capítulos y subcapítulos** más interactivo: tocá un capítulo, resaltado, comparación Cap vs Sub y leyenda para ocultar/mostrar series.
+- La misma comparación **aparece en el informe** HTML/PDF de métricas (gráfico + tabla).
+- **Evolución** en gráfico de línea (como 1.5.13).
 - **Borrar visita** (lista y editor): elimina la visita y sus informes.
 - **Borrar versión de informe**.
 - **Borrar solicitud**: desaparece de Agenda y Seguimiento.
@@ -65,7 +66,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.15-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.16-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 

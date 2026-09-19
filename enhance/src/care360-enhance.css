@@ -2054,6 +2054,157 @@ html.c360-metrics-lite .metrics-actions {
   background: linear-gradient(180deg, #f2a06a, #ed7d31);
 }
 
+button.c360-groupbars-leg {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 6px;
+  border-radius: 8px;
+  color: inherit;
+}
+
+button.c360-groupbars-leg:hover,
+button.c360-groupbars-leg:focus-visible {
+  border-color: var(--c360-line-soft, #dbe4e8);
+  background: #fff;
+  outline: none;
+}
+
+button.c360-groupbars-leg.is-off {
+  opacity: 0.42;
+  text-decoration: line-through;
+}
+
+button.c360-groupbars-col,
+button.c360-groupbars-hit {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  padding: 4px 2px 2px;
+  border-radius: 12px;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+button.c360-groupbars-hit:hover,
+button.c360-groupbars-hit:focus-visible {
+  background: rgb(0 127 163 / 6%);
+  border-color: var(--c360-line-soft, #dbe4e8);
+  outline: none;
+}
+
+button.c360-groupbars-hit.is-selected {
+  background: rgb(91 155 213 / 12%);
+  border-color: #5b9bd5;
+  transform: translateY(-2px);
+}
+
+.c360-capsub-peek {
+  margin-top: 12px;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid #cfe0f0;
+  background: linear-gradient(180deg, #f5faff, #fff);
+}
+
+.c360-capsub-peek strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--c360-ink, #173039);
+  margin-bottom: 8px;
+}
+
+.c360-capsub-peek-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.c360-capsub-peek-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-capsub-peek-metrics i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.c360-capsub-peek-metrics .cap i {
+  background: #5b9bd5;
+}
+
+.c360-capsub-peek-metrics .sub i {
+  background: #ed7d31;
+}
+
+.c360-capsub-peek-metrics b {
+  color: var(--c360-ink, #173039);
+  font-weight: 800;
+}
+
+.c360-capsub-peek-metrics .delta {
+  font-weight: 700;
+  color: #0b5f74;
+}
+
+.c360-capsub-peek p {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-capsub-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.c360-capsub-compare-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--c360-line-soft, #dbe4e8);
+  background: #fff;
+}
+
+.c360-capsub-compare-item span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c360-ink-soft, #58696d);
+  margin-bottom: 4px;
+}
+
+.c360-capsub-compare-item strong {
+  display: block;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.c360-capsub-compare-item.cap {
+  border-color: #c5daf0;
+  background: linear-gradient(180deg, #f5faff, #fff);
+}
+
+.c360-capsub-compare-item.sub {
+  border-color: #f3d2bc;
+  background: linear-gradient(180deg, #fff8f3, #fff);
+}
+
 .c360-groupbars-bar.current.tone-healthy {
   background: linear-gradient(180deg, #3cb87f, #1f8a5b);
 }
