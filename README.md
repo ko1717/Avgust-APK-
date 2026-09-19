@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.12, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.13, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.14-Android.apk`](./dist/AVGUST-CARE-360-1.5.14-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.13**. Se instala encima de 1.4.x–1.5.12
+En la cabecera de la app debe verse **v1.5.14**. Se instala encima de 1.4.x–1.5.13
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,17 +27,14 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.13
+## Qué incluye 1.5.14
 
-- **Borrar visita** (lista y editor): elimina la visita y sus informes.
-- **Borrar versión de informe**.
-- **Borrar solicitud**: desaparece de Agenda y Seguimiento.
-- **Borrar finca**: también elimina visitas, informes y solicitudes de esa finca.
-- Panel **Calidad de la visita** fijo (ya no tapa Departamento / Municipio).
-- Modo oscuro y modo lector (☀).
-- Seguimiento compacto, agenda en vivo y métricas Por finca sin mezclar.
-- Informe Word: calidad de agua y demás mediciones junto al ítem del capítulo;
-  sin observaciones de capítulo; criterios con ortografía corregida.
+- Informe Word: calidad de agua, mezcla final, presión, equipo y volumen/tiempo
+  quedan junto al ítem del capítulo (4.6, 5.1, 5.3, 5.6).
+- Se quitan las observaciones y recomendaciones de capítulo del informe.
+- Ortografía de los criterios MIPE y de los títulos del documento.
+- Lo anterior de 1.5.13: borrar visita/informe/solicitud/finca, panel de
+  calidad fijo, modo oscuro y lector, seguimiento y métricas por finca.
 
 ---
 
@@ -65,7 +62,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.13-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.14-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 
