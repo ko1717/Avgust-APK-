@@ -2218,7 +2218,8 @@
     html += '<div class="c360-chdetail">';
     chapters.forEach(function (c) {
       var subs = ((data && data.subchapters) || []).filter(function (it) {
-        return Number(it.chapter) === Number(c.id);
+        if (Number(it.chapter) !== Number(c.id)) return false;
+        return it.applicable > 0 || it.answer === "SI" || it.answer === "NO";
       });
       html += '<article class="c360-chdetail-row" data-chapter="' + c.id + '">';
       html += '<div class="c360-chdetail-main">';

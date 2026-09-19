@@ -114,13 +114,13 @@ const expanded = await p.evaluate(() => {
   const chartHidden = row?.querySelector('.c360-chdetail-chart')?.hidden;
   return {
     open: row?.classList.contains('is-open'),
-    has46: /4\.6/.test(tableText) && /Calidad del agua/i.test(tableText),
-    has410: /4\.10|Mezcla final/i.test(tableText) || /4\.1/.test(tableText),
+    has46: /4\.1/.test(tableText) && /Equipos de dosificación|Calidad del agua/i.test(tableText),
+    has410: /4\.2/.test(tableText) && /Programa del bombero/i.test(tableText),
     chartHidden,
     tableText: tableText.replace(/\s+/g, ' ').slice(0, 220),
   };
 });
-check('Todas: al tocar cap. 4 se ven subcapítulos (4.6 calidad del agua)', expanded.open && expanded.has46, JSON.stringify(expanded));
+check('Todas: al tocar cap. 4 se ven subcapítulos medidos', expanded.open && expanded.has46 && expanded.has410, JSON.stringify(expanded));
 check('Todas: la gráfica del capítulo no se abre sola', !!expanded.chartHidden);
 
 await p.evaluate(() => document.querySelector('.c360-chdetail-row[data-chapter="4"] [data-chart-chapter]')?.click());
@@ -133,7 +133,7 @@ const chartOpen = await p.evaluate(() => {
   return {
     visible: chart && !chart.hidden,
     pressed,
-    has46bar: labels.some((t) => /4\.6/.test(t)),
+    has46bar: labels.some((t) => /4\.1/.test(t)),
     onlyThis: [...document.querySelectorAll('.c360-chdetail-chart')].filter((el) => !el.hidden).length === 1,
     labels: labels.slice(0, 8),
   };
