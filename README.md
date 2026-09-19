@@ -77,3 +77,9 @@ de campo es la APK Avgust.
 ```bash
 tools/dev-preview.sh                 # http://localhost:8080
 ```
+
+### Pruebas
+
+```bash
+cd tests && npm install && npm test   # requiere la vista previa en :8080
+```
