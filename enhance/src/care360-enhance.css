@@ -2164,6 +2164,90 @@ button.c360-groupbars-hit.is-selected {
   color: var(--c360-ink-soft, #58696d);
 }
 
+/* Bloque Capítulos y subcapítulos (gráfico + tabla estilo informe) */
+.c360-metrics-capsub-block {
+  padding-bottom: 12px;
+}
+
+.c360-metrics-capsub-block .c360-groupbars {
+  margin-bottom: 4px;
+}
+
+.c360-capsub-table-wrap {
+  margin-top: 14px;
+  border: 1px solid var(--c360-line-soft, #dbe4e8);
+  border-radius: 14px;
+  background: var(--c360-surface, #fff);
+  padding: 2px 8px 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.c360-capsub-table {
+  min-width: 560px;
+  table-layout: auto;
+}
+
+.c360-capsub-table th:nth-child(2),
+.c360-capsub-table th:nth-child(3),
+.c360-capsub-table td:nth-child(2),
+.c360-capsub-table td:nth-child(3) {
+  min-width: 92px;
+}
+
+.c360-capsub-table th:nth-child(4),
+.c360-capsub-table th:nth-child(5),
+.c360-capsub-table td:nth-child(4),
+.c360-capsub-table td:nth-child(5) {
+  text-align: center;
+  width: 72px;
+}
+
+.c360-capsub-table th:nth-child(6),
+.c360-capsub-table td:nth-child(6) {
+  white-space: nowrap;
+}
+
+.c360-score-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 72px;
+}
+
+.c360-score-cell strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--c360-ink, #173039);
+  line-height: 1.1;
+}
+
+.c360-score-cell .c360-mbar {
+  width: 100%;
+  max-width: 88px;
+  height: 7px;
+}
+
+.c360-capsub-row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.c360-capsub-row:hover,
+.c360-capsub-row:focus-visible {
+  background: rgb(91 155 213 / 8%);
+  outline: none;
+}
+
+.c360-capsub-row.is-selected {
+  background: rgb(91 155 213 / 14%);
+}
+
+.c360-capsub-row.is-selected td:first-child strong {
+  color: #0b5f74;
+}
+
 .c360-capsub-compare {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2866,6 +2950,31 @@ html.dark .c360-groupbars-empty {
 
   .c360-mbar { width: 64px; }
   .c360-metrics-wrap { max-width: none; }
+
+  .c360-capsub-table {
+    min-width: 0;
+  }
+
+  .c360-capsub-table-wrap {
+    padding: 8px;
+  }
+
+  .c360-capsub-table th:nth-child(4),
+  .c360-capsub-table th:nth-child(5),
+  .c360-capsub-table td:nth-child(4),
+  .c360-capsub-table td:nth-child(5) {
+    text-align: left;
+    width: auto;
+  }
+
+  .c360-score-cell .c360-mbar {
+    max-width: none;
+    width: 100%;
+  }
+
+  .c360-capsub-row.is-selected {
+    box-shadow: inset 0 0 0 1px #5b9bd5;
+  }
 }
 
 @media (max-width: 420px) {

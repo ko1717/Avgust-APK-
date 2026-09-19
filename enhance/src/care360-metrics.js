@@ -1714,6 +1714,83 @@
     );
   }
 
+  /** Celda % con barra de color (estilo informe) para el tablero. */
+  function scoreCell(score) {
+    if (score == null || score === "" || isNaN(Number(score))) {
+      return '<span class="muted">—</span>';
+    }
+    var n = Number(score);
+    var tone = scoreStatus(n);
+    return (
+      '<div class="c360-score-cell tone-' +
+      tone +
+      '"><strong>' +
+      n +
+      "%</strong>" +
+      barHtml(n, tone) +
+      "</div>"
+    );
+  }
+
+  /**
+   * Tabla Capítulos / Subcapítulos del informe, reutilizada en el tablero.
+   * Filas tocables para enfocar el mismo capítulo que el gráfico.
+   */
+  function renderCapSubTable(chapters) {
+    var rows = (chapters || []).filter(function (c) {
+      return c && (c.score != null || c.subScore != null || c.applicable > 0);
+    });
+    if (!rows.length) return "";
+
+    var focusCh =
+      state.focus && state.focus.type === "chapter" ? Number(state.focus.chapter) : null;
+
+    var html =
+      '<div class="c360-metrics-table-wrap c360-capsub-table-wrap">' +
+      '<table class="c360-metrics-table c360-capsub-table">' +
+      "<thead><tr>" +
+      "<th>Capítulo</th>" +
+      "<th>Capítulos %</th>" +
+      "<th>Subcapítulos %</th>" +
+      "<th>Hallazgos</th>" +
+      "<th>Aplicables</th>" +
+      "<th>Estado</th>" +
+      "</tr></thead><tbody>";
+
+    rows.forEach(function (c) {
+      var status = c.status || scoreStatus(c.score);
+      var isOn = focusCh != null && Number(c.id) === focusCh;
+      var label = c.id + ". " + (c.title || CHAPTER_TITLES[c.id] || "Capítulo " + c.id);
+      html +=
+        '<tr class="c360-capsub-row' +
+        (isOn ? " is-selected" : "") +
+        '" data-focus-chapter="' +
+        c.id +
+        '" tabindex="0" role="button" aria-pressed="' +
+        (isOn ? "true" : "false") +
+        '" title="Ver detalle de ' +
+        escapeHtml(label) +
+        '">';
+      html += td("Capítulo", "<strong>" + escapeHtml(label) + "</strong>");
+      html += td("Capítulos %", scoreCell(c.score));
+      html += td("Subcapítulos %", scoreCell(c.subScore));
+      html += td("Hallazgos", String(c.findings != null ? c.findings : "—"));
+      html += td("Aplicables", String(c.applicable != null ? c.applicable : "—"));
+      html += td(
+        "Estado",
+        '<span class="c360-mpill tone-' +
+          status +
+          '">' +
+          escapeHtml(statusLabel(status)) +
+          "</span>"
+      );
+      html += "</tr>";
+    });
+
+    html += "</tbody></table></div>";
+    return html;
+  }
+
   function chartLine(rows, compareRows) {
     var points = (rows || []).filter(function (r) {
       return r && r.score != null;
@@ -2191,7 +2268,7 @@
       html += "</div>";
     } else {
       html +=
-        '<p class="c360-groupbars-note">Tocá un capítulo para comparar Capítulos vs Subcapítulos y ver el detalle. La leyenda oculta/muestra cada serie.</p>';
+        '<p class="c360-groupbars-note">Capítulos = indicador del capítulo · Subcapítulos = promedio de cumplimiento de sus criterios. Tocá un capítulo (o una fila) para el detalle.</p>';
     }
     html += "</div>";
     return html;
@@ -3090,12 +3167,15 @@
     html += renderAlerts(alerts);
     html += renderFocusPanel();
 
-    html += '<section class="c360-metrics-card c360-metrics-section">';
+    html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
     html += cardHead(
       "Capítulos y subcapítulos",
-      "Tocá un capítulo para ver el detalle. La leyenda oculta o muestra cada serie."
+      "Capítulos del periodo (todas las visitas) · comparación lado a lado (meta " +
+        META_TARGET +
+        "%)."
     );
     html += chartCapitulosSubcapitulos(data.chapters);
+    html += renderCapSubTable(data.chapters);
     html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
@@ -3257,13 +3337,16 @@
     html += renderAlerts(alerts);
     html += renderFocusPanel();
 
-    html += '<section class="c360-metrics-card c360-metrics-section">';
+    html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
     html += cardHead(
       "Capítulos y subcapítulos",
-      (data.lastDate ? "Última visita del " + formatDateEs(data.lastDate) + ". " : "") +
-        "Tocá un capítulo para ver el detalle. La leyenda oculta o muestra cada serie."
+      (data.lastDate ? "Última visita del " + formatDateEs(data.lastDate) + " · " : "") +
+        "comparación lado a lado (meta " +
+        META_TARGET +
+        "%)."
     );
     html += chartCapitulosSubcapitulos(data.chapters);
+    html += renderCapSubTable(data.chapters);
     html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
