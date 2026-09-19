@@ -55,6 +55,16 @@ INDEX_PATCHES: list[tuple[str, str, str]] = [
         "[`Hallazgos (respuestas No cumple)`,String(e.findings)]",
     ),
     (
+        "título capítulo 1",
+        "title:`Almacén e inventarios de PPC`",
+        "title:`Almacén y manejo de inventario`",
+    ),
+    (
+        "título capítulo 2",
+        "title:`Medición y dosificación de PPC`",
+        "title:`Mediciones y pesaje de PPC's`",
+    ),
+    (
         "título objetivos específicos",
         "title:`OBJETIVOS ESPECIFICOS`",
         "title:`OBJETIVOS ESPECÍFICOS`",

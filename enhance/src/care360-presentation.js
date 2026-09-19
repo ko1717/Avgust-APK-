@@ -98,7 +98,7 @@
         item(
           ICONS.clipboard,
           "Evalúa el proceso MIPE por capítulos",
-          "Almacén, dosificación, transporte interno, preparación de mezclas, aplicación en campo y demás criterios."
+          "Almacén y manejo de inventario, mediciones y pesaje, transporte interno, preparación de mezclas y aplicación en campo."
         ) +
         item(
           ICONS.camera,

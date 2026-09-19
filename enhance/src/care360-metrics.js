@@ -7,8 +7,8 @@
 
   var ROOT_ID = "c360-metrics-board";
   var CHAPTER_TITLES = {
-    1: "Almacén de insumos",
-    2: "Medición y dosificación",
+    1: "Almacén y manejo de inventario",
+    2: "Mediciones y pesaje de PPC's",
     3: "Transporte interno",
     4: "Preparación de mezclas",
     5: "Aplicación de PPC",
@@ -3920,7 +3920,7 @@
   /** Etiquetas cortas del eje X: caben en móvil sin partir sílabas. */
   var AXIS_CHAPTER_SHORT = {
     1: "Almacén",
-    2: "Medición",
+    2: "Pesaje",
     3: "Transporte",
     4: "Mezclas",
     5: "Aplicación",

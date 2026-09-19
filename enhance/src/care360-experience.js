@@ -688,7 +688,7 @@
     if (/Preparación de mezclas/i.test(text)) return 4;
     if (/Aplicación de PPC/i.test(text)) return 5;
     if (/Almacén/i.test(text)) return 1;
-    if (/Medición y dosificación/i.test(text)) return 2;
+    if (/Medición y dosificación|Mediciones y pesaje/i.test(text)) return 2;
     if (/Transporte interno/i.test(text)) return 3;
     var select = q('.form-body [data-slot="select-value"], .form-body button[role="combobox"]');
     var selected = (select && select.textContent) || "";
