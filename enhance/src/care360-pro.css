@@ -313,8 +313,12 @@ html.dark .c360-pro-conn {
 body.c360-on-metrics .c360-pro-save,
 body:has(#c360-metrics-board) .c360-pro-save {
   bottom: auto;
-  top: calc(var(--c360-topbar-h, 66px) + var(--c360-nav-h, 68px) + 10px);
-  z-index: 55;
+  top: max(10px, env(safe-area-inset-top, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: 80;
+  max-width: min(70vw, 220px);
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 .c360-pro-save[data-visible="1"] {

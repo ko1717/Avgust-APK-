@@ -209,12 +209,10 @@
       return (
         "Cap = última visita" +
         (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
-        " · Sub = periodo · meta " +
-        META_TARGET +
-        "%"
+        " · Sub = periodo"
       );
     }
-    return "Cap = periodo · Sub = promedio por criterio · meta " + META_TARGET + "%";
+    return "Cap = periodo · Sub = promedio por criterio";
   }
 
   function buildCatalog(visits) {
@@ -2135,9 +2133,9 @@
       '<table class="c360-metrics-table c360-capsub-table">' +
       "<thead><tr>" +
       "<th>Capítulo</th>" +
-      "<th>Capítulos %</th>" +
-      "<th>Subcapítulos %</th>" +
-      "<th>Hallazgos</th>" +
+      "<th>Cap %</th>" +
+      "<th>Sub %</th>" +
+      "<th>Hall.</th>" +
       "<th>Aplicables</th>" +
       "<th>Estado</th>" +
       "</tr></thead><tbody>";
@@ -2157,8 +2155,8 @@
         escapeHtml(label) +
         '">';
       html += td("Capítulo", "<strong>" + escapeHtml(label) + "</strong>");
-      html += td("Capítulos %", scoreCell(c.score));
-      html += td("Subcapítulos %", scoreCell(c.subScore));
+      html += td("Cap %", scoreCell(c.score));
+      html += td("Sub %", scoreCell(c.subScore));
       html += td("Hallazgos", String(c.findings != null ? c.findings : "—"));
       html += td("Aplicables", String(c.applicable != null ? c.applicable : "—"));
       html += td(

@@ -2353,11 +2353,11 @@ html.dark .c360-groupbars-empty {
 
 @media (max-width: 420px) {
   .c360-groupbars-pair {
-    height: 150px;
+    height: 132px;
   }
   .c360-groupbars-cols,
   .c360-groupbars-plot {
-    min-height: 190px;
+    min-height: 168px;
   }
 }
 
@@ -2979,7 +2979,7 @@ html.dark .c360-groupbars-empty {
   .c360-mbar { width: 64px; }
   .c360-metrics-wrap { max-width: none; }
 
-  /* Capítulos table: keep real table + horizontal scroll (no card collapse) */
+  /* Capítulos table: keep real table + horizontal scroll on tablet */
   .c360-capsub-table-wrap {
     padding: 6px 4px;
     overflow-x: auto;
@@ -2987,7 +2987,7 @@ html.dark .c360-groupbars-empty {
   }
 
   .c360-capsub-table {
-    min-width: 560px;
+    min-width: 480px;
     border-collapse: collapse;
     border-spacing: 0;
   }
@@ -3075,6 +3075,202 @@ html.dark .c360-groupbars-empty {
 
   .c360-metrics-table tbody tr {
     grid-template-columns: 1fr;
+  }
+
+  /* Capítulos: composición compacta en teléfono */
+  .c360-metrics-capsub-block {
+    margin-top: 2px;
+    padding-bottom: 8px;
+  }
+
+  .c360-metrics-capsub-block .c360-metrics-card-head {
+    gap: 2px;
+    margin-bottom: 6px;
+  }
+
+  .c360-metrics-capsub-block .c360-metrics-card-head h3 {
+    font-size: 15.5px;
+  }
+
+  .c360-metrics-capsub-block .c360-metrics-card-head p {
+    font-size: 11px;
+    line-height: 1.3;
+    max-width: none;
+    padding-right: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .c360-groupbars-legend {
+    gap: 4px 8px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .c360-groupbars-leg {
+    gap: 5px;
+  }
+
+  button.c360-groupbars-leg {
+    padding: 1px 4px;
+  }
+
+  .c360-groupbars-cols {
+    gap: 4px;
+    min-height: 168px;
+    padding-bottom: 4px;
+    overflow-x: visible;
+  }
+
+  .c360-groupbars-col {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    gap: 5px;
+  }
+
+  .c360-groupbars-pair {
+    height: 132px;
+  }
+
+  .c360-groupbars-bar {
+    max-width: 22px;
+    min-width: 10px;
+    border-radius: 6px 6px 2px 2px;
+  }
+
+  .c360-groupbars-bar span {
+    font-size: 8.5px;
+    top: 2px;
+  }
+
+  .c360-groupbars-xlabel {
+    font-size: 9.5px;
+    line-height: 1.2;
+    min-height: 2.4em;
+  }
+
+  .c360-groupbars-plot {
+    min-height: 168px;
+  }
+
+  .c360-alerts-summary {
+    font-size: 11.5px;
+    padding: 5px 8px;
+  }
+
+  .c360-alert-chip {
+    padding: 7px 8px;
+  }
+
+  .c360-alert-chip p {
+    margin: 2px 0 6px;
+    font-size: 11px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .c360-alert-btn {
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+
+  /* Tabla Capítulos en teléfono: filas tipo ficha (sin headers amontonados) */
+  .c360-capsub-table-wrap {
+    margin-top: 8px;
+    padding: 6px;
+    overflow-x: visible;
+  }
+
+  .c360-capsub-table {
+    min-width: 0 !important;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .c360-capsub-table thead {
+    display: none !important;
+  }
+
+  .c360-capsub-table tbody {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .c360-capsub-table tbody tr,
+  .c360-capsub-table tbody tr.c360-capsub-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 6px 10px;
+    padding: 10px 10px 8px;
+    border: 1px solid var(--c360-line-soft, #dbe4e8) !important;
+    border-radius: 12px;
+    background: var(--c360-surface, #fff);
+    box-shadow: none;
+  }
+
+  .c360-capsub-table th,
+  .c360-capsub-table td {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0 !important;
+    border: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    font-size: 12.5px;
+  }
+
+  .c360-capsub-table td[data-label]::before {
+    content: attr(data-label) !important;
+    display: block !important;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--c360-ink-soft, #58696d);
+  }
+
+  .c360-capsub-table td:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .c360-capsub-table td:first-child strong {
+    font-size: 13.5px;
+  }
+
+  .c360-capsub-table td:nth-child(4) {
+    align-items: flex-start;
+  }
+
+  .c360-capsub-table th:nth-child(5),
+  .c360-capsub-table th:nth-child(6),
+  .c360-capsub-table td:nth-child(5),
+  .c360-capsub-table td:nth-child(6) {
+    display: none !important;
+  }
+
+  .c360-score-cell {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .c360-score-cell .c360-mbar {
+    max-width: none;
+    width: 100%;
+  }
+
+  .c360-capsub-row.is-selected {
+    background: rgb(91 155 213 / 12%);
+    box-shadow: inset 0 0 0 1px rgb(91 155 213 / 35%);
   }
 }
 

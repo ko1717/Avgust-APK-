@@ -29,10 +29,9 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ## Qué incluye 1.5.20
 
-- **Métricas · menos ruido en Capítulos**: una sola línea Cap/Sub (sin nota duplicada debajo del gráfico); leyenda una vez.
+- **Métricas en teléfono**: Capítulos compacto (una línea Cap/Sub, leyenda una vez); tabla en fichas legibles; eje X sin sílabas rotas.
 - **Qué atender colapsado** por defecto (resumen + Ver); al expandir, máximo 2 avisos.
-- **Eje X sin sílabas rotas** (etiquetas cortas y cortes solo en espacios).
-- **Guardado** se muestra arriba en Métricas para no tapar la tabla.
+- **Guardado** no se muestra en Métricas (no tapa el tablero).
 - Incluye lo de 1.5.19: Cap vs Sub con historial, Evolución en línea, informe unificado.
 
 ---
