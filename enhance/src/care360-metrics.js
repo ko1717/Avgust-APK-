@@ -150,6 +150,71 @@
     };
   }
 
+  /**
+   * Subcapítulos: promedio no ponderado del cumplimiento por criterio
+   * a lo largo de todas las visitas del periodo (peso igual por criterio).
+   * Así puede divergir del indicador del capítulo (ponderado / última visita).
+   */
+  function periodItemAverageScore(visits, chapterId, catalog) {
+    var items = (catalog && catalog[chapterId]) || [];
+    if (!items.length) {
+      var seen = {};
+      (visits || []).forEach(function (v) {
+        Object.keys(v.answers || {}).forEach(function (id) {
+          if (Number(String(id).split(".")[0]) !== Number(chapterId)) return;
+          seen[id] = true;
+        });
+      });
+      items = Object.keys(seen).sort(function (a, b) {
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
+    }
+    var rates = [];
+    items.forEach(function (iid) {
+      var app = 0;
+      var find = 0;
+      (visits || []).forEach(function (v) {
+        if (!visitUsable(v)) return;
+        var ans = v.answers && v.answers[iid];
+        if (!ans) return;
+        var val = answerValue(ans);
+        if (val === "SI" || val === "NO") {
+          app += 1;
+          if (val === "NO") find += 1;
+        }
+      });
+      if (app > 0) rates.push(Math.round(((app - find) / app) * 100));
+    });
+    if (!rates.length) return null;
+    return Math.round(
+      rates.reduce(function (n, s) {
+        return n + s;
+      }, 0) / rates.length
+    );
+  }
+
+  function capSubDefinitionNote(mode) {
+    if (mode === "farm") {
+      return (
+        "Capítulos = indicador de la última visita · Subcapítulos = promedio de cumplimiento por criterio en todo el periodo."
+      );
+    }
+    return (
+      "Capítulos = indicador del capítulo en el periodo (todas las respuestas) · Subcapítulos = promedio de cumplimiento por criterio (peso igual)."
+    );
+  }
+
+  function snapChaptersLead(mode, data) {
+    if (mode === "farm") {
+      return (
+        "Capítulos = última visita" +
+        (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
+        " · Subcapítulos = periodo"
+      );
+    }
+    return "Capítulos = periodo · Subcapítulos = promedio por criterio";
+  }
+
   function buildCatalog(visits) {
     var catalog = {};
     visits.forEach(function (v) {
@@ -242,7 +307,9 @@
       .sort()
       .map(function (id) {
         var c = byChapter[id];
+        // Capítulos: cumplimiento ponderado del periodo (todas las respuestas).
         var score = c.applicable ? Math.round(((c.applicable - c.findings) / c.applicable) * 100) : null;
+        // Subcapítulos: promedio no ponderado por criterio (peso igual).
         var itemScores = Object.keys(byItem)
           .map(function (iid) {
             return byItem[iid];
@@ -783,9 +850,10 @@
       periodTo: formatDateEs(state.dateTo) || "Todo",
       chaptersNote:
         state.mode === "farm"
-          ? "Capítulos de la última visita" +
-            (data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "")
-          : "Capítulos del periodo (todas las visitas)",
+          ? "Capítulos = última visita" +
+            (data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
+            " · Subcapítulos = promedio por criterio del periodo"
+          : "Capítulos = periodo (respuestas ponderadas) · Subcapítulos = promedio por criterio (peso igual)",
       findingsNote:
         state.mode === "farm"
           ? "No cumple de la última visita (el KPI de hallazgos suma todo el periodo)"
@@ -1209,12 +1277,10 @@
     svg += "</svg>";
 
     var note = "";
-    if (sparse) {
-      note =
-        "<p class='linechart-note'>Pocas visitas en el periodo · la tendencia se aclara con más aseguramientos.</p>";
-    } else if (points.length === 1) {
-      note =
-        "<p class='linechart-note'>Una sola visita en el corte · sumá aseguramientos para ver evolución.</p>";
+    if (points.length === 1) {
+      note = "<p class='linechart-note'>Una sola visita · sumá aseguramientos para ver evolución.</p>";
+    } else if (sparse) {
+      note = "<p class='linechart-note'>Pocas visitas · la tendencia se aclara con más datos.</p>";
     }
 
     return "<div class='linechart'>" + exec + svg + note + "</div>";
@@ -1555,7 +1621,9 @@
             "</div></div>";
         });
         capSubHtml +=
-          "</div><p class='muted' style='margin:8px 0 0;font-size:11.5px'>Capítulos = indicador del capítulo · Subcapítulos = promedio de cumplimiento de sus criterios.</p></div>";
+          "</div><p class='muted' style='margin:8px 0 0;font-size:11.5px'>" +
+          escapeHtml(capSubDefinitionNote(farmOnly ? "farm" : "all")) +
+          "</p></div>";
       }
       body += section(
         "Capítulos y subcapítulos",
@@ -1955,24 +2023,18 @@
     var chapters = Object.keys(CHAPTER_TITLES)
       .map(Number)
       .map(function (id) {
-        var st = last ? chapterScore(last.answers || {}, id, catalog) : { applicable: 0, findings: 0, score: null };
-        var itemScores = [];
-        if (last) {
-          (catalog[id] || []).forEach(function (iid) {
-            var ans = last.answers && last.answers[iid];
-            if (!ans) return;
-            var val = answerValue(ans);
-            if (val === "SI") itemScores.push(100);
-            else if (val === "NO") itemScores.push(0);
+        // Capítulos: indicador ponderado de la última visita.
+        var st = last
+          ? chapterScore(last.answers || {}, id, catalog)
+          : { applicable: 0, findings: 0, score: null };
+        // Subcapítulos: promedio por criterio en todo el periodo (puede divergir).
+        var subScore = periodItemAverageScore(filtered, id, catalog);
+        var subCount = (catalog[id] || []).filter(function (iid) {
+          return filtered.some(function (v) {
+            var val = v.answers && v.answers[iid] && answerValue(v.answers[iid]);
+            return val === "SI" || val === "NO";
           });
-        }
-        var subScore = itemScores.length
-          ? Math.round(
-              itemScores.reduce(function (n, s) {
-                return n + s;
-              }, 0) / itemScores.length
-            )
-          : null;
+        }).length;
         return {
           id: id,
           title: CHAPTER_TITLES[id],
@@ -1980,12 +2042,12 @@
           findings: st.findings,
           score: st.score,
           subScore: subScore,
-          subCount: itemScores.length,
+          subCount: subCount,
           status: scoreStatus(st.score),
         };
       })
       .filter(function (c) {
-        return c.applicable > 0;
+        return c.applicable > 0 || c.subScore != null;
       });
 
     var items = [];
@@ -2441,12 +2503,12 @@
       });
     }
     html += "</svg>";
-    if (sparse) {
+    if (points.length === 1) {
       html +=
-        '<p class="c360-linechart-sparse-note">Pocas visitas en el periodo · la tendencia se aclara con más aseguramientos.</p>';
-    } else if (points.length === 1) {
+        '<p class="c360-linechart-sparse-note">Una sola visita · sumá aseguramientos para ver evolución.</p>';
+    } else if (sparse) {
       html +=
-        '<p class="c360-linechart-sparse-note">Una sola visita en el corte · sumá aseguramientos para ver evolución.</p>';
+        '<p class="c360-linechart-sparse-note">Pocas visitas · la tendencia se aclara con más datos.</p>';
     }
     html += "</div>";
     return html;
@@ -2454,8 +2516,8 @@
 
   /**
    * Barras agrupadas Capítulos vs Subcapítulos (estilo Excel Fig1/Fig2).
-   * Eje X = capítulos; dos barras por grupo: indicador del capítulo y
-   * promedio de cumplimiento de sus subcapítulos (criterios).
+   * Capítulos = indicador del capítulo (última visita en finca / periodo en Todas).
+   * Subcapítulos = promedio de cumplimiento por criterio en el periodo.
    * Tocá un capítulo para abrir el detalle.
    */
   function chartCapitulosSubcapitulos(chapters) {
@@ -2466,7 +2528,7 @@
       return (
         '<div class="c360-groupbars c360-groupbars-empty">' +
         "<p><strong>Sin datos de capítulos</strong></p>" +
-        "<p>Cuando haya visitas revisadas, verás el indicador de cada capítulo junto al promedio de sus subcapítulos.</p></div>"
+        "<p>Cuando haya visitas revisadas, verás el indicador de cada capítulo junto al promedio de sus criterios en el periodo.</p></div>"
       );
     }
 
@@ -2478,6 +2540,7 @@
     rows.forEach(function (c) {
       if (focusCh != null && Number(c.id) === focusCh) selected = c;
     });
+    var defNote = capSubDefinitionNote(state.mode);
 
     var html =
       '<div class="c360-groupbars c360-groupbars-capsub" role="group" aria-label="Indicador por capítulos y subcapítulos">';
@@ -2570,7 +2633,7 @@
         "</strong>";
       html += '<div class="c360-capsub-peek-metrics">';
       html +=
-        '<span class="cap"><i></i>Capítulo <b>' +
+        '<span class="cap"><i></i>Capítulos <b>' +
         (selected.score == null ? "—" : selected.score + "%") +
         "</b></span>";
       html +=
@@ -2584,12 +2647,10 @@
           "</span>";
       }
       html += "</div>";
-      html +=
-        '<p>Tocá de nuevo u otro capítulo · el detalle completo queda abajo con hallazgos y criterios.</p>';
+      html += "<p>" + escapeHtml(defNote) + " · tocá de nuevo para cerrar.</p>";
       html += "</div>";
     } else {
-      html +=
-        '<p class="c360-groupbars-note">Capítulos = indicador del capítulo · Subcapítulos = promedio de cumplimiento de sus criterios. Tocá un capítulo (o una fila) para el detalle.</p>';
+      html += '<p class="c360-groupbars-note">' + escapeHtml(defNote) + " Tocá un capítulo (o una fila) para el detalle.</p>";
     }
     html += "</div>";
     return html;
@@ -3409,6 +3470,11 @@
     var findingsDelta =
       prevData && prevData.visits > 0 ? data.findings - (prevData.findings || 0) : null;
     var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
+    // Si la franja de comparación ya muestra deltas, no repetirlos en los KPIs.
+    var kpiDelta = cmp.enabled && cmp.prevWin ? null : heroDelta;
+    var sideDeltaMix = cmp.enabled && cmp.prevWin ? null : mixDelta;
+    var sideDeltaDose = cmp.enabled && cmp.prevWin ? null : doseDelta;
+    var sideDeltaFind = cmp.enabled && cmp.prevWin ? null : findingsDelta;
     var periodNote =
       data.visits != null
         ? data.visits +
@@ -3434,7 +3500,7 @@
       {
         featured: true,
         score: data.score,
-        delta: heroDelta,
+        delta: kpiDelta,
         status: scoreStatus(data.score),
         note: periodNote,
       }
@@ -3442,12 +3508,12 @@
     html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
       score: mix.score,
-      delta: mixDelta,
+      delta: sideDeltaMix,
       showStatus: false,
     });
     html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
       score: dose.score,
-      delta: doseDelta,
+      delta: sideDeltaDose,
       showStatus: false,
     });
     html += kpiCard(
@@ -3456,7 +3522,7 @@
       data.findings ? "critical" : "healthy",
       ICONS.findings,
       {
-        delta: findingsDelta,
+        delta: sideDeltaFind,
         invertDelta: true,
         unit: "count",
         hideMeta: true,
@@ -3471,15 +3537,7 @@
     html += cardHead(
       "Evolución",
       data.firstDate || data.lastDate
-        ? formatDateEs(data.firstDate) +
-          " → " +
-          formatDateEs(data.lastDate) +
-          " · " +
-          data.visits +
-          " visitas · " +
-          data.farms.length +
-          " finca" +
-          (data.farms.length === 1 ? "" : "s")
+        ? formatDateEs(data.firstDate) + " → " + formatDateEs(data.lastDate)
         : "Sin visitas en el periodo"
     );
     html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
@@ -3491,9 +3549,7 @@
     html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
     html += cardHead(
       "Capítulos y subcapítulos",
-      "Capítulos del periodo (todas las visitas) · comparación lado a lado (meta " +
-        META_TARGET +
-        "%)."
+      snapChaptersLead("all", data) + " · meta " + META_TARGET + "%."
     );
     html += chartCapitulosSubcapitulos(data.chapters);
     html += renderCapSubTable(data.chapters);
@@ -3580,6 +3636,10 @@
     var findingsDelta =
       prevData && prevData.visits > 0 ? data.findings - (prevData.findings || 0) : null;
     var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
+    var kpiDelta = cmp.enabled && cmp.prevWin ? null : heroDelta;
+    var sideDeltaMix = cmp.enabled && cmp.prevWin ? null : mixDelta;
+    var sideDeltaDose = cmp.enabled && cmp.prevWin ? null : doseDelta;
+    var sideDeltaFind = cmp.enabled && cmp.prevWin ? null : findingsDelta;
     var periodNote =
       data.visits != null
         ? data.visits + " visita" + (data.visits === 1 ? "" : "s")
@@ -3604,7 +3664,7 @@
       {
         featured: true,
         score: lastScore,
-        delta: heroDelta,
+        delta: kpiDelta,
         status: scoreStatus(lastScore),
         note: periodNote,
       }
@@ -3612,12 +3672,12 @@
     html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
       score: mix.score,
-      delta: mixDelta,
+      delta: sideDeltaMix,
       showStatus: false,
     });
     html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
       score: dose.score,
-      delta: doseDelta,
+      delta: sideDeltaDose,
       showStatus: false,
     });
     html += kpiCard(
@@ -3626,7 +3686,7 @@
       data.findings ? "critical" : "healthy",
       ICONS.findings,
       {
-        delta: findingsDelta,
+        delta: sideDeltaFind,
         invertDelta: true,
         unit: "count",
         hideMeta: true,
@@ -3641,12 +3701,7 @@
     html += cardHead(
       "Evolución",
       data.firstDate || data.lastDate
-        ? formatDateEs(data.firstDate) +
-          " → " +
-          formatDateEs(data.lastDate) +
-          " · " +
-          data.visits +
-          " visitas"
+        ? formatDateEs(data.firstDate) + " → " + formatDateEs(data.lastDate)
         : "Sin visitas en el periodo"
     );
     html += chartLine(
@@ -3661,10 +3716,7 @@
     html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
     html += cardHead(
       "Capítulos y subcapítulos",
-      (data.lastDate ? "Última visita del " + formatDateEs(data.lastDate) + " · " : "") +
-        "comparación lado a lado (meta " +
-        META_TARGET +
-        "%)."
+      snapChaptersLead("farm", data) + " · meta " + META_TARGET + "%."
     );
     html += chartCapitulosSubcapitulos(data.chapters);
     html += renderCapSubTable(data.chapters);
@@ -4081,9 +4133,7 @@
     html +=
       '<div class="c360-alerts-head"><div><strong>Qué atender</strong><span>' +
       alerts.length +
-      "</span></div>" +
-      legendHtml("alerts") +
-      "</div>";
+      "</span></div></div>";
     html += '<div class="c360-alerts-grid">';
     alerts.forEach(function (a) {
       html +=
@@ -4188,18 +4238,24 @@
       if (focus.score != null || focus.subScore != null) {
         html += '<div class="c360-capsub-compare" role="group" aria-label="Capítulos vs subcapítulos">';
         html +=
-          '<div class="c360-capsub-compare-item cap"><span>Capítulos</span><strong>' +
+          '<div class="c360-capsub-compare-item cap"><span>Capítulos' +
+          (state.mode === "farm" ? " · última visita" : " · periodo") +
+          "</span><strong>" +
           (focus.score == null ? "—" : focus.score + "%") +
           "</strong>" +
           barHtml(focus.score, scoreStatus(focus.score)) +
           "</div>";
         html +=
-          '<div class="c360-capsub-compare-item sub"><span>Subcapítulos</span><strong>' +
+          '<div class="c360-capsub-compare-item sub"><span>Subcapítulos · periodo</span><strong>' +
           (focus.subScore == null ? "—" : focus.subScore + "%") +
           "</strong>" +
           barHtml(focus.subScore, scoreStatus(focus.subScore)) +
           "</div>";
         html += "</div>";
+        html +=
+          '<p class="c360-capsub-compare-note muted">' +
+          escapeHtml(capSubDefinitionNote(state.mode)) +
+          "</p>";
       }
       if (!items.length) {
         html += '<p class="muted">Sin respuestas No cumple en este capítulo para el corte actual.</p>';
@@ -4329,9 +4385,11 @@
       type: "chapter",
       title: ch + ". " + title,
       subtitle:
-        (score == null ? "Sin indicador" : "Capítulo " + score + "%") +
+        (score == null ? "Sin indicador" : "Capítulos " + score + "%") +
         (subScore == null ? "" : " · Subcapítulos " + subScore + "%") +
-        (state.mode === "farm" ? " · última visita" : " · periodo"),
+        (state.mode === "farm"
+          ? " · cap. última visita / sub. periodo"
+          : " · ambas del periodo"),
       chapter: ch,
       items: items.slice(0, 20),
       score: score,

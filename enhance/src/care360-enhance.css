@@ -2166,7 +2166,20 @@ button.c360-groupbars-hit.is-selected {
 
 /* Bloque Capítulos y subcapítulos (gráfico + tabla estilo informe) */
 .c360-metrics-capsub-block {
-  padding-bottom: 12px;
+  margin-top: 4px;
+  padding-bottom: 14px;
+  animation: c360-metrics-in 0.5s ease 0.12s both;
+}
+
+.c360-metrics-capsub-block .c360-metrics-card-head h3 {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.c360-metrics-capsub-block .c360-metrics-card-head p {
+  font-size: 12px;
+  max-width: 44rem;
+  line-height: 1.35;
 }
 
 .c360-metrics-capsub-block .c360-groupbars {
@@ -2287,6 +2300,12 @@ button.c360-groupbars-hit.is-selected {
 .c360-capsub-compare-item.sub {
   border-color: #f3d2bc;
   background: linear-gradient(180deg, #fff8f3, #fff);
+}
+
+.c360-capsub-compare-note {
+  margin: -4px 0 12px;
+  font-size: 11.5px;
+  line-height: 1.35;
 }
 
 .c360-groupbars-bar.current.tone-healthy {
@@ -2476,11 +2495,11 @@ html.dark .c360-groupbars-empty {
   display: none; /* chip legend is the source of truth */
 }
 .c360-linechart-sparse-note {
-  margin: 8px 2px 0;
+  margin: 4px 2px 0;
   color: var(--c360-ink-soft, #58696d);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 .c360-linechart-empty {
   display: grid;
@@ -3510,7 +3529,7 @@ html.dark .c360-groupbars-empty {
 .c360-metrics-hero {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   animation: c360-metrics-in 0.45s ease both;
 }
 
@@ -3652,35 +3671,37 @@ html.dark .c360-groupbars-empty {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  padding: 2px 2px 0;
+  gap: 6px 10px;
+  padding: 0 2px;
   animation: c360-metrics-in 0.4s ease 0.04s both;
 }
 
 .c360-compare-strip-label {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--c360-ink-soft, #58696d);
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .c360-compare-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
 }
 
 .c360-compare-chip {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 7px 12px;
+  gap: 6px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: var(--c360-chip);
   border: 1px solid var(--c360-line-soft);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .c360-compare-chip span {
@@ -3706,7 +3727,8 @@ html.dark .c360-groupbars-empty {
 .c360-metrics-alerts-bar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 2px;
   animation: c360-metrics-in 0.45s ease 0.1s both;
 }
 
@@ -3715,7 +3737,7 @@ html.dark .c360-groupbars-empty {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
+  gap: 6px 10px;
   padding: 0 2px;
 }
 
@@ -3725,18 +3747,18 @@ html.dark .c360-groupbars-empty {
   gap: 8px;
 }
 
-.c360-alerts-head strong { font-size: 14px; }
+.c360-alerts-head strong { font-size: 13px; }
 
 .c360-alerts-head span {
   display: inline-flex;
-  min-width: 22px;
-  height: 22px;
+  min-width: 20px;
+  height: 20px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: var(--c360-tone-warn-bg);
   color: var(--c360-tone-warn-fg);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
 }
 
@@ -3744,8 +3766,8 @@ html.dark .c360-groupbars-empty {
 .c360-alerts-grid,
 .c360-alerts-scroll {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -3759,11 +3781,11 @@ html.dark .c360-groupbars-empty {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 12px;
-  border-radius: 16px;
+  padding: 9px 11px;
+  border-radius: 14px;
   border: 1px solid var(--c360-line-soft);
   background: var(--c360-surface);
-  border-left: 4px solid #c98512;
+  border-left: 3px solid #c98512;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -3774,15 +3796,15 @@ html.dark .c360-groupbars-empty {
 
 .c360-alert-chip strong {
   display: block;
-  font-size: 13px;
-  line-height: 1.3;
+  font-size: 12.5px;
+  line-height: 1.25;
 }
 
 .c360-alert-chip p {
-  margin: 4px 0 10px;
-  font-size: 12px;
+  margin: 3px 0 8px;
+  font-size: 11.5px;
   color: var(--c360-ink-soft, #58696d);
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
 .c360-metrics-section {
