@@ -2951,29 +2951,76 @@ html.dark .c360-groupbars-empty {
   .c360-mbar { width: 64px; }
   .c360-metrics-wrap { max-width: none; }
 
-  .c360-capsub-table {
-    min-width: 0;
+  /* Capítulos table: keep real table + horizontal scroll (no card collapse) */
+  .c360-capsub-table-wrap {
+    padding: 6px 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .c360-capsub-table-wrap {
-    padding: 8px;
+  .c360-capsub-table {
+    min-width: 560px;
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  .c360-capsub-table thead {
+    display: table-header-group;
+  }
+
+  .c360-capsub-table tbody {
+    display: table-row-group;
+    gap: 0;
+  }
+
+  .c360-capsub-table tbody tr,
+  .c360-capsub-table tbody tr.c360-capsub-row {
+    display: table-row;
+    grid-template-columns: none;
+    gap: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .c360-capsub-table th,
+  .c360-capsub-table td {
+    display: table-cell;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--c360-line-soft, #dbe4e8);
+    vertical-align: middle;
+  }
+
+  .c360-capsub-table td[data-label]::before {
+    content: none;
+    display: none;
+  }
+
+  .c360-capsub-table td:first-child {
+    grid-column: auto;
   }
 
   .c360-capsub-table th:nth-child(4),
   .c360-capsub-table th:nth-child(5),
   .c360-capsub-table td:nth-child(4),
   .c360-capsub-table td:nth-child(5) {
-    text-align: left;
-    width: auto;
+    text-align: center;
+    width: 72px;
   }
 
   .c360-score-cell .c360-mbar {
-    max-width: none;
+    max-width: 88px;
     width: 100%;
   }
 
   .c360-capsub-row.is-selected {
-    box-shadow: inset 0 0 0 1px #5b9bd5;
+    background: rgb(91 155 213 / 14%);
+    box-shadow: none;
   }
 }
 
@@ -5402,6 +5449,38 @@ html.dark .c360-row-hit:focus-visible,
 html.dark .c360-finding-row:hover,
 html.dark .c360-finding-row:focus-visible {
   background: rgb(0 181 226 / 10%);
+}
+
+html.dark .c360-capsub-table-wrap {
+  background: var(--c360-surface);
+  border-color: var(--c360-line-soft);
+}
+
+html.dark .c360-capsub-table th {
+  color: var(--c360-ink-soft);
+  background: var(--c360-muted, transparent);
+}
+
+html.dark .c360-capsub-table td {
+  border-bottom-color: var(--c360-line-soft);
+  color: var(--c360-ink);
+}
+
+html.dark .c360-score-cell strong {
+  color: var(--c360-ink);
+}
+
+html.dark .c360-capsub-row:hover,
+html.dark .c360-capsub-row:focus-visible {
+  background: rgb(0 181 226 / 10%);
+}
+
+html.dark .c360-capsub-row.is-selected {
+  background: rgb(0 181 226 / 16%);
+}
+
+html.dark .c360-capsub-row.is-selected td:first-child strong {
+  color: var(--c360-accent, #00b5e2);
 }
 
 html.dark .c360-farm-card:hover,

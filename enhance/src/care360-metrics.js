@@ -349,6 +349,16 @@
           find += st.findings;
         });
         var score = app ? Math.round(((app - find) / app) * 100) : null;
+        var visitRefs = list.map(function (v) {
+          return {
+            id: v.id || "",
+            farm: String(v.farm || "").trim(),
+            date: v.date || date,
+            responsible: v.responsible || v.technician || "",
+            score: visitScore(v).score,
+            findings: visitScore(v).findings,
+          };
+        });
         return {
           date: date,
           label: formatDateEs(date),
@@ -357,19 +367,65 @@
           findings: find,
           visits: list.length,
           status: scoreStatus(score),
-          visitRefs: list.map(function (v) {
-            return {
-              id: v.id || "",
-              farm: v.farm || "",
-              date: v.date || date,
-              responsible: v.responsible || v.technician || "",
-              score: visitScore(v).score,
-              findings: visitScore(v).findings,
-            };
-          }),
+          farm: timelineFarmLabel(visitRefs),
+          responsible:
+            visitRefs.length === 1 ? visitRefs[0].responsible || "" : "",
+          visitRefs: visitRefs,
         };
       });
     return bucketTimeline(daily);
+  }
+
+  /** Nombre(s) de finca desde visitRefs — nunca cae al farm del filtro UI. */
+  function timelineFarmLabel(visitRefs) {
+    var names = [];
+    var seen = {};
+    (visitRefs || []).forEach(function (vr) {
+      var n = String((vr && vr.farm) || "").trim();
+      if (!n) return;
+      var key = n.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      names.push(n);
+    });
+    if (!names.length) return "";
+    if (names.length === 1) return names[0];
+    if (names.length <= 3) return names.join(", ");
+    return names.length + " fincas";
+  }
+
+  /** Filas del informe: una por visita cuando hay visitRefs (finca correcta). */
+  function expandTimelineForReport(timeline) {
+    var out = [];
+    (timeline || []).forEach(function (r) {
+      if (r && r.visitRefs && r.visitRefs.length) {
+        r.visitRefs.forEach(function (vr) {
+          var score = vr.score != null ? vr.score : r.score;
+          out.push({
+            date: vr.date || r.date,
+            label: formatDateEs(vr.date || r.date),
+            shortLabel: formatDateShort(vr.date || r.date),
+            score: score,
+            findings: vr.findings != null ? vr.findings : r.findings,
+            status: scoreStatus(score),
+            responsible: vr.responsible || "",
+            farm: vr.farm || "",
+          });
+        });
+        return;
+      }
+      out.push({
+        date: r.date,
+        label: r.label || formatDateEs(r.date),
+        shortLabel: r.shortLabel || formatDateShort(r.date),
+        score: r.score,
+        findings: r.findings,
+        status: r.status || scoreStatus(r.score),
+        responsible: r.responsible || "",
+        farm: r.farm || "",
+      });
+    });
+    return out;
   }
 
   function bucketTimeline(rows) {
@@ -422,6 +478,7 @@
           findings: b.findings,
           visits: b.visits,
           status: scoreStatus(score),
+          farm: timelineFarmLabel(b.visitRefs),
           visitRefs: b.visitRefs,
         };
       });
@@ -855,7 +912,7 @@
                 r.findings,
                 statusLabel(r.status),
                 r.responsible || "",
-                r.farm || state.farm || "",
+                r.farm || timelineFarmLabel(r.visitRefs) || "",
               ]
                 .map(csvEscape)
                 .join(",")
@@ -929,6 +986,238 @@
 
   function reportScoreTone(score) {
     return reportToneClass(scoreStatus(score));
+  }
+
+  /**
+   * SVG de Evolución para el informe HTML/PDF (auto-contenido, print-friendly).
+   * Misma lectura que chartLine del tablero: meta 80%, puntos, etiquetas, chips.
+   */
+  function reportLineChart(rows) {
+    var points = (rows || []).filter(function (r) {
+      return r && r.score != null;
+    });
+    if (!points.length) {
+      return (
+        "<div class='linechart empty'><div class='linechart-exec'>" +
+        "<span class='chip-line target'><i></i>Meta " +
+        META_TARGET +
+        "%</span>" +
+        "<span class='chip-line mute'>Sin puntos aún</span></div>" +
+        "<p class='muted'>Cuando haya visitas revisadas en el periodo, verás la tendencia frente a la meta.</p></div>"
+      );
+    }
+
+    var W = 720;
+    var H = 300;
+    var padL = 36;
+    var padR = 24;
+    var padT = 36;
+    var padB = 44;
+    var innerW = W - padL - padR;
+    var innerH = H - padT - padB;
+    function yAt(pct) {
+      return padT + innerH - (Math.max(0, Math.min(100, pct)) / 100) * innerH;
+    }
+    function scoreLabel(score) {
+      var n = Number(score);
+      if (isNaN(n)) return "—";
+      return (Math.round(n * 10) / 10).toFixed(n % 1 === 0 ? 0 : 1) + "%";
+    }
+    function smoothPath(list) {
+      if (!list.length) return "";
+      if (list.length === 1) return "M " + list[0].x + " " + list[0].y;
+      var d = "M " + list[0].x + " " + list[0].y;
+      for (var i = 0; i < list.length - 1; i++) {
+        var a = list[i];
+        var b = list[i + 1];
+        var cx = (a.x + b.x) / 2;
+        d += " C " + cx + " " + a.y + ", " + cx + " " + b.y + ", " + b.x + " " + b.y;
+      }
+      return d;
+    }
+
+    var coords = points.map(function (p, i) {
+      var x =
+        padL + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
+      return { x: x, y: yAt(p.score), p: p };
+    });
+    var metaY = yAt(META_TARGET);
+    var last = points[points.length - 1];
+    var prev = points.length > 1 ? points[points.length - 2] : null;
+    var stepDelta = last && prev ? deltaPts(last.score, prev.score) : null;
+    var lastStatus = scoreStatus(last.score);
+    var lastVsMeta = vsMetaPts(last.score);
+    var sparse = points.length < 3;
+    var lineColor = "#1f8a5b";
+    var metaColor = "#007fa3";
+
+    var exec =
+      "<div class='linechart-exec' role='list' aria-label='Resumen de evolución'>" +
+      "<span class='chip-line target' role='listitem'><i></i>Meta " +
+      META_TARGET +
+      "%</span>" +
+      "<span class='chip-line tone-" +
+      reportToneClass(lastStatus) +
+      "' role='listitem'><i></i>Último " +
+      scoreLabel(last.score) +
+      " · " +
+      escapeHtml(statusLabel(lastStatus)) +
+      "</span>";
+    if (stepDelta != null && !isNaN(stepDelta)) {
+      exec +=
+        "<span class='chip-line delta' role='listitem'>" +
+        escapeHtml(formatSignedPts(stepDelta)) +
+        " vs visita anterior</span>";
+    }
+    if (lastVsMeta != null && !isNaN(lastVsMeta)) {
+      exec +=
+        "<span class='chip-line delta' role='listitem'>" +
+        escapeHtml(formatSignedPts(lastVsMeta)) +
+        " vs meta</span>";
+    }
+    exec += "</div>";
+
+    var svg =
+      '<svg viewBox="0 0 ' +
+      W +
+      " " +
+      H +
+      '" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Evolución del indicador vs meta ' +
+      META_TARGET +
+      '%">';
+
+    for (var g = 0; g <= 4; g++) {
+      var gy = padT + (innerH * g) / 4;
+      var gPct = 100 - g * 25;
+      svg +=
+        '<line x1="' +
+        padL +
+        '" y1="' +
+        gy +
+        '" x2="' +
+        (W - padR) +
+        '" y2="' +
+        gy +
+        '" stroke="#e8eef1" stroke-width="1"/>';
+      svg +=
+        '<text x="' +
+        (padL - 8) +
+        '" y="' +
+        (gy + 3) +
+        '" text-anchor="end" font-size="11" fill="#5b6f76" font-family="Segoe UI,Helvetica Neue,sans-serif">' +
+        gPct +
+        "</text>";
+    }
+
+    svg +=
+      '<line x1="' +
+      padL +
+      '" y1="' +
+      metaY +
+      '" x2="' +
+      (W - padR) +
+      '" y2="' +
+      metaY +
+      '" stroke="' +
+      metaColor +
+      '" stroke-width="1.75" stroke-dasharray="6 5"/>';
+
+    var path = smoothPath(coords);
+    if (coords.length >= 2) {
+      var area =
+        path +
+        " L " +
+        coords[coords.length - 1].x +
+        " " +
+        (padT + innerH) +
+        " L " +
+        coords[0].x +
+        " " +
+        (padT + innerH) +
+        " Z";
+      svg += '<path d="' + area + '" fill="rgba(31,138,91,0.06)"/>';
+    }
+    svg +=
+      '<path d="' +
+      path +
+      '" fill="none" stroke="' +
+      lineColor +
+      '" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>';
+
+    coords.forEach(function (c, idx) {
+      var isLast = idx === coords.length - 1;
+      var isFirst = idx === 0;
+      var aboveMeta = c.y < metaY - 2;
+      var nearMeta = Math.abs(c.y - metaY) < 18;
+      var preferAbove = true;
+      if (nearMeta && !aboveMeta) preferAbove = false;
+      if (c.y > padT + innerH - 28) preferAbove = true;
+      var labelY = preferAbove ? c.y - 14 : c.y + 20;
+      if (preferAbove && labelY < padT + 10) labelY = padT + 12;
+
+      var xLabel = c.p.shortLabel || c.p.label || formatDateShort(c.p.date);
+      var xAnchor = "middle";
+      var xPos = c.x;
+      var valAnchor = "middle";
+      var valX = c.x;
+      if (coords.length >= 2 && isFirst) {
+        xAnchor = "start";
+        xPos = Math.max(padL, c.x - 2);
+        valAnchor = "start";
+        valX = Math.min(W - padR - 4, c.x + 10);
+      } else if (coords.length >= 2 && isLast) {
+        xAnchor = "end";
+        xPos = Math.min(W - padR, c.x + 2);
+        valAnchor = "end";
+        valX = Math.max(padL + 4, c.x - 8);
+      }
+
+      svg +=
+        '<circle cx="' +
+        c.x +
+        '" cy="' +
+        c.y +
+        '" r="' +
+        (isLast ? 7 : 6) +
+        '" fill="#fff" stroke="' +
+        lineColor +
+        '" stroke-width="' +
+        (isLast ? 3 : 2.5) +
+        '"/>';
+      svg +=
+        '<text x="' +
+        valX +
+        '" y="' +
+        labelY +
+        '" text-anchor="' +
+        valAnchor +
+        '" font-size="13" font-weight="700" fill="#14262c" font-family="Segoe UI,Helvetica Neue,sans-serif">' +
+        scoreLabel(c.p.score) +
+        "</text>";
+      svg +=
+        '<text x="' +
+        xPos +
+        '" y="' +
+        (H - 10) +
+        '" text-anchor="' +
+        xAnchor +
+        '" font-size="11" fill="#5b6f76" font-family="Segoe UI,Helvetica Neue,sans-serif">' +
+        escapeHtml(xLabel) +
+        "</text>";
+    });
+
+    svg += "</svg>";
+
+    var note = "";
+    if (sparse) {
+      note =
+        "<p class='linechart-note'>Pocas visitas en el periodo · la tendencia se aclara con más aseguramientos.</p>";
+    } else if (points.length === 1) {
+      note =
+        "<p class='linechart-note'>Una sola visita en el corte · sumá aseguramientos para ver evolución.</p>";
+    }
+
+    return "<div class='linechart'>" + exec + svg + note + "</div>";
   }
 
   function buildExportReportHtml() {
@@ -1061,29 +1350,44 @@
     body += "</div></header>";
 
     var scoreTone = reportScoreTone(snap.score);
+    var mixVsMeta = vsMetaPts(snap.mix.score);
+    var doseVsMeta = vsMetaPts(snap.dose.score);
     body += "<section class='kpi-strip'>";
     body += kpiCard(
       "Indicador",
       snap.score == null ? "—" : snap.score + "%",
-      cmp && cmp.enabled ? fmtDelta(cmp.scoreDelta, " pts") : "Cumplimiento",
+      cmp && cmp.enabled
+        ? fmtDelta(cmp.scoreDelta, " pts")
+        : snap.score != null
+          ? formatSignedPts(vsMetaPts(snap.score)) + " vs meta " + META_TARGET + "%"
+          : "Cumplimiento",
       scoreTone
     );
     body += kpiCard(
       "Mezclas",
       snap.mix.score == null ? "—" : snap.mix.score + "%",
-      "Capítulo 4",
+      mixVsMeta != null
+        ? formatSignedPts(mixVsMeta) + " vs meta " + META_TARGET + "%"
+        : "Capítulo 4",
       reportScoreTone(snap.mix.score)
     );
     body += kpiCard(
       "Dosis",
       snap.dose.score == null ? "—" : snap.dose.score + "%",
-      "Capítulo 2",
+      doseVsMeta != null
+        ? formatSignedPts(doseVsMeta) + " vs meta " + META_TARGET + "%"
+        : "Capítulo 2",
       reportScoreTone(snap.dose.score)
     );
     body += kpiCard(
       "Hallazgos",
       data.findings || 0,
-      cmp && cmp.enabled ? fmtDelta(cmp.findingsDelta, "") : "No cumple en el periodo",
+      cmp && cmp.enabled
+        ? fmtDelta(cmp.findingsDelta, "")
+        : "suma del periodo · " +
+            (data.visits || 0) +
+            " visita" +
+            ((data.visits || 0) === 1 ? "" : "s"),
       data.findings ? "bad" : "ok"
     );
     body += kpiCard(
@@ -1156,40 +1460,35 @@
         .filter(function (r) {
           return r && r.score != null;
         })
-        .slice(-8);
-      var chartHtml = "";
-      if (chartRows.length) {
-        chartHtml =
-          "<div class='groupbars'><div class='groupbars-leg'><span class='c'><i></i>Indicador</span>" +
-          "<span class='t'><i></i>Meta " +
-          META_TARGET +
-          "%</span></div><div class='groupbars-plot'>";
-        chartRows.forEach(function (r) {
-          var h = Math.max(0, Math.min(100, Number(r.score) || 0));
-          var tone = reportScoreTone(r.score);
-          chartHtml +=
-            "<div class='groupbars-col'><div class='groupbars-bar tone-" +
-            tone +
-            "' style='height:" +
-            Math.max(h, 4) +
-            "%'><span>" +
-            r.score +
-            "%</span></div><div class='groupbars-x'>" +
-            escapeHtml(r.shortLabel || r.label || formatDateEs(r.date)) +
-            "</div></div>";
-        });
-        chartHtml += "</div></div>";
-      }
+        .slice(-12);
+      var chartHtml = reportLineChart(chartRows);
+      var tableRows = farmOnly
+        ? data.timeline
+        : expandTimelineForReport(data.timeline);
+      var evoLead = farmOnly
+        ? "Historial de «" + (state.farm || "la finca seleccionada") + "»."
+        : data.firstDate || data.lastDate
+          ? formatDateEs(data.firstDate) +
+            " → " +
+            formatDateEs(data.lastDate) +
+            " · " +
+            (data.visits || tableRows.length) +
+            " visitas" +
+            (data.farms && data.farms.length
+              ? " · " +
+                data.farms.length +
+                " finca" +
+                (data.farms.length === 1 ? "" : "s")
+              : "")
+          : "Puntos del periodo con indicador y hallazgos.";
       body += section(
         farmOnly ? "Visitas por fecha" : "Evolución / visitas",
-        farmOnly
-          ? "Historial de «" + (state.farm || "la finca seleccionada") + "»."
-          : "Puntos del periodo con indicador y hallazgos.",
+        evoLead,
         chartHtml +
           (farmOnly
             ? table(
                 ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
-                data.timeline.map(function (r) {
+                tableRows.map(function (r) {
                   return [
                     r.label || formatDateEs(r.date),
                     scoreCell(r.score),
@@ -1202,14 +1501,14 @@
               )
             : table(
                 ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
-                data.timeline.map(function (r) {
+                tableRows.map(function (r) {
                   return [
                     r.label || formatDateEs(r.date),
                     scoreCell(r.score),
                     r.findings,
                     pill(statusLabel(r.status), reportToneClass(r.status)),
                     r.responsible || "—",
-                    r.farm || state.farm || "—",
+                    r.farm || "—",
                   ];
                 }),
                 { htmlCols: { 1: true, 3: true } }
@@ -1339,6 +1638,10 @@
       ".kpi-label{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}" +
       ".kpi-value{display:block;font-size:28px;line-height:1;letter-spacing:-.03em;font-weight:700}" +
       ".kpi-note{display:block;margin-top:8px;font-size:12px;color:var(--muted)}" +
+      ".kpi.tone-ok .kpi-note{color:#146b45}" +
+      ".kpi.tone-mid .kpi-note{color:#8a5a00}" +
+      ".kpi.tone-bad .kpi-note{color:#9b1c1c}" +
+      ".kpi.tone-info .kpi-note{color:#0b5f74}" +
       ".kpi.tone-ok{border-color:#b7e0c5;background:linear-gradient(180deg,#f3fbf6,#fff)}" +
       ".kpi.tone-mid{border-color:#f0d59a;background:linear-gradient(180deg,#fff9ef,#fff)}" +
       ".kpi.tone-bad{border-color:#f0b4ae;background:linear-gradient(180deg,#fff5f3,#fff)}" +
@@ -1399,6 +1702,24 @@
       ".groupbars-bar.cap{background:linear-gradient(180deg,#7eb3de,#5b9bd5)}" +
       ".groupbars-bar.sub{background:linear-gradient(180deg,#f2a06a,#ed7d31)}" +
       ".groupbars-x{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;max-width:72px}" +
+      ".linechart{margin:0 0 14px;padding:12px 12px 8px;border:1px solid var(--line);border-radius:14px;background:#fff}" +
+      ".linechart.empty{padding:16px}" +
+      ".linechart-exec{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}" +
+      ".chip-line{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:11.5px;" +
+      "font-weight:700;border:1px solid var(--line);background:#f7fafb;color:var(--muted)}" +
+      ".chip-line i{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}" +
+      ".chip-line.target{color:var(--accent);border-color:#b7dceb;background:#f0f9fc}" +
+      ".chip-line.target i{width:14px;height:0;border-radius:0;border-top:2px dashed var(--accent);background:transparent}" +
+      ".chip-line.tone-ok{color:#146b45;border-color:#b7e0c5;background:#f3fbf6}" +
+      ".chip-line.tone-ok i{background:#1f8a5b}" +
+      ".chip-line.tone-mid{color:#8a5a00;border-color:#f0d59a;background:#fff9ef}" +
+      ".chip-line.tone-mid i{background:#c98512}" +
+      ".chip-line.tone-bad{color:#9b1c1c;border-color:#f0b4ae;background:#fff5f3}" +
+      ".chip-line.tone-bad i{background:#c44b3c}" +
+      ".chip-line.delta{font-weight:600;color:var(--ink)}" +
+      ".chip-line.mute{background:#eef2f4}" +
+      ".linechart svg{display:block;width:100%;height:auto;max-height:280px}" +
+      ".linechart-note{margin:8px 0 2px;font-size:11.5px;color:var(--muted);font-style:italic}" +
       ".muted{color:var(--muted)}" +
       ".foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;" +
       "margin-top:8px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}" +

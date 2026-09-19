@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.16, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.17, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.17-Android.apk`](./dist/AVGUST-CARE-360-1.5.17-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.18-Android.apk`](./dist/AVGUST-CARE-360-1.5.18-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.17**. Se instala encima de 1.4.x–1.5.16
+En la cabecera de la app debe verse **v1.5.18**. Se instala encima de 1.4.x–1.5.17
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,19 +27,15 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.17
+## Qué incluye 1.5.18
 
-- **Capítulos y subcapítulos** en Métricas (Todas / Por finca) con el mismo bloque del informe: gráfico agrupado **más tabla** (Capítulos %, Subcapítulos %, Hallazgos, Aplicables, Estado con pastillas).
-- Filas de la tabla tocables (mismo foco/detalle que el gráfico) y leyenda Cap/Sub.
-- **Capítulos y subcapítulos** interactivo también en el informe HTML/PDF.
-- **Evolución** en gráfico de línea (como 1.5.13).
-- **Borrar visita** (lista y editor): elimina la visita y sus informes.
-- **Borrar versión de informe**.
-- **Borrar solicitud**: desaparece de Agenda y Seguimiento.
-- **Borrar finca**: también elimina visitas, informes y solicitudes de esa finca.
-- Panel **Calidad de la visita** fijo (ya no tapa Departamento / Municipio).
-- Modo oscuro y modo lector (☀).
-- Seguimiento compacto, agenda en vivo y métricas Por finca sin mezclar.
+- **Informe HTML/PDF**: sección **Evolución / visitas** con el mismo gráfico de **línea** del tablero (meta 80% punteada, etiquetas de puntos, chips de estado y nota de pocas visitas). Ya no usa badges flotantes.
+- Corrección de **finca en la tabla de visitas** del informe (atribuía mal la finca al caer al filtro UI).
+- KPIs del informe alineados con Métricas (pts vs meta, hallazgos del periodo).
+- **Capítulos y subcapítulos**: gráfico + tabla (como 1.5.17); en tablet la tabla hace scroll horizontal (sin colapsar a tarjetas) y dark mode legible.
+- **Evolución** en gráfico de línea en la app.
+- **Borrar visita** / **borrar versión** / **borrar solicitud** / **borrar finca**.
+- Panel **Calidad de la visita** fijo, modo oscuro y modo lector (☀).
 
 ---
 
@@ -67,7 +63,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.17-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.18-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 
@@ -88,7 +84,3 @@ tools/dev-preview.sh                 # http://localhost:8080
 ```bash
 cd tests && npm install && npm test   # requiere la vista previa en :8080
 ```
-
-### Demos de importación
-
-Ver `tools/demo/README.md`.
