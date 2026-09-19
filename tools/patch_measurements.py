@@ -120,6 +120,7 @@ def patch_file(path: Path) -> list[str]:
     want_groups = (
         "[`Cap. 4 · 4.6 Mezcla final`,[`mixPh`,`mixConductivity`]]" in source
         or "xf.filter(([n])=>n===t.id)" in source
+        or "xf.filter(([i])=>i===n.id)" in source
     )
     if not want_groups:
         if OLD_WORD in source:

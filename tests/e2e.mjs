@@ -315,6 +315,24 @@ check('El Word lleva las mediciones por capítulo MIPE',
   && /Lanza/.test(wordText),
   wordText.slice(Math.max(0, wordText.indexOf('Calidad del agua')), Math.max(0, wordText.indexOf('Calidad del agua')) + 420)
 );
+const idx46 = wordText.indexOf('4.6 ·');
+const idxAgua = wordText.indexOf('4.6 Calidad del agua');
+const idx47 = wordText.indexOf('4.7 ·');
+const idx51 = wordText.indexOf('5.1 ·');
+const idxPresion = wordText.indexOf('5.1 Presión');
+const idx52 = wordText.indexOf('5.2 ·');
+check(
+  'En el Word la calidad de agua queda después de 4.6 y antes de 4.7',
+  idx46 >= 0 && idxAgua > idx46 && (idx47 < 0 || idx47 > idxAgua),
+  JSON.stringify({ idx46, idxAgua, idx47 })
+);
+check(
+  'En el Word la presión queda después de 5.1 y antes de 5.2',
+  idx51 >= 0 && idxPresion > idx51 && (idx52 < 0 || idx52 > idxPresion),
+  JSON.stringify({ idx51, idxPresion, idx52 })
+);
+check('El Word no incluye observaciones del capítulo', !/Observaciones del capítulo/.test(wordText));
+check('El Word corrige la ortografía de calidad de agua', /parámetros adecuados/.test(wordText) && !/parametros/.test(wordText));
 
 check('Sin errores de JavaScript', errors.length === 0, errors.slice(0, 5).join(' | '));
 

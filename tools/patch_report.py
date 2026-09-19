@@ -2,8 +2,9 @@
 """Ajustes del informe final y del consolidado de aseguramientos.
 
 - Sí / No → Sí cumple / No cumple (formulario, informe HTML, Word, métricas).
-- Mediciones de Cap. 4 y 5 dentro del capítulo correspondiente en el Word.
-- Mezcla final junto a Cap. 4.6 (calidad del agua).
+- Mediciones junto al ítem del capítulo en el Word (4.6, 5.1, 5.3, 5.6).
+- Sin observaciones ni recomendaciones de capítulo en el informe.
+- Ortografía de criterios y títulos del informe.
 - Hallazgos por capítulo más detallados en el consolidado (UI y Word).
 """
 
@@ -53,13 +54,140 @@ INDEX_PATCHES: list[tuple[str, str, str]] = [
         "[`Hallazgos (respuestas No)`,String(e.findings)]",
         "[`Hallazgos (respuestas No cumple)`,String(e.findings)]",
     ),
+    (
+        "título objetivos específicos",
+        "title:`OBJETIVOS ESPECIFICOS`",
+        "title:`OBJETIVOS ESPECÍFICOS`",
+    ),
+    (
+        "título metodología",
+        "title:`METODOLOGIA`",
+        "title:`METODOLOGÍA`",
+    ),
+    (
+        "nombre del programa en metodología",
+        "programa AVGUST care 360 se realiza acorde con las necesidades y o peticiones",
+        "programa AVGUST CARE 360 se realiza acorde con las necesidades y/o peticiones",
+    ),
+    (
+        "criterio 3.3 vehículo",
+        "en un vehiculo seguro y señalizado",
+        "en un vehículo seguro y señalizado",
+    ),
+    (
+        "criterio 3.4 vehículo",
+        "El vehiculo de transporte interno cuenta",
+        "El vehículo de transporte interno cuenta",
+    ),
+    (
+        "criterio 4.1 almacén",
+        "no se pesa en almacen,",
+        "no se pesa en almacén,",
+    ),
+    (
+        "criterio 4.4 están",
+        "Los tanques de preparación estan debidamente aforados.",
+        "Los tanques de preparación están debidamente aforados.",
+    ),
+    (
+        "criterio 4.5 punto final",
+        "homogeneidad de la mezcla al momento de la aplicación`}",
+        "homogeneidad de la mezcla al momento de la aplicación.`}",
+    ),
+    (
+        "criterio 4.6 calidad del agua",
+        "La calidad del agua cuenta con los parametros adecuados para la aplicación (dureza <70ppm - pH: 5.5-6-5). **Es probable que se manejen por debajo de este estandar**",
+        "La calidad del agua cuenta con los parámetros adecuados para la aplicación (dureza <70 ppm · pH 5.5–6.5). Es probable que se manejen por debajo de este estándar.",
+    ),
+    (
+        "criterio 4.7 PPC",
+        "la premezcla de los ppc´s.",
+        "la premezcla de los PPC.",
+    ),
+    (
+        "criterio 4.8 orden de mezcla",
+        "coadyuvantes, solidos (polvos mojables, granulos dispersables, polvos solubles) y liquidos de mayor a menor densidad (suspensiones concentradas, concentrados emulsionables, liquidos solubles)",
+        "coadyuvantes, sólidos (polvos mojables, gránulos dispersables, polvos solubles) y líquidos de mayor a menor densidad (suspensiones concentradas, concentrados emulsionables, líquidos solubles)",
+    ),
+    (
+        "criterio 4.9 envases originales",
+        "asegurando que los envases originles se perforen y se lleven a centro de acopio`",
+        "asegurando que los envases originales se perforen y se lleven a centro de acopio.`",
+    ),
+    (
+        "criterio 5.1 punto final",
+        "presión de salida de la bomba al momento de la aplicación`}",
+        "presión de salida de la bomba al momento de la aplicación.`}",
+    ),
+    (
+        "criterio 5.3 implementos",
+        "Los implemetos de aspersión se encuentran limpios, en buen estado y sin fugas o taponamientos  (bomba, mangueras, mangos filtros, boquillas, aguilones, lanzas etc.)",
+        "Los implementos de aspersión se encuentran limpios, en buen estado y sin fugas o taponamientos (bomba, mangueras, mangos, filtros, boquillas, aguilones, lanzas, etc.).",
+    ),
+    (
+        "criterio 5.5 EPP",
+        "La cuadrilla de aplicadores cuentan con los epp's requeridos para la labor y se usan adecuadamente`",
+        "La cuadrilla de aplicadores cuenta con los EPP requeridos para la labor y se usan adecuadamente.`",
+    ),
+    (
+        "criterio 5.6 instrucciones",
+        "Antes de comenzar la aplicación la cuadrilla recibe instrucciones respecto a la misma  (productos a aplicar, blancos biologicos, tiempo por cama, volumen y tecnica de aplicación).",
+        "Antes de comenzar la aplicación, la cuadrilla recibe instrucciones respecto a la misma (productos a aplicar, blancos biológicos, tiempo por cama, volumen y técnica de aplicación).",
+    ),
+    (
+        "criterio 5.7 técnica",
+        "La tecnica de aplicación (tiempos por cama, direccionamiento de equipos, presión de salida, cubrimientos etc) esta acorde con lo programado.",
+        "La técnica de aplicación (tiempos por cama, direccionamiento de equipos, presión de salida, cubrimientos, etc.) está acorde con lo programado.",
+    ),
+    (
+        "criterio 5.8 área",
+        "El area tratada esta cerrada y tiene tablero de identificación que contenga la información de los ppc's aplicados y horas de reingreso`",
+        "El área tratada está cerrada y tiene tablero de identificación que contenga la información de los PPC aplicados y horas de reingreso.`",
+    ),
+    (
+        "informe HTML sin notas de capítulo",
+        ",e.notes[t.id]&&(0,K.jsxs)(K.Fragment,{children:[(0,K.jsx)(`h3`,{children:`Observaciones del capítulo`}),(0,K.jsx)(`p`,{children:e.notes[t.id]})]}),e.recommendations[t.id]&&(0,K.jsxs)(K.Fragment,{children:[(0,K.jsx)(`h3`,{children:`Recomendaciones del capítulo`}),(0,K.jsx)(`p`,{children:e.recommendations[t.id]})]})",
+        "",
+    ),
 ]
 
-# Trailing measurement blocks that patch_measurements may leave before relocation.
-# Important: after the chapter `for` closes, the original continues as a comma
-# expression (`xf.forEach(...),e.conclusion&&...`). When xf moves inside the
-# loop we must drop that leading comma so `e.conclusion` starts a statement.
-WORD_TRAILING_VARIANTS = [
+WORD_ITEM_LOOP = (
+    "for(let n of t.items){let t=e.answers[n.id];"
+    "s(`${n.id} · ${t?.value===`SI`?`Sí cumple`:t?.value===`NO`?`No cumple`:t?.value===`NA`?`No aplica`:`Sin evaluar`}`,Iv.HEADING_2),"
+    "o(n.text),t?.observation&&o(`Hallazgo / observación: ${t.observation}`),"
+    "t?.recommendation&&o(`Recomendación: ${t.recommendation}`)}"
+)
+
+WORD_ITEM_LOOP_NEW = (
+    "let xf=[[`4.6`,`4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[`4.6`,`4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
+    "[`5.1`,`5.1 Presión`,[`pressure`,`implementPressure`]],"
+    "[`5.3`,`5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+    "[`5.6`,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+    "for(let n of t.items){let t=e.answers[n.id];"
+    "s(`${n.id} · ${t?.value===`SI`?`Sí cumple`:t?.value===`NO`?`No cumple`:t?.value===`NA`?`No aplica`:`Sin evaluar`}`,Iv.HEADING_2),"
+    "o(n.text),t?.observation&&o(`Hallazgo / observación: ${t.observation}`),"
+    "t?.recommendation&&o(`Recomendación: ${t.recommendation}`),"
+    "xf.filter(([i])=>i===n.id).forEach(([,a,l])=>{let r=l.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+    "r.length&&(s(a,Iv.HEADING_2),c(r))})}"
+)
+
+# Blocks that follow the item loop: notes + leftover measurement dumps.
+# Each one is replaced together with WORD_ITEM_LOOP so quality tables sit
+# after 4.6 / 5.1 / 5.3 / 5.6 and chapter notes disappear from the Word.
+WORD_AFTER_ITEM_VARIANTS = [
+    (
+        "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
+        "e.recommendations[t.id]&&(s(`Recomendaciones del capítulo`,Iv.HEADING_2),o(e.recommendations[t.id]));"
+        "let xf=[[4,`4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+        "[4,`4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
+        "[5,`5.1 Presión`,[`pressure`,`implementPressure`]],"
+        "[5,`5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+        "[5,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+        "xf.filter(([n])=>n===t.id).forEach(([,a,o])=>{let r=o.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+        "r.length&&(s(a,Iv.HEADING_2),c(r))})}"
+        "e.conclusion&&"
+    ),
     (
         "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
         "e.recommendations[t.id]&&(s(`Recomendaciones del capítulo`,Iv.HEADING_2),o(e.recommendations[t.id]))}"
@@ -93,20 +221,16 @@ WORD_TRAILING_VARIANTS = [
         "xf.forEach(([t,n])=>{let r=n.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
         "r.length&&(s(t,Iv.HEADING_2),c(r))}),e.conclusion&&"
     ),
+    (
+        "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
+        "e.recommendations[t.id]&&(s(`Recomendaciones del capítulo`,Iv.HEADING_2),o(e.recommendations[t.id]))}"
+        "e.conclusion&&"
+    ),
 ]
 
-WORD_MEASURE_NEW = (
-    "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
-    "e.recommendations[t.id]&&(s(`Recomendaciones del capítulo`,Iv.HEADING_2),o(e.recommendations[t.id]));"
-    "let xf=[[4,`4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
-    "[4,`4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
-    "[5,`5.1 Presión`,[`pressure`,`implementPressure`]],"
-    "[5,`5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
-    "[5,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
-    "xf.filter(([n])=>n===t.id).forEach(([,a,o])=>{let r=o.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
-    "r.length&&(s(a,Iv.HEADING_2),c(r))})}"
-    "e.conclusion&&"
-)
+WORD_MEASURE_NEW = WORD_ITEM_LOOP_NEW + "}e.conclusion&&"
+
+WORD_READY_MARK = "xf.filter(([i])=>i===n.id)"
 
 K6_OLD = (
     "i(`Hallazgos por capítulo`),"
@@ -145,13 +269,12 @@ UI_NEW = (
 def apply_simple(source: str, patches: list[tuple[str, str, str]]) -> tuple[str, list[str]]:
     applied = []
     for name, old, new in patches:
-        if new in source and old not in source:
+        if old in source:
+            source = source.replace(old, new, 1)
+            applied.append(name)
+            continue
+        if new and new in source:
             applied.append(f"{name} (ya estaba)")
-            continue
-        if old not in source:
-            continue
-        source = source.replace(old, new, 1)
-        applied.append(name)
     return source, applied
 
 
@@ -162,19 +285,19 @@ def patch_file(path: Path) -> list[str]:
     source, simple = apply_simple(source, INDEX_PATCHES)
     applied.extend(simple)
 
-    if "xf.filter(([n])=>n===t.id)" not in source:
+    if WORD_READY_MARK not in source:
         relocated = False
-        for old in WORD_TRAILING_VARIANTS:
+        for tail in WORD_AFTER_ITEM_VARIANTS:
+            old = WORD_ITEM_LOOP + tail
             if old in source:
                 source = source.replace(old, WORD_MEASURE_NEW, 1)
-                applied.append("mediciones Word dentro del capítulo")
+                applied.append("mediciones Word junto al ítem")
                 relocated = True
                 break
         if not relocated and "let xf=[[`Cap. 4 · 4.6 Calidad del agua`" in source:
-            # Soft fail: leave for diagnostics
             pass
     else:
-        applied.append("mediciones Word dentro del capítulo (ya estaba)")
+        applied.append("mediciones Word junto al ítem (ya estaba)")
 
     if "Hallazgos por capítulo · detalle" not in source and "${t.id}. ${t.title} · detalle" not in source:
         if K6_OLD in source:

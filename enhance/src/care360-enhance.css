@@ -798,6 +798,11 @@ html.dark .c360-delete-btn {
   display: none !important;
 }
 
+.fields.chapter-notes,
+.fields.chapter-notes[data-c360-hidden-chapter-notes] {
+  display: none !important;
+}
+
 .c360-report-measures,
 .c360-report-chapter-measures {
   display: flex;

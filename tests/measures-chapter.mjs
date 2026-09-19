@@ -111,6 +111,24 @@ check('Calidad del agua queda después del criterio 4.6', !!cap4.aguaAfter);
 check('Mezcla final queda junto a 4.6 debajo del agua', !!cap4.mezclaAfterAgua && !!cap4.mezclaOn46, JSON.stringify({ mezclaAfterAgua: cap4.mezclaAfterAgua, mezclaOn46: cap4.mezclaOn46 }));
 check('Mezcla final usa conductividad', !!cap4.mezclaHasConductivity, JSON.stringify(cap4.groups.find((g) => g.group === 'mezcla')));
 check('Las respuestas dicen Sí cumple / No cumple', !!cap4.hasCumple, JSON.stringify(cap4.radioSample));
+check(
+  'No se muestra el recuadro de observaciones del capítulo',
+  await p.evaluate(() => {
+    const box = document.querySelector('.fields.chapter-notes');
+    if (!box) return true;
+    const style = getComputedStyle(box);
+    const rect = box.getBoundingClientRect();
+    return box.hidden || style.display === 'none' || rect.height < 2;
+  })
+);
+check(
+  'El criterio 4.6 ya no trae asteriscos ni parametros sin tilde',
+  await p.evaluate(() => {
+    const q46 = [...document.querySelectorAll('.question')].find((q) => q.querySelector('.question-code')?.textContent.trim() === '4.6');
+    const text = (q46 && q46.textContent) || '';
+    return /parámetros/.test(text) && /5\.5/.test(text) && !/\*\*/.test(text) && !/parametros/.test(text);
+  })
+);
 
 // Fill mezcla final and scroll to it
 await p.evaluate(() => {

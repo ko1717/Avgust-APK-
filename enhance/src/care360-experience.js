@@ -878,7 +878,25 @@
     return table;
   }
 
+  function stripReportChapterNotes(paper) {
+    qa("h3", paper).forEach(function (heading) {
+      var title = String(heading.textContent || "").replace(/\s+/g, " ").trim();
+      if (!/^(Observaciones|Recomendaciones) del capítulo$/i.test(title)) return;
+      var next = heading.nextElementSibling;
+      heading.remove();
+      if (next && next.tagName === "P") next.remove();
+    });
+  }
+
+  function hideChapterNoteFields() {
+    qa(".fields.chapter-notes").forEach(function (node) {
+      node.hidden = true;
+      node.setAttribute("data-c360-hidden-chapter-notes", "");
+    });
+  }
+
   function organizeOneReportPaper(paper) {
+    stripReportChapterNotes(paper);
     if (qa(".c360-report-chapter-measures, .c360-report-measures", paper).length) {
       return;
     }
@@ -976,6 +994,7 @@
     }
     if (typingInMeasureProxy()) return;
     relabelNativeSteps();
+    hideChapterNoteFields();
     placeMeasuresInChapters();
     organizeReportMeasurements();
     syncPhaseFromNative();
