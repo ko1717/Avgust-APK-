@@ -306,6 +306,15 @@ html.dark .c360-pro-conn {
   font-size: 13px;
   font-weight: 700;
   color: var(--c360-ink-soft);
+  pointer-events: none;
+}
+
+/* En Métricas: arriba a la derecha, nunca encima de la tabla Capítulos */
+body.c360-on-metrics .c360-pro-save,
+body:has(#c360-metrics-board) .c360-pro-save {
+  bottom: auto;
+  top: calc(var(--c360-topbar-h, 66px) + var(--c360-nav-h, 68px) + 10px);
+  z-index: 55;
 }
 
 .c360-pro-save[data-visible="1"] {

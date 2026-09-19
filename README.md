@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.18, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.19, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.19-Android.apk`](./dist/AVGUST-CARE-360-1.5.19-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.20-Android.apk`](./dist/AVGUST-CARE-360-1.5.20-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.19**. Se instala encima de 1.4.x–1.5.18
+En la cabecera de la app debe verse **v1.5.20**. Se instala encima de 1.4.x–1.5.19
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,14 +27,13 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.19
+## Qué incluye 1.5.20
 
-- **Métricas · jerarquía más clara**: hero con Indicador + KPIs laterales; menos ruido de comparación duplicada; Qué atender más compacto; Evolución sigue en línea; Capítulos y subcapítulos con tipografía/espacio propios.
-- **Capítulos vs Subcapítulos con significado distinto** cuando hay historial:
-  - Capítulos = indicador del capítulo (última visita en Por finca; periodo ponderado en Todas).
-  - Subcapítulos = promedio de cumplimiento **por criterio en todo el periodo**.
-- Misma definición en el **informe**, peek y panel de detalle.
-- Incluye lo de 1.5.18: Evolución en línea en informe y app, tabla Capítulos, borrar visita/solicitud/finca, modo oscuro/lector.
+- **Métricas · menos ruido en Capítulos**: una sola línea Cap/Sub (sin nota duplicada debajo del gráfico); leyenda una vez.
+- **Qué atender colapsado** por defecto (resumen + Ver); al expandir, máximo 2 avisos.
+- **Eje X sin sílabas rotas** (etiquetas cortas y cortes solo en espacios).
+- **Guardado** se muestra arriba en Métricas para no tapar la tabla.
+- Incluye lo de 1.5.19: Cap vs Sub con historial, Evolución en línea, informe unificado.
 
 ---
 
@@ -62,7 +61,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.19-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.20-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 

@@ -207,12 +207,14 @@
   function snapChaptersLead(mode, data) {
     if (mode === "farm") {
       return (
-        "Capítulos = última visita" +
+        "Cap = última visita" +
         (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
-        " · Subcapítulos = periodo"
+        " · Sub = periodo · meta " +
+        META_TARGET +
+        "%"
       );
     }
-    return "Capítulos = periodo · Subcapítulos = promedio por criterio";
+    return "Cap = periodo · Sub = promedio por criterio · meta " + META_TARGET + "%";
   }
 
   function buildCatalog(visits) {
@@ -2540,8 +2542,6 @@
     rows.forEach(function (c) {
       if (focusCh != null && Number(c.id) === focusCh) selected = c;
     });
-    var defNote = capSubDefinitionNote(state.mode);
-
     var html =
       '<div class="c360-groupbars c360-groupbars-capsub" role="group" aria-label="Indicador por capítulos y subcapítulos">';
     html +=
@@ -2580,7 +2580,8 @@
       var sub = c.subScore != null ? c.subScore : null;
       var capH = cap == null ? 0 : Math.max(0, Math.min(100, cap));
       var subH = sub == null ? 0 : Math.max(0, Math.min(100, sub));
-      var label = c.id + ". " + shortTitle(c.title || CHAPTER_TITLES[c.id] || "");
+      var fullLabel = c.id + ". " + shortTitle(c.title || CHAPTER_TITLES[c.id] || "");
+      var label = axisChapterLabel(c.id, c.title || CHAPTER_TITLES[c.id] || "");
       var isOn = focusCh != null && Number(c.id) === focusCh;
       html +=
         '<button type="button" class="c360-groupbars-col has-compare c360-groupbars-hit' +
@@ -2590,11 +2591,11 @@
         '" data-focus-chapter="' +
         c.id +
         '" title="' +
-        escapeHtml(label) +
+        escapeHtml(fullLabel) +
         (cap != null ? " · capítulo " + cap + "%" : "") +
         (sub != null ? " · subcapítulos " + sub + "%" : "") +
         ' · tocar para detalle" aria-label="Ver detalle de ' +
-        escapeHtml(label) +
+        escapeHtml(fullLabel) +
         '" aria-pressed="' +
         (isOn ? "true" : "false") +
         '">';
@@ -2616,7 +2617,8 @@
           "</span></div>";
       }
       html += "</div>";
-      html += '<div class="c360-groupbars-xlabel">' + escapeHtml(label) + "</div>";
+      html +=
+        '<div class="c360-groupbars-xlabel">' + axisLabelHtml(label) + "</div>";
       html += "</button>";
     });
     html += "</div></div>";
@@ -2647,10 +2649,8 @@
           "</span>";
       }
       html += "</div>";
-      html += "<p>" + escapeHtml(defNote) + " · tocá de nuevo para cerrar.</p>";
+      html += "<p>Tocá de nuevo para cerrar.</p>";
       html += "</div>";
-    } else {
-      html += '<p class="c360-groupbars-note">' + escapeHtml(defNote) + " Tocá un capítulo (o una fila) para el detalle.</p>";
     }
     html += "</div>";
     return html;
@@ -3132,6 +3132,7 @@
     pendingVisits: null,
     boardMounted: false,
     nocumpleOpen: true,
+    alertsOpen: false,
   };
 
   async function loadVisits() {
@@ -3547,10 +3548,7 @@
     html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
-    html += cardHead(
-      "Capítulos y subcapítulos",
-      snapChaptersLead("all", data) + " · meta " + META_TARGET + "%."
-    );
+    html += cardHead("Capítulos y subcapítulos", snapChaptersLead("all", data));
     html += chartCapitulosSubcapitulos(data.chapters);
     html += renderCapSubTable(data.chapters);
     html += "</section>";
@@ -3714,10 +3712,7 @@
     html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
-    html += cardHead(
-      "Capítulos y subcapítulos",
-      snapChaptersLead("farm", data) + " · meta " + META_TARGET + "%."
-    );
+    html += cardHead("Capítulos y subcapítulos", snapChaptersLead("farm", data));
     html += chartCapitulosSubcapitulos(data.chapters);
     html += renderCapSubTable(data.chapters);
     html += "</section>";
@@ -3922,6 +3917,34 @@
 
   function shortTitle(title) {
     return String(title || "").replace(/^Capítulo\s+/i, "");
+  }
+
+  /** Etiquetas cortas del eje X: caben en móvil sin partir sílabas. */
+  var AXIS_CHAPTER_SHORT = {
+    1: "Almacén",
+    2: "Medición",
+    3: "Transporte",
+    4: "Mezclas",
+    5: "Aplicación",
+  };
+
+  function axisChapterLabel(id, title) {
+    var short = AXIS_CHAPTER_SHORT[Number(id)];
+    if (short) return id + ". " + short;
+    var t = shortTitle(title);
+    if (t.length > 14) t = t.slice(0, 13).replace(/\s+\S*$/, "") || t.slice(0, 12);
+    return id + ". " + t;
+  }
+
+  /** Solo permite cortes en espacios (evita «Transport e» / «Aplicació n»). */
+  function axisLabelHtml(label) {
+    return String(label || "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(function (word) {
+        return "<span class=\"c360-axis-word\">" + escapeHtml(word) + "</span>";
+      })
+      .join(" ");
   }
 
   function setNotice(text, isError) {
@@ -4129,44 +4152,66 @@
 
   function renderAlerts(alerts) {
     if (!alerts || !alerts.length) return "";
-    var html = '<section class="c360-metrics-alerts-bar" aria-label="Qué atender">';
+    var open = !!state.alertsOpen;
+    var visible = open ? alerts.slice(0, 2) : [];
+    var html = '<section class="c360-metrics-alerts-bar' + (open ? " is-open" : " is-collapsed") + '" aria-label="Qué atender">';
     html +=
-      '<div class="c360-alerts-head"><div><strong>Qué atender</strong><span>' +
+      '<button type="button" class="c360-alerts-head c360-alerts-toggle" data-act="toggle-alerts" aria-expanded="' +
+      (open ? "true" : "false") +
+      '"><div><strong>Qué atender</strong><span>' +
       alerts.length +
-      "</span></div></div>";
-    html += '<div class="c360-alerts-grid">';
-    alerts.forEach(function (a) {
+      "</span></div><em>" +
+      (open ? "Ocultar" : "Ver") +
+      "</em></button>";
+    if (!open) {
+      var first = alerts[0];
       html +=
-        '<article class="c360-alert-chip tone-' +
-        (a.tone || "warn") +
-        '"><strong>' +
-        escapeHtml(a.title) +
-        "</strong><p>" +
-        escapeHtml(a.text || "") +
-        '</p><div class="c360-alert-actions">';
-      if (a.farm && state.mode !== "farm") {
+        '<p class="c360-alerts-summary">' +
+        escapeHtml(first.title || "") +
+        (alerts.length > 1 ? " · +" + (alerts.length - 1) + " más" : "") +
+        "</p>";
+    } else {
+      html += '<div class="c360-alerts-grid">';
+      visible.forEach(function (a) {
         html +=
-          '<button type="button" class="c360-alert-btn" data-open-farm="' +
-          escapeHtml(a.farm) +
-          '">Finca</button>';
-      }
-      if (a.chapter != null) {
+          '<article class="c360-alert-chip tone-' +
+          (a.tone || "warn") +
+          '"><strong>' +
+          escapeHtml(a.title) +
+          "</strong><p>" +
+          escapeHtml(a.text || "") +
+          '</p><div class="c360-alert-actions">';
+        if (a.farm && state.mode !== "farm") {
+          html +=
+            '<button type="button" class="c360-alert-btn" data-open-farm="' +
+            escapeHtml(a.farm) +
+            '">Finca</button>';
+        }
+        if (a.chapter != null) {
+          html +=
+            '<button type="button" class="c360-alert-btn" data-focus-chapter="' +
+            a.chapter +
+            '">Capítulo</button>';
+        }
+        if (a.farm && a.date) {
+          html +=
+            '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
+            escapeHtml(a.farm) +
+            '" data-open-date="' +
+            escapeHtml(a.date) +
+            '">Abrir</button>';
+        }
+        html += "</div></article>";
+      });
+      if (alerts.length > 2) {
         html +=
-          '<button type="button" class="c360-alert-btn" data-focus-chapter="' +
-          a.chapter +
-          '">Capítulo</button>';
+          '<p class="c360-alerts-more muted">+' +
+          (alerts.length - 2) +
+          " aviso(s) más en el informe.</p>";
       }
-      if (a.farm && a.date) {
-        html +=
-          '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
-          escapeHtml(a.farm) +
-          '" data-open-date="' +
-          escapeHtml(a.date) +
-          '">Abrir</button>';
-      }
-      html += "</div></article>";
-    });
-    html += "</div></section>";
+      html += "</div>";
+    }
+    html += "</section>";
     return html;
   }
 
@@ -4554,6 +4599,14 @@
           var el = q("#c360-nocumple-detail");
           if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 40);
+      });
+    }
+    var toggleAlerts = q('[data-act="toggle-alerts"]', root);
+    if (toggleAlerts) {
+      toggleAlerts.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        state.alertsOpen = !state.alertsOpen;
+        render();
       });
     }
     var clearNotice = q('[data-act="clear-notice"]', root);

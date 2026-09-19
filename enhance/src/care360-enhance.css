@@ -2326,9 +2326,18 @@ button.c360-groupbars-hit.is-selected {
   font-weight: 700;
   color: var(--c360-chart-xlabel, #5b6b70);
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.25;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  min-height: 2.6em;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+.c360-groupbars-xlabel .c360-axis-word {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .c360-groupbars-note {
@@ -3727,7 +3736,7 @@ html.dark .c360-groupbars-empty {
 .c360-metrics-alerts-bar {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   margin-top: 2px;
   animation: c360-metrics-in 0.45s ease 0.1s both;
 }
@@ -3739,6 +3748,44 @@ html.dark .c360-groupbars-empty {
   justify-content: space-between;
   gap: 6px 10px;
   padding: 0 2px;
+}
+
+button.c360-alerts-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.c360-alerts-toggle em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c360-brand, #007fa3);
+}
+
+.c360-alerts-summary {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--c360-line-soft, #dbe4e8);
+  border-left: 3px solid #c98512;
+  background: var(--c360-tone-warn-card, #fff8ef);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--c360-ink-soft, #58696d);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c360-alerts-more {
+  margin: 0;
+  font-size: 11.5px;
+  grid-column: 1 / -1;
 }
 
 .c360-alerts-head > div:first-child {
@@ -3781,13 +3828,14 @@ html.dark .c360-groupbars-empty {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 9px 11px;
-  border-radius: 14px;
+  padding: 8px 10px;
+  border-radius: 12px;
   border: 1px solid var(--c360-line-soft);
   background: var(--c360-surface);
   border-left: 3px solid #c98512;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .c360-alert-chip.tone-critical { border-left-color: #c44b3c; background: var(--c360-tone-crit-card); }

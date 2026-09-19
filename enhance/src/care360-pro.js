@@ -1,5 +1,5 @@
 /*
- * AVGUST CARE 360 — capa profesional 1.5.19.
+ * AVGUST CARE 360 — capa profesional 1.5.20.
  *
  * Comportamiento aditivo sobre la aplicación compilada: lockup de marca,
  * píldora de conexión, espejo de guardado, buscadores en listas, resaltado
@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var PRO_VERSION = "1.5.19";
+  var PRO_VERSION = "1.5.20";
   var SUN_KEY = "c360-sun";
 
   var BRAND_SVG =
@@ -172,6 +172,8 @@
     if (!text) return;
     var pill = ensureSavePill();
     var dirty = /sin guardar|no guard/i.test(text);
+    var onMetrics = !!document.getElementById("c360-metrics-board");
+    document.body.classList.toggle("c360-on-metrics", onMetrics);
     pill.setAttribute("data-visible", "1");
     pill.setAttribute("data-tone", dirty ? "warn" : "ok");
     var stamp = "";
@@ -187,7 +189,7 @@
     if (!dirty) {
       saveTimer = window.setTimeout(function () {
         pill.removeAttribute("data-visible");
-      }, 6000);
+      }, onMetrics ? 2800 : 6000);
     }
   }
 
