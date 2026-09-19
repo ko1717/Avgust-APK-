@@ -1863,7 +1863,7 @@ html.c360-metrics-lite .metrics-actions {
   margin-top: 4px;
 }
 
-/* —— Barras agrupadas (Evolución: actual vs anterior) —— */
+/* —— Barras agrupadas (Capítulos vs Subcapítulos / actual vs anterior) —— */
 .c360-groupbars {
   width: 100%;
   max-width: 100%;
@@ -1918,6 +1918,14 @@ html.c360-metrics-lite .metrics-actions {
 
 .c360-groupbars-leg.previous i {
   background: #f2a900;
+}
+
+.c360-groupbars-leg.cap i {
+  background: #5b9bd5;
+}
+
+.c360-groupbars-leg.sub i {
+  background: #ed7d31;
 }
 
 .c360-groupbars-leg.target i {
@@ -2036,6 +2044,14 @@ html.c360-metrics-lite .metrics-actions {
 .c360-groupbars-bar.previous span {
   color: #4a3200;
   text-shadow: none;
+}
+
+.c360-groupbars-bar.cap {
+  background: linear-gradient(180deg, #7eb3de, #5b9bd5);
+}
+
+.c360-groupbars-bar.sub {
+  background: linear-gradient(180deg, #f2a06a, #ed7d31);
 }
 
 .c360-groupbars-bar.current.tone-healthy {

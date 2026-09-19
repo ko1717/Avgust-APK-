@@ -243,12 +243,31 @@
       .map(function (id) {
         var c = byChapter[id];
         var score = c.applicable ? Math.round(((c.applicable - c.findings) / c.applicable) * 100) : null;
+        var itemScores = Object.keys(byItem)
+          .map(function (iid) {
+            return byItem[iid];
+          })
+          .filter(function (it) {
+            return it.chapter === id && it.applicable > 0;
+          })
+          .map(function (it) {
+            return Math.round(((it.applicable - it.findings) / it.applicable) * 100);
+          });
+        var subScore = itemScores.length
+          ? Math.round(
+              itemScores.reduce(function (n, s) {
+                return n + s;
+              }, 0) / itemScores.length
+            )
+          : null;
         return {
           id: id,
           title: CHAPTER_TITLES[id] || "Capítulo " + id,
           applicable: c.applicable,
           findings: c.findings,
           score: score,
+          subScore: subScore,
+          subCount: itemScores.length,
           status: scoreStatus(score),
           farms: Object.keys(c.farms).length,
         };
@@ -1560,12 +1579,31 @@
       .map(Number)
       .map(function (id) {
         var st = last ? chapterScore(last.answers || {}, id, catalog) : { applicable: 0, findings: 0, score: null };
+        var itemScores = [];
+        if (last) {
+          (catalog[id] || []).forEach(function (iid) {
+            var ans = last.answers && last.answers[iid];
+            if (!ans) return;
+            var val = answerValue(ans);
+            if (val === "SI") itemScores.push(100);
+            else if (val === "NO") itemScores.push(0);
+          });
+        }
+        var subScore = itemScores.length
+          ? Math.round(
+              itemScores.reduce(function (n, s) {
+                return n + s;
+              }, 0) / itemScores.length
+            )
+          : null;
         return {
           id: id,
           title: CHAPTER_TITLES[id],
           applicable: st.applicable,
           findings: st.findings,
           score: st.score,
+          subScore: subScore,
+          subCount: itemScores.length,
           status: scoreStatus(st.score),
         };
       })
@@ -1961,8 +1999,85 @@
   }
 
   /**
-   * Barras agrupadas por fecha (periodo actual vs anterior), estilo comparación
-   * clara tipo «Values over time by figure type».
+   * Barras agrupadas Capítulos vs Subcapítulos (estilo Excel Fig1/Fig2).
+   * Eje X = capítulos; dos barras por grupo: indicador del capítulo y
+   * promedio de cumplimiento de sus subcapítulos (criterios).
+   */
+  function chartCapitulosSubcapitulos(chapters) {
+    var rows = (chapters || []).filter(function (c) {
+      return c && (c.score != null || c.subScore != null);
+    });
+    if (!rows.length) {
+      return (
+        '<div class="c360-groupbars c360-groupbars-empty">' +
+        "<p><strong>Sin datos de capítulos</strong></p>" +
+        "<p>Cuando haya visitas revisadas, verás el indicador de cada capítulo junto al promedio de sus subcapítulos.</p></div>"
+      );
+    }
+
+    var html =
+      '<div class="c360-groupbars c360-groupbars-capsub" role="img" aria-label="Indicador por capítulos y subcapítulos">';
+    html +=
+      '<div class="c360-groupbars-legend" role="list">' +
+      '<span class="c360-groupbars-leg cap" role="listitem"><i></i>Capítulos</span>' +
+      '<span class="c360-groupbars-leg sub" role="listitem"><i></i>Subcapítulos</span>' +
+      '<span class="c360-groupbars-leg target" role="listitem"><i></i>Meta ' +
+      META_TARGET +
+      "%</span>" +
+      "</div>";
+
+    html += '<div class="c360-groupbars-plot">';
+    html += '<div class="c360-groupbars-yaxis" aria-hidden="true">';
+    [100, 75, 50, 25, 0].forEach(function (t) {
+      html += "<span>" + t + "</span>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="c360-groupbars-grid" aria-hidden="true">' +
+      '<i style="bottom:100%"></i><i style="bottom:75%"></i><i style="bottom:50%"></i><i style="bottom:25%"></i><i style="bottom:0"></i>' +
+      '<b class="c360-groupbars-meta" style="bottom:' +
+      META_TARGET +
+      '%"></b>' +
+      "</div>";
+    html += '<div class="c360-groupbars-cols">';
+    rows.forEach(function (c) {
+      var cap = c.score != null ? c.score : null;
+      var sub = c.subScore != null ? c.subScore : null;
+      var capH = cap == null ? 0 : Math.max(0, Math.min(100, cap));
+      var subH = sub == null ? 0 : Math.max(0, Math.min(100, sub));
+      var label = c.id + ". " + shortTitle(c.title || CHAPTER_TITLES[c.id] || "");
+      html +=
+        '<div class="c360-groupbars-col has-compare" title="' +
+        escapeHtml(label) +
+        (cap != null ? " · capítulo " + cap + "%" : "") +
+        (sub != null ? " · subcapítulos " + sub + "%" : "") +
+        '">';
+      html += '<div class="c360-groupbars-pair">';
+      html +=
+        '<div class="c360-groupbars-bar cap" style="height:' +
+        (cap == null ? 0 : Math.max(capH, 3)) +
+        '%"><span>' +
+        (cap == null ? "" : cap + "%") +
+        "</span></div>";
+      html +=
+        '<div class="c360-groupbars-bar sub" style="height:' +
+        (sub == null ? 0 : Math.max(subH, 3)) +
+        '%"><span>' +
+        (sub == null ? "" : sub + "%") +
+        "</span></div>";
+      html += "</div>";
+      html += '<div class="c360-groupbars-xlabel">' + escapeHtml(label) + "</div>";
+      html += "</div>";
+    });
+    html += "</div></div>";
+    html +=
+      '<p class="c360-groupbars-note">Capítulos = indicador del capítulo · Subcapítulos = promedio de cumplimiento de sus criterios.</p>';
+    html += "</div>";
+    return html;
+  }
+
+  /**
+   * Barras agrupadas por fecha (periodo actual vs anterior).
    */
   function chartGroupedBars(rows, compareRows) {
     var current = (rows || []).filter(function (r) {
@@ -2847,11 +2962,19 @@
           (data.farms.length === 1 ? "" : "s")
         : "Sin visitas en el periodo"
     );
-    html += chartGroupedBars(data.timeline, state.compare && prevData ? prevData.timeline : null);
+    html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
     html += "</section></div>";
 
     html += renderAlerts(alerts);
     html += renderFocusPanel();
+
+    html += '<section class="c360-metrics-card c360-metrics-section">';
+    html += cardHead(
+      "Capítulos y subcapítulos",
+      "Indicador de cada capítulo frente al promedio de sus subcapítulos (criterios)."
+    );
+    html += chartCapitulosSubcapitulos(data.chapters);
+    html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead("Resumen por finca", "Toca una finca para ver detalle.");
@@ -3003,7 +3126,7 @@
           " visitas"
         : "Sin visitas en el periodo"
     );
-    html += chartGroupedBars(
+    html += chartLine(
       data.chartTimeline || data.timeline,
       state.compare && prevData ? prevData.chartTimeline || prevData.timeline : null
     );
@@ -3011,6 +3134,15 @@
 
     html += renderAlerts(alerts);
     html += renderFocusPanel();
+
+    html += '<section class="c360-metrics-card c360-metrics-section">';
+    html += cardHead(
+      "Capítulos y subcapítulos",
+      (data.lastDate ? "Última visita del " + formatDateEs(data.lastDate) + ". " : "") +
+        "Indicador de cada capítulo frente al promedio de sus subcapítulos."
+    );
+    html += chartCapitulosSubcapitulos(data.chapters);
+    html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead(
