@@ -1,5 +1,5 @@
 /**
- * Verifica Todas las fincas + informe de métricas: Última visita / Periodo.
+ * Verifica Todas las fincas + informe de métricas: Primera visita / Última visita.
  */
 import puppeteer from "../../tests/node_modules/puppeteer/lib/esm/puppeteer/puppeteer.js";
 import fs from "fs";
@@ -81,16 +81,16 @@ const allProbe = await page.evaluate(() => {
 });
 
 check("Todas: título Cumplimiento por capítulo", /Cumplimiento por capítulo/i.test(allProbe.title));
+check("Todas: leyenda Primera visita", allProbe.legend.some((x) => /Primera visita/i.test(x)), allProbe.legend.join(" | "));
 check("Todas: leyenda Última visita", allProbe.legend.some((x) => /Última visita/i.test(x)), allProbe.legend.join(" | "));
-check("Todas: leyenda Periodo", allProbe.legend.some((x) => /^Periodo$/i.test(x) || /Periodo/.test(x)), allProbe.legend.join(" | "));
 check("Todas: no dice Por ítem", !/Por ítem/i.test(allProbe.text + allProbe.legend.join(" ")));
-check("Todas: no dice Cap / Sub como serie", !/\bCap\b|\bSub\b/.test(allProbe.legend.join(" ")));
+check("Todas: no dice Periodo como serie", !allProbe.legend.some((x) => /^Periodo$/i.test(x)));
 check(
-  "Todas: lead última visita de cada finca",
-  /última visita de cada finca/i.test(allProbe.lead),
+  "Todas: lead primera y última de cada finca",
+  /primera visita de cada finca/i.test(allProbe.lead) && /última visita de cada finca/i.test(allProbe.lead),
   allProbe.lead
 );
-check("Todas: columnas de tabla Última visita y Periodo", allProbe.heads.includes("Última visita") && allProbe.heads.includes("Periodo"), allProbe.heads.join(","));
+check("Todas: columnas Primera visita y Última visita", allProbe.heads.includes("Primera visita") && allProbe.heads.includes("Última visita"), allProbe.heads.join(","));
 
 await page.evaluate(() => {
   document.querySelector(".c360-metrics-capsub-block")?.scrollIntoView({ block: "start" });
@@ -136,13 +136,13 @@ if (!reportHtml) {
 }
 
 check("Informe de métricas generado", reportHtml.length > 400, "len=" + reportHtml.length);
+check("Informe: columna Primera visita", /Primera visita/i.test(reportHtml));
 check("Informe: columna Última visita", /Última visita/i.test(reportHtml));
-check("Informe: columna Periodo", />Periodo %<|>Periodo</.test(reportHtml) || /Última visita %/.test(reportHtml) && /Periodo %/.test(reportHtml));
 check("Informe: no dice Por ítem", !/Por ítem/i.test(reportHtml));
 check(
   "Informe: lead de Todas",
-  /última visita de cada finca/i.test(reportHtml),
-  (reportHtml.match(/última visita[^<]{0,80}/i) || [""])[0]
+  /primera visita de cada finca/i.test(reportHtml) && /última visita de cada finca/i.test(reportHtml),
+  (reportHtml.match(/primera visita[^<]{0,80}/i) || [""])[0]
 );
 
 if (reportHtml) {
@@ -178,8 +178,8 @@ const farmProbe = await page.evaluate(() => {
   const heads = [...(block?.querySelectorAll("th") || [])].map((el) => (el.textContent || "").trim());
   return { legend, heads };
 });
-check("Por finca: leyenda Última visita", farmProbe.legend.some((x) => /Última visita/i.test(x)), farmProbe.legend.join(" | "));
-check("Por finca: columnas iguales", farmProbe.heads.includes("Última visita") && farmProbe.heads.includes("Periodo"), farmProbe.heads.join(","));
+check("Por finca: leyenda Primera visita", farmProbe.legend.some((x) => /Primera visita/i.test(x)), farmProbe.legend.join(" | "));
+check("Por finca: columnas iguales", farmProbe.heads.includes("Primera visita") && farmProbe.heads.includes("Última visita"), farmProbe.heads.join(","));
 
 await page.evaluate(() => {
   document.querySelector(".c360-metrics-capsub-block")?.scrollIntoView({ block: "start" });

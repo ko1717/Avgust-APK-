@@ -1,5 +1,5 @@
 /*
- * Etiquetas del tablero e informe de métricas: Última visita vs Periodo.
+ * Etiquetas del tablero e informe de métricas: Primera visita vs Última visita.
  *
  *   node metrics-labels.mjs
  */
@@ -17,13 +17,13 @@ function check(name, ok, extra) {
 
 const js = fs.readFileSync(path.join(root, "enhance/src/care360-metrics.js"), "utf-8");
 
-check("serie azul se llama Última visita", /cap:\s*"Última visita"/.test(js));
-check("serie naranja se llama Periodo", /sub:\s*"Periodo"/.test(js));
-check("Todas no usa Por ítem como serie", !/sub:\s*"Por ítem"/.test(js));
-check("Todas no etiqueta el azul como Periodo", !/cap:\s*"Periodo"/.test(js));
+check("serie azul se llama Primera visita", /cap:\s*"Primera visita"/.test(js));
+check("serie naranja se llama Última visita", /sub:\s*"Última visita"/.test(js));
+check("no usa Periodo como serie naranja", !/sub:\s*"Periodo"/.test(js));
+check("no usa Por ítem como serie", !/sub:\s*"Por ítem"/.test(js));
 check(
-  "Todas explica última visita de cada finca",
-  /última visita de cada finca/.test(js)
+  "Todas explica primera y última de cada finca",
+  /primera visita de cada finca/.test(js) && /última visita de cada finca/.test(js)
 );
 check(
   "informe impreso usa seriesLabels en la tabla",
@@ -34,8 +34,8 @@ check(
   /series\.cap\s*\+\s*" %,"/.test(js) && /series\.sub\s*\+\s*" %,/.test(js)
 );
 check(
-  "Todas calcula el azul con la última visita de cada finca",
-  /lastVisitsByFarm/.test(js) && /lastVisitChapterScore/.test(js)
+  "Todas calcula primera y última visita por finca",
+  /firstVisitsByFarm/.test(js) && /lastVisitsByFarm/.test(js) && /visitSetChapterScore/.test(js)
 );
 
 const failed = results.filter((r) => !r.ok);

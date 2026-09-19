@@ -193,18 +193,26 @@
     );
   }
 
-  function lastVisitOf(visits) {
-    var list = (visits || []).slice().filter(Boolean);
-    list.sort(function (a, b) {
+  function sortVisitsByDate(visits) {
+    return (visits || []).slice().filter(Boolean).sort(function (a, b) {
       var da = String(a.date || "");
       var db = String(b.date || "");
       if (da !== db) return da < db ? -1 : 1;
       return String(a.id || "").localeCompare(String(b.id || ""));
     });
+  }
+
+  function firstVisitOf(visits) {
+    var list = sortVisitsByDate(visits);
+    return list.length ? list[0] : null;
+  }
+
+  function lastVisitOf(visits) {
+    var list = sortVisitsByDate(visits);
     return list.length ? list[list.length - 1] : null;
   }
 
-  function lastVisitsByFarm(visits) {
+  function visitsByFarm(visits) {
     var byFarm = {};
     (visits || []).forEach(function (v) {
       if (!visitUsable(v)) return;
@@ -213,6 +221,20 @@
       if (!byFarm[key]) byFarm[key] = [];
       byFarm[key].push(v);
     });
+    return byFarm;
+  }
+
+  function firstVisitsByFarm(visits) {
+    var byFarm = visitsByFarm(visits);
+    return Object.keys(byFarm)
+      .map(function (key) {
+        return firstVisitOf(byFarm[key]);
+      })
+      .filter(Boolean);
+  }
+
+  function lastVisitsByFarm(visits) {
+    var byFarm = visitsByFarm(visits);
     return Object.keys(byFarm)
       .map(function (key) {
         return lastVisitOf(byFarm[key]);
@@ -220,10 +242,10 @@
       .filter(Boolean);
   }
 
-  function lastVisitChapterScore(lastVisits, chapterId, catalog) {
+  function visitSetChapterScore(visitSet, chapterId, catalog) {
     var applicable = 0;
     var findings = 0;
-    (lastVisits || []).forEach(function (v) {
+    (visitSet || []).forEach(function (v) {
       var st = chapterScore(v.answers || {}, chapterId, catalog);
       applicable += st.applicable;
       findings += st.findings;
@@ -236,15 +258,13 @@
     };
   }
 
-  function seriesLabels(mode) {
+  function seriesLabels() {
     return {
-      cap: "Última visita",
-      sub: "Periodo",
+      cap: "Primera visita",
+      sub: "Última visita",
       title: "Cumplimiento por capítulo",
       note:
-        mode === "farm"
-          ? "Si el naranja va más alto, la última visita salió más floja que el resto del periodo. Si el azul va más alto, esa visita mejoró."
-          : "Si el naranja va más alto, las últimas visitas salieron más flojas que el resto del periodo. Si el azul va más alto, mejoraron.",
+        "Si el naranja va más alto, la última visita mejoró respecto a la primera. Si el azul va más alto, empeoró.",
     };
   }
 
@@ -255,12 +275,13 @@
   function snapChaptersLead(mode, data) {
     if (mode === "farm") {
       return (
-        "Azul: última visita" +
-        (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
-        " · Naranja: cómo vienen los ítems en el periodo"
+        "Azul: primera visita" +
+        (data && data.firstDate ? " (" + formatDateEs(data.firstDate) + ")" : "") +
+        " · Naranja: última visita" +
+        (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "")
       );
     }
-    return "Azul: última visita de cada finca · Naranja: cómo vienen los ítems en el periodo";
+    return "Azul: primera visita de cada finca · Naranja: última visita de cada finca";
   }
 
   function buildCatalog(visits) {
@@ -352,12 +373,13 @@
 
     var usableVisits = visits.filter(visitUsable);
     var catalog = buildCatalog(usableVisits);
+    var firstVisits = firstVisitsByFarm(usableVisits);
     var lastVisits = lastVisitsByFarm(usableVisits);
     var chapterIds = {};
     Object.keys(byChapter).forEach(function (id) {
       chapterIds[id] = true;
     });
-    lastVisits.forEach(function (v) {
+    firstVisits.concat(lastVisits).forEach(function (v) {
       Object.keys(v.answers || {}).forEach(function (id) {
         var ch = Number(String(id).split(".")[0]);
         if (ch) chapterIds[ch] = true;
@@ -369,30 +391,22 @@
       .sort()
       .map(function (id) {
         var c = byChapter[id] || { farms: {} };
-        // Azul: última visita de cada finca (mismas reglas que Por finca).
-        var lastSt = lastVisitChapterScore(lastVisits, id, catalog);
-        // Naranja: promedio por criterio en todo el periodo.
-        var subScore = periodItemAverageScore(usableVisits, id, catalog);
-        var subCount = (catalog[id] || []).filter(function (iid) {
-          return usableVisits.some(function (v) {
-            var val = v.answers && v.answers[iid] && answerValue(v.answers[iid]);
-            return val === "SI" || val === "NO";
-          });
-        }).length;
+        var firstSt = visitSetChapterScore(firstVisits, id, catalog);
+        var lastSt = visitSetChapterScore(lastVisits, id, catalog);
         return {
           id: id,
           title: CHAPTER_TITLES[id] || "Capítulo " + id,
           applicable: lastSt.applicable,
           findings: lastSt.findings,
-          score: lastSt.score,
-          subScore: subScore,
-          subCount: subCount,
-          status: scoreStatus(lastSt.score),
+          score: firstSt.score,
+          subScore: lastSt.score,
+          subCount: lastSt.applicable,
+          status: scoreStatus(lastSt.score != null ? lastSt.score : firstSt.score),
           farms: Object.keys(c.farms || {}).length,
         };
       })
       .filter(function (c) {
-        return c.applicable > 0 || c.subScore != null;
+        return c.score != null || c.subScore != null;
       });
 
     var periodApp = 0;
@@ -630,8 +644,9 @@
     (chapters || []).forEach(function (c) {
       if (c.id === id) ch = c;
     });
-    if (!ch || ch.score == null) return { value: "—", tone: "pending", score: null };
-    return { value: ch.score + "%", tone: scoreStatus(ch.score), score: ch.score };
+    var kpiScore = ch.subScore != null ? ch.subScore : ch.score;
+    if (kpiScore == null) return { value: "—", tone: "pending", score: null };
+    return { value: kpiScore + "%", tone: scoreStatus(kpiScore), score: kpiScore };
   }
 
   function vsMetaPts(score) {
@@ -2087,35 +2102,30 @@
       };
     });
 
+    var first = filtered[0];
     var last = filtered[filtered.length - 1];
     var chapters = Object.keys(CHAPTER_TITLES)
       .map(Number)
       .map(function (id) {
-        // Capítulos: indicador ponderado de la última visita.
-        var st = last
+        var firstSt = first
+          ? chapterScore(first.answers || {}, id, catalog)
+          : { applicable: 0, findings: 0, score: null };
+        var lastSt = last
           ? chapterScore(last.answers || {}, id, catalog)
           : { applicable: 0, findings: 0, score: null };
-        // Subcapítulos: promedio por criterio en todo el periodo (puede divergir).
-        var subScore = periodItemAverageScore(filtered, id, catalog);
-        var subCount = (catalog[id] || []).filter(function (iid) {
-          return filtered.some(function (v) {
-            var val = v.answers && v.answers[iid] && answerValue(v.answers[iid]);
-            return val === "SI" || val === "NO";
-          });
-        }).length;
         return {
           id: id,
           title: CHAPTER_TITLES[id],
-          applicable: st.applicable,
-          findings: st.findings,
-          score: st.score,
-          subScore: subScore,
-          subCount: subCount,
-          status: scoreStatus(st.score),
+          applicable: lastSt.applicable,
+          findings: lastSt.findings,
+          score: firstSt.score,
+          subScore: lastSt.score,
+          subCount: lastSt.applicable,
+          status: scoreStatus(lastSt.score != null ? lastSt.score : firstSt.score),
         };
       })
       .filter(function (c) {
-        return c.applicable > 0 || c.subScore != null;
+        return c.score != null || c.subScore != null;
       });
 
     var items = [];
@@ -2588,9 +2598,9 @@
   }
 
   /**
-   * Barras agrupadas última visita vs periodo (estilo Excel Fig1/Fig2).
-   * Azul = última visita (la de la finca, o la de cada finca en Todas).
-   * Naranja = promedio de cumplimiento por criterio en el periodo.
+   * Barras agrupadas primera visita vs última visita.
+   * Azul = primera visita (la de la finca, o la de cada finca en Todas).
+   * Naranja = última visita.
    * Tocá un capítulo para abrir el detalle.
    */
   function chartCapitulosSubcapitulos(chapters) {
@@ -2602,7 +2612,7 @@
       return (
         '<div class="c360-groupbars c360-groupbars-empty">' +
         "<p><strong>Sin datos de capítulos</strong></p>" +
-        "<p>Cuando haya visitas revisadas, verás la última visita junto al promedio de los ítems en el periodo.</p></div>"
+        "<p>Cuando haya visitas revisadas, verás la primera visita junto a la última.</p></div>"
       );
     }
 
@@ -2704,7 +2714,7 @@
     if (selected) {
       var delta =
         selected.score != null && selected.subScore != null
-          ? selected.score - selected.subScore
+          ? selected.subScore - selected.score
           : null;
       html += '<div class="c360-capsub-peek" role="status">';
       html +=
@@ -2732,7 +2742,7 @@
             : (delta > 0 ? "+" : "") +
               delta +
               " pts vs " +
-              escapeHtml(series.sub.toLowerCase())) +
+              escapeHtml(series.cap.toLowerCase())) +
           "</span>";
       }
       html += "</div>";
@@ -3660,7 +3670,7 @@
       data.chapters.map(function (c) {
         return {
           label: c.id + ". " + shortTitle(c.title),
-          score: c.score,
+          score: c.subScore != null ? c.subScore : c.score,
           findings: c.findings,
           applicable: c.applicable,
           chapterId: c.id,
@@ -3893,7 +3903,7 @@
       data.chapters.map(function (c) {
         return {
           label: c.id + ". " + shortTitle(c.title),
-          score: c.score,
+          score: c.subScore != null ? c.subScore : c.score,
           findings: c.findings,
           applicable: c.applicable,
           chapterId: c.id,
