@@ -14,6 +14,83 @@
     5: "Aplicación de PPC",
   };
 
+  var ITEM_SHORT = {
+    "1.1": "Identificación del producto",
+    "1.2": "Fichas técnicas",
+    "1.3": "Compatibilidad",
+    "1.4": "Inventarios",
+    "2.1": "Programa de fumigación",
+    "2.2": "EPP del dosificador",
+    "2.3": "Kit de derrames",
+    "2.4": "Instrumentos de dosificación",
+    "2.5": "Ventilación e iluminación",
+    "2.6": "Coincidencia con el programa",
+    "2.7": "Identificación al salir",
+    "2.8": "Envase original",
+    "3.1": "EPP de quien recibe",
+    "3.2": "Verificación vs programa",
+    "3.3": "Transporte seguro",
+    "3.4": "Kit de derrames en vehículo",
+    "4.1": "Equipos de dosificación en campo",
+    "4.2": "Programa del bombero",
+    "4.3": "EPP del bombero",
+    "4.4": "Tanques aforados",
+    "4.5": "Agitación del tanque",
+    "4.6": "Calidad del agua",
+    "4.7": "Premezcla",
+    "4.8": "Orden de mezcla",
+    "4.9": "Triple lavado",
+    "4.10": "Mezcla final",
+    "5.1": "Presión de la bomba",
+    "5.2": "Aforo de boquillas",
+    "5.3": "Equipo de aplicación",
+    "5.4": "Temperatura y humedad",
+    "5.5": "EPP de aplicadores",
+    "5.6": "Volumen y tiempo por cama",
+    "5.7": "Técnica de aplicación",
+    "5.8": "Área tratada",
+    "5.9": "Sobra o falta de producto",
+    "5.10": "Limpieza de equipos",
+    "5.11": "Registro de aplicación",
+  };
+
+  function itemShort(id, ans) {
+    if (ITEM_SHORT[id]) return ITEM_SHORT[id];
+    var raw = ans && typeof ans === "object" ? ans.text : "";
+    var text = String(raw || "")
+      .replace(/\*\*[^*]+\*\*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text ? text.slice(0, 72) : "Criterio " + id;
+  }
+
+  function answerLabel(val) {
+    if (val === "SI") return "Sí cumple";
+    if (val === "NO") return "No cumple";
+    if (val === "NA") return "No aplica";
+    return "Sin evaluar";
+  }
+
+  function sortItemId(a, b) {
+    return String(a).localeCompare(String(b), undefined, { numeric: true });
+  }
+
+  function mapSubchapter(it) {
+    var score = it.applicable ? Math.round(((it.applicable - it.findings) / it.applicable) * 100) : null;
+    return {
+      id: it.id,
+      chapter: it.chapter,
+      chapterTitle: CHAPTER_TITLES[it.chapter] || String(it.chapter),
+      title: it.text || itemShort(it.id),
+      applicable: it.applicable,
+      findings: it.findings,
+      score: score,
+      status: scoreStatus(score),
+      rate: it.applicable ? Math.round((it.findings / it.applicable) * 100) : 0,
+      answer: it.answer || "",
+    };
+  }
+
   function qa(sel, root) {
     return Array.prototype.slice.call((root || document).querySelectorAll(sel));
   }
@@ -180,21 +257,21 @@
       byFarm[key].visits.push(v);
       Object.keys(v.answers || {}).forEach(function (id) {
         var val = answerValue(v.answers[id]);
-        if (val !== "SI" && val !== "NO") return;
         var ch = Number(String(id).split(".")[0]);
-        if (!byChapter[ch]) byChapter[ch] = { id: ch, applicable: 0, findings: 0, farms: {} };
-        byChapter[ch].applicable += 1;
-        if (val === "NO") byChapter[ch].findings += 1;
-        byChapter[ch].farms[key] = true;
         if (!byItem[id]) {
           byItem[id] = {
             id: id,
             chapter: ch,
             applicable: 0,
             findings: 0,
-            text: (v.answers[id] && v.answers[id].text) || "",
+            text: itemShort(id, v.answers[id]),
           };
         }
+        if (val !== "SI" && val !== "NO") return;
+        if (!byChapter[ch]) byChapter[ch] = { id: ch, applicable: 0, findings: 0, farms: {} };
+        byChapter[ch].applicable += 1;
+        if (val === "NO") byChapter[ch].findings += 1;
+        byChapter[ch].farms[key] = true;
         byItem[id].applicable += 1;
         if (val === "NO") byItem[id].findings += 1;
       });
@@ -254,18 +331,15 @@
         };
       });
 
-    var items = Object.keys(byItem)
+    var subchapters = Object.keys(byItem)
       .map(function (id) {
-        var it = byItem[id];
-        return {
-          id: it.id,
-          chapter: it.chapter,
-          chapterTitle: CHAPTER_TITLES[it.chapter] || String(it.chapter),
-          applicable: it.applicable,
-          findings: it.findings,
-          rate: it.applicable ? Math.round((it.findings / it.applicable) * 100) : 0,
-        };
+        return mapSubchapter(byItem[id]);
       })
+      .sort(function (a, b) {
+        return sortItemId(a.id, b.id);
+      });
+
+    var items = subchapters
       .filter(function (it) {
         return it.findings > 0;
       })
@@ -283,6 +357,7 @@
     return {
       farms: farms,
       chapters: chapters,
+      subchapters: subchapters,
       items: items,
       score: totalApp ? Math.round(((totalApp - totalFind) / totalApp) * 100) : null,
       findings: totalFind,
@@ -1530,18 +1605,36 @@
       });
 
     var items = [];
+    var subchapters = [];
     if (last) {
       Object.keys(last.answers || {}).forEach(function (id) {
-        if (answerValue(last.answers[id]) !== "NO") return;
+        var val = answerValue(last.answers[id]);
+        var ch = Number(String(id).split(".")[0]);
+        var applicable = val === "SI" || val === "NO" ? 1 : 0;
+        var findings = val === "NO" ? 1 : 0;
+        subchapters.push(
+          mapSubchapter({
+            id: id,
+            chapter: ch,
+            applicable: applicable,
+            findings: findings,
+            text: itemShort(id, last.answers[id]),
+            answer: val,
+          })
+        );
+        if (val !== "NO") return;
         items.push({
           id: id,
-          chapter: Number(String(id).split(".")[0]),
+          chapter: ch,
           observation: last.answers[id].observation || "",
           recommendation: last.answers[id].recommendation || "",
         });
       });
       items.sort(function (a, b) {
-        return a.id.localeCompare(b.id, undefined, { numeric: true });
+        return sortItemId(a.id, b.id);
+      });
+      subchapters.sort(function (a, b) {
+        return sortItemId(a.id, b.id);
       });
     }
 
@@ -1554,6 +1647,7 @@
       timeline: timeline,
       chartTimeline: bucketTimeline(timeline),
       chapters: chapters,
+      subchapters: subchapters,
       items: items,
       visits: filtered.length,
       findings: totalFindings,
@@ -2106,6 +2200,112 @@
       html += "</article>";
     });
     html += "</div>";
+    return html;
+  }
+
+  function renderChapterDetail(data) {
+    var chapters = (data && data.chapters) || [];
+    if (!chapters.length) return "";
+    var farmMode = state.mode === "farm";
+    var html =
+      '<section class="c360-metrics-card c360-metrics-section c360-chapter-detail" id="c360-chapter-detail">';
+    html += cardHead(
+      "Detalle por capítulo",
+      farmMode
+        ? "Última visita. Tocá un capítulo para ver subcapítulos. La gráfica es solo de ese capítulo."
+        : "Periodo seleccionado. Tocá un capítulo para ver subcapítulos. La gráfica es solo de ese capítulo."
+    );
+    html += '<div class="c360-chdetail">';
+    chapters.forEach(function (c) {
+      var subs = ((data && data.subchapters) || []).filter(function (it) {
+        return Number(it.chapter) === Number(c.id);
+      });
+      html += '<article class="c360-chdetail-row" data-chapter="' + c.id + '">';
+      html += '<div class="c360-chdetail-main">';
+      html +=
+        '<button type="button" class="c360-chdetail-toggle" data-toggle-chapter="' +
+        c.id +
+        '" aria-expanded="false">';
+      html += '<span class="c360-chdetail-id">' + escapeHtml(String(c.id)) + "</span>";
+      html +=
+        '<span class="c360-chdetail-title"><strong>' +
+        escapeHtml(c.title) +
+        "</strong><span>" +
+        (c.applicable || 0) +
+        " criterio" +
+        ((c.applicable || 0) === 1 ? "" : "s") +
+        "</span></span>";
+      html +=
+        '<span class="c360-chdetail-kpi"><strong>' +
+        (c.score == null ? "—" : c.score + "%") +
+        "</strong>" +
+        barHtml(c.score, c.status) +
+        "</span>";
+      html +=
+        '<span class="c360-chdetail-find">' +
+        (c.findings || 0) +
+        " hallazgo" +
+        ((c.findings || 0) === 1 ? "" : "s") +
+        "</span>";
+      html += '<span class="c360-chdetail-chev" aria-hidden="true"></span>';
+      html += "</button>";
+      if (subs.length) {
+        html +=
+          '<button type="button" class="c360-alert-btn c360-chdetail-chartbtn" data-chart-chapter="' +
+          c.id +
+          '" aria-pressed="false" title="Ver gráfica de este capítulo">Gráfica</button>';
+      }
+      html += "</div>";
+      html += '<div class="c360-chdetail-subs" hidden>';
+      if (!subs.length) {
+        html += '<p class="muted">Sin subcapítulos medidos en este corte.</p>';
+      } else {
+        html += '<div class="c360-chdetail-table-wrap"><table class="c360-chdetail-table"><thead><tr>';
+        html += "<th>Subcapítulo</th><th>Criterio</th>";
+        if (farmMode) html += "<th>Resultado</th>";
+        html += "<th>Indicador</th><th>Hallazgos</th></tr></thead><tbody>";
+        subs.forEach(function (it) {
+          html += '<tr class="tone-' + (it.status || "pending") + '">';
+          html += "<th>" + escapeHtml(it.id) + "</th>";
+          html += "<td>" + escapeHtml(it.title || itemShort(it.id)) + "</td>";
+          if (farmMode) {
+            var ansTone =
+              it.answer === "NO" ? "critical" : it.answer === "SI" ? "healthy" : "pending";
+            html +=
+              '<td><span class="c360-mpill tone-' +
+              ansTone +
+              '">' +
+              escapeHtml(answerLabel(it.answer)) +
+              "</span></td>";
+          }
+          html +=
+            "<td>" +
+            (it.score == null ? "—" : it.score + "%") +
+            barHtml(it.score, it.status) +
+            "</td>";
+          html += "<td>" + (it.findings || 0) + "</td></tr>";
+        });
+        html += "</tbody></table></div>";
+      }
+      html += "</div>";
+      if (subs.length) {
+        html += '<div class="c360-chdetail-chart" hidden>';
+        html += chartBars(
+          subs.map(function (it) {
+            return {
+              label: it.id + " · " + (it.title || itemShort(it.id)),
+              score: it.score,
+              findings: it.findings,
+              applicable: it.applicable,
+            };
+          }),
+          "score"
+        );
+        html += "</div>";
+      }
+      html += "</article>";
+    });
+    html += "</div></section>";
     return html;
   }
 
@@ -2724,6 +2924,8 @@
     );
     html += "</section></div>";
 
+    html += renderChapterDetail(data);
+
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead("Subcapítulos con más hallazgos", "Criterios que más se incumplen.");
     html += renderFindingsList(data.items, 12);
@@ -2945,6 +3147,7 @@
     );
     html += "</section></div>";
 
+    html += renderChapterDetail(data);
     html += renderNocumpleDetail(data);
     return html;
   }
@@ -3569,6 +3772,58 @@
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
           go();
+        }
+      });
+    });
+    qa("[data-toggle-chapter]", root).forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var row = btn.closest(".c360-chdetail-row");
+        if (!row) return;
+        var open = !row.classList.contains("is-open");
+        qa(".c360-chdetail-row", root).forEach(function (other) {
+          var toggle = q("[data-toggle-chapter]", other);
+          var subs = q(".c360-chdetail-subs", other);
+          var chart = q(".c360-chdetail-chart", other);
+          var chartBtn = q("[data-chart-chapter]", other);
+          other.classList.toggle("is-open", open && other === row);
+          if (toggle) toggle.setAttribute("aria-expanded", open && other === row ? "true" : "false");
+          if (subs) subs.hidden = !(open && other === row);
+          if (chart) chart.hidden = true;
+          if (chartBtn) chartBtn.setAttribute("aria-pressed", "false");
+        });
+        if (open) {
+          window.setTimeout(function () {
+            if (row.scrollIntoView) row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }, 40);
+        }
+      });
+    });
+    qa("[data-chart-chapter]", root).forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var row = btn.closest(".c360-chdetail-row");
+        if (!row) return;
+        var wasPressed = btn.getAttribute("aria-pressed") === "true";
+        var toggle = q("[data-toggle-chapter]", row);
+        if (!row.classList.contains("is-open") && toggle) toggle.click();
+        qa(".c360-chdetail-chart", root).forEach(function (el) {
+          el.hidden = true;
+        });
+        qa("[data-chart-chapter]", root).forEach(function (other) {
+          other.setAttribute("aria-pressed", "false");
+        });
+        if (!wasPressed) {
+          var chart = q(".c360-chdetail-chart", row);
+          if (chart) {
+            chart.hidden = false;
+            btn.setAttribute("aria-pressed", "true");
+            window.setTimeout(function () {
+              if (chart.scrollIntoView) chart.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }, 40);
+          }
         }
       });
     });

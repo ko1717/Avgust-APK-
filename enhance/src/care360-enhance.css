@@ -3694,6 +3694,205 @@ html.c360-metrics-lite .metrics-actions {
   font-weight: 700;
 }
 
+.c360-chapter-detail {
+  min-width: 0;
+}
+
+.c360-chdetail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.c360-chdetail-row {
+  border: 1px solid var(--c360-line-soft);
+  border-radius: 14px;
+  background: var(--c360-surface);
+  overflow: hidden;
+}
+
+.c360-chdetail-row.is-open {
+  border-color: rgb(0 127 163 / 28%);
+  box-shadow: 0 0 0 1px rgb(0 127 163 / 8%);
+}
+
+.c360-chdetail-main {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px 6px 6px 0;
+}
+
+.c360-chdetail-toggle {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1.4fr) minmax(72px, 0.7fr) minmax(72px, 0.6fr) 16px;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 10px 8px 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.c360-chdetail-toggle:hover,
+.c360-chdetail-toggle:focus-visible {
+  background: rgb(0 127 163 / 5%);
+  outline: none;
+}
+
+.c360-chdetail-id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--c360-muted, #eef3f4);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.c360-chdetail-title {
+  min-width: 0;
+}
+
+.c360-chdetail-title strong,
+.c360-chdetail-title span {
+  display: block;
+}
+
+.c360-chdetail-title strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.c360-chdetail-title span {
+  margin-top: 2px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.c360-chdetail-kpi {
+  min-width: 0;
+}
+
+.c360-chdetail-kpi strong {
+  display: block;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.c360-chdetail-kpi .c360-mbar {
+  width: 100%;
+  max-width: 88px;
+  margin-top: 4px;
+}
+
+.c360-chdetail-find {
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.c360-chdetail-chev {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--c360-ink-soft, #58696d);
+  border-bottom: 2px solid var(--c360-ink-soft, #58696d);
+  transform: rotate(45deg);
+  justify-self: end;
+  transition: transform 0.16s ease;
+}
+
+.c360-chdetail-row.is-open .c360-chdetail-chev {
+  transform: rotate(225deg);
+  margin-top: 4px;
+}
+
+.c360-chdetail-chartbtn {
+  align-self: center;
+  flex: 0 0 auto;
+  margin-right: 6px;
+}
+
+.c360-chdetail-chartbtn[aria-pressed="true"] {
+  background: var(--c360-tone-brand-bg, rgb(0 127 163 / 12%));
+  border-color: rgb(0 127 163 / 35%);
+  color: var(--c360-accent, #007fa3);
+}
+
+.c360-chdetail-subs,
+.c360-chdetail-chart {
+  padding: 0 12px 12px;
+}
+
+.c360-chdetail-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.c360-chdetail-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+}
+
+.c360-chdetail-table th,
+.c360-chdetail-table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--c360-line-soft);
+  text-align: left;
+  vertical-align: top;
+  font-size: 12.5px;
+}
+
+.c360-chdetail-table thead th {
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.c360-chdetail-table tbody th {
+  width: 72px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.c360-chdetail-table tbody td:nth-last-child(2) .c360-mbar {
+  display: block;
+  max-width: 92px;
+  margin-top: 4px;
+}
+
+.c360-chdetail-chart .c360-hbar-chart {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .c360-chdetail-toggle {
+    grid-template-columns: 32px minmax(0, 1fr) 64px 14px;
+  }
+
+  .c360-chdetail-find {
+    display: none;
+  }
+
+  .c360-chdetail-chartbtn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
+
 .c360-hbar-chart {
   display: flex;
   flex-direction: column;
@@ -4911,8 +5110,18 @@ html.dark .c360-metrics-table tbody tr[data-open-farm]:focus-visible,
 html.dark .c360-row-hit:hover,
 html.dark .c360-row-hit:focus-visible,
 html.dark .c360-finding-row:hover,
-html.dark .c360-finding-row:focus-visible {
+html.dark .c360-finding-row:focus-visible,
+html.dark .c360-chdetail-toggle:hover,
+html.dark .c360-chdetail-toggle:focus-visible {
   background: rgb(0 181 226 / 10%);
+}
+
+html.dark .c360-chdetail-row.is-open {
+  border-color: rgb(0 181 226 / 28%);
+}
+
+html.dark .c360-chdetail-id {
+  background: var(--c360-muted);
 }
 
 html.dark .c360-farm-card:hover,
