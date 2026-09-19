@@ -1125,39 +1125,68 @@
 
     if (data.timeline && data.timeline.length) {
       var farmOnly = state.mode === "farm";
+      var chartRows = (data.chartTimeline || data.timeline || [])
+        .filter(function (r) {
+          return r && r.score != null;
+        })
+        .slice(-8);
+      var chartHtml = "";
+      if (chartRows.length) {
+        chartHtml =
+          "<div class='groupbars'><div class='groupbars-leg'><span class='c'><i></i>Indicador</span>" +
+          "<span class='t'><i></i>Meta " +
+          META_TARGET +
+          "%</span></div><div class='groupbars-plot'>";
+        chartRows.forEach(function (r) {
+          var h = Math.max(0, Math.min(100, Number(r.score) || 0));
+          var tone = reportScoreTone(r.score);
+          chartHtml +=
+            "<div class='groupbars-col'><div class='groupbars-bar tone-" +
+            tone +
+            "' style='height:" +
+            Math.max(h, 4) +
+            "%'><span>" +
+            r.score +
+            "%</span></div><div class='groupbars-x'>" +
+            escapeHtml(r.shortLabel || r.label || formatDateEs(r.date)) +
+            "</div></div>";
+        });
+        chartHtml += "</div></div>";
+      }
       body += section(
         farmOnly ? "Visitas por fecha" : "Evolución / visitas",
         farmOnly
           ? "Historial de «" + (state.farm || "la finca seleccionada") + "»."
           : "Puntos del periodo con indicador y hallazgos.",
-        farmOnly
-          ? table(
-              ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
-              data.timeline.map(function (r) {
-                return [
-                  r.label || formatDateEs(r.date),
-                  scoreCell(r.score),
-                  r.findings,
-                  pill(statusLabel(r.status), reportToneClass(r.status)),
-                  r.responsible || "—",
-                ];
-              }),
-              { htmlCols: { 1: true, 3: true } }
-            )
-          : table(
-              ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
-              data.timeline.map(function (r) {
-                return [
-                  r.label || formatDateEs(r.date),
-                  scoreCell(r.score),
-                  r.findings,
-                  pill(statusLabel(r.status), reportToneClass(r.status)),
-                  r.responsible || "—",
-                  r.farm || state.farm || "—",
-                ];
-              }),
-              { htmlCols: { 1: true, 3: true } }
-            )
+        chartHtml +
+          (farmOnly
+            ? table(
+                ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
+                data.timeline.map(function (r) {
+                  return [
+                    r.label || formatDateEs(r.date),
+                    scoreCell(r.score),
+                    r.findings,
+                    pill(statusLabel(r.status), reportToneClass(r.status)),
+                    r.responsible || "—",
+                  ];
+                }),
+                { htmlCols: { 1: true, 3: true } }
+              )
+            : table(
+                ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
+                data.timeline.map(function (r) {
+                  return [
+                    r.label || formatDateEs(r.date),
+                    scoreCell(r.score),
+                    r.findings,
+                    pill(statusLabel(r.status), reportToneClass(r.status)),
+                    r.responsible || "—",
+                    r.farm || state.farm || "—",
+                  ];
+                }),
+                { htmlCols: { 1: true, 3: true } }
+              ))
       );
     }
 
@@ -1280,6 +1309,21 @@
       ".score-cell.tone-ok .bar i{background:#1f8a5b}" +
       ".score-cell.tone-mid .bar i{background:#c98512}" +
       ".score-cell.tone-bad .bar i{background:#c23b2e}" +
+      ".groupbars{margin:0 0 14px;padding:12px 12px 8px;border:1px solid var(--line);border-radius:14px;background:#fff}" +
+      ".groupbars-leg{display:flex;flex-wrap:wrap;gap:10px 14px;margin:0 0 10px;font-size:11px;font-weight:700;color:var(--muted)}" +
+      ".groupbars-leg span{display:inline-flex;align-items:center;gap:6px}" +
+      ".groupbars-leg i{width:10px;height:10px;border-radius:3px;background:var(--accent)}" +
+      ".groupbars-leg .t i{width:3px;height:12px;border-radius:1px;background:#007fa3}" +
+      ".groupbars-plot{display:flex;align-items:flex-end;gap:10px;min-height:160px;padding:8px 4px 0;" +
+      "border-bottom:1px solid var(--line);background:linear-gradient(180deg,transparent 19%,#eef4f6 20%,transparent 21%," +
+      "transparent 39%,#eef4f6 40%,transparent 41%,transparent 59%,#eef4f6 60%,transparent 61%,transparent 79%,#eef4f6 80%,transparent 81%)}" +
+      ".groupbars-col{flex:1 1 0;min-width:36px;display:flex;flex-direction:column;align-items:center;gap:6px}" +
+      ".groupbars-bar{width:100%;max-width:42px;border-radius:8px 8px 3px 3px;min-height:4px;display:flex;align-items:flex-start;" +
+      "justify-content:center;padding-top:4px;color:#fff;font-size:10px;font-weight:700;background:var(--accent)}" +
+      ".groupbars-bar.tone-ok{background:linear-gradient(180deg,#3cb87f,#1f8a5b)}" +
+      ".groupbars-bar.tone-mid{background:linear-gradient(180deg,#e0a63a,#c98512)}" +
+      ".groupbars-bar.tone-bad{background:linear-gradient(180deg,#e06b5c,#c44b3c)}" +
+      ".groupbars-x{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;max-width:64px}" +
       ".muted{color:var(--muted)}" +
       ".foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;" +
       "margin-top:8px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}" +
@@ -1911,6 +1955,135 @@
     } else if (points.length === 1) {
       html +=
         '<p class="c360-linechart-sparse-note">Una sola visita en el corte · sumá aseguramientos para ver evolución.</p>';
+    }
+    html += "</div>";
+    return html;
+  }
+
+  /**
+   * Barras agrupadas por fecha (periodo actual vs anterior), estilo comparación
+   * clara tipo «Values over time by figure type».
+   */
+  function chartGroupedBars(rows, compareRows) {
+    var current = (rows || []).filter(function (r) {
+      return r && (r.score != null || r.shortLabel || r.label || r.date);
+    });
+    var previous = (compareRows || []).filter(function (r) {
+      return r && r.score != null;
+    });
+    var hasCompare = previous.length > 0;
+    if (!current.length && !previous.length) {
+      return (
+        '<div class="c360-groupbars c360-groupbars-empty">' +
+        "<p><strong>Sin datos de indicador</strong></p>" +
+        "<p>Cuando haya visitas revisadas, verás barras por fecha frente a la meta del " +
+        META_TARGET +
+        "%.</p></div>"
+      );
+    }
+
+    // Emparejar por etiqueta corta / fecha; si no, por índice.
+    var groups = [];
+    var usedPrev = {};
+    var n = Math.max(current.length, previous.length);
+    for (var i = 0; i < n; i++) {
+      var cur = current[i] || null;
+      var prev = null;
+      if (hasCompare) {
+        if (cur) {
+          var key = String(cur.shortLabel || cur.label || cur.date || "");
+          for (var j = 0; j < previous.length; j++) {
+            if (usedPrev[j]) continue;
+            var pk = String(previous[j].shortLabel || previous[j].label || previous[j].date || "");
+            if (key && pk && key === pk) {
+              prev = previous[j];
+              usedPrev[j] = true;
+              break;
+            }
+          }
+        }
+        if (!prev && previous[i] && !usedPrev[i]) {
+          prev = previous[i];
+          usedPrev[i] = true;
+        }
+      }
+      if (!cur && !prev) continue;
+      groups.push({
+        label: (cur && (cur.shortLabel || cur.label || formatDateShort(cur.date))) ||
+          (prev && (prev.shortLabel || prev.label || formatDateShort(prev.date))) ||
+          "—",
+        current: cur && cur.score != null ? cur.score : null,
+        previous: prev && prev.score != null ? prev.score : null,
+        status: cur && cur.score != null ? scoreStatus(cur.score) : "pending",
+        findings: cur && cur.findings != null ? cur.findings : null,
+      });
+    }
+
+    var html =
+      '<div class="c360-groupbars" role="img" aria-label="Evolución del indicador por fecha' +
+      (hasCompare ? ", comparando con el periodo anterior" : "") +
+      '">';
+    html +=
+      '<div class="c360-groupbars-legend" role="list">' +
+      '<span class="c360-groupbars-leg current" role="listitem"><i></i>Periodo actual</span>' +
+      (hasCompare
+        ? '<span class="c360-groupbars-leg previous" role="listitem"><i></i>Periodo anterior</span>'
+        : "") +
+      '<span class="c360-groupbars-leg target" role="listitem"><i></i>Meta ' +
+      META_TARGET +
+      "%</span>" +
+      "</div>";
+
+    html += '<div class="c360-groupbars-plot">';
+    html += '<div class="c360-groupbars-yaxis" aria-hidden="true">';
+    [100, 75, 50, 25, 0].forEach(function (t) {
+      html += "<span>" + t + "</span>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="c360-groupbars-grid" aria-hidden="true">' +
+      '<i style="bottom:100%"></i><i style="bottom:75%"></i><i style="bottom:50%"></i><i style="bottom:25%"></i><i style="bottom:0"></i>' +
+      '<b class="c360-groupbars-meta" style="bottom:' +
+      META_TARGET +
+      '%"></b>' +
+      "</div>";
+    html += '<div class="c360-groupbars-cols">';
+    groups.forEach(function (g) {
+      var curH = g.current == null ? 0 : Math.max(0, Math.min(100, g.current));
+      var prevH = g.previous == null ? 0 : Math.max(0, Math.min(100, g.previous));
+      html +=
+        '<div class="c360-groupbars-col' +
+        (hasCompare ? " has-compare" : "") +
+        '" title="' +
+        escapeHtml(g.label) +
+        (g.current != null ? " · actual " + g.current + "%" : "") +
+        (g.previous != null ? " · anterior " + g.previous + "%" : "") +
+        '">';
+      html += '<div class="c360-groupbars-pair">';
+      if (hasCompare) {
+        html +=
+          '<div class="c360-groupbars-bar previous" style="height:' +
+          (g.previous == null ? 0 : Math.max(prevH, 3)) +
+          '%"><span>' +
+          (g.previous == null ? "" : g.previous + "%") +
+          "</span></div>";
+      }
+      html +=
+        '<div class="c360-groupbars-bar current tone-' +
+        g.status +
+        '" style="height:' +
+        (g.current == null ? 0 : Math.max(curH, 3)) +
+        '%"><span>' +
+        (g.current == null ? "" : g.current + "%") +
+        "</span></div>";
+      html += "</div>";
+      html += '<div class="c360-groupbars-xlabel">' + escapeHtml(g.label) + "</div>";
+      html += "</div>";
+    });
+    html += "</div></div>";
+    if (groups.length < 3) {
+      html +=
+        '<p class="c360-groupbars-note">Pocas mediciones en el corte · con más visitas la comparación por fecha se vuelve más clara.</p>';
     }
     html += "</div>";
     return html;
@@ -2674,7 +2847,7 @@
           (data.farms.length === 1 ? "" : "s")
         : "Sin visitas en el periodo"
     );
-    html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
+    html += chartGroupedBars(data.timeline, state.compare && prevData ? prevData.timeline : null);
     html += "</section></div>";
 
     html += renderAlerts(alerts);
@@ -2830,7 +3003,7 @@
           " visitas"
         : "Sin visitas en el periodo"
     );
-    html += chartLine(
+    html += chartGroupedBars(
       data.chartTimeline || data.timeline,
       state.compare && prevData ? prevData.chartTimeline || prevData.timeline : null
     );

@@ -1863,6 +1863,225 @@ html.c360-metrics-lite .metrics-actions {
   margin-top: 4px;
 }
 
+/* —— Barras agrupadas (Evolución: actual vs anterior) —— */
+.c360-groupbars {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.c360-groupbars-empty {
+  padding: 18px 14px;
+  border-radius: 14px;
+  background: var(--c360-muted, #f3f8fa);
+  border: 1px dashed var(--c360-line-soft, #d7e2e6);
+}
+
+.c360-groupbars-empty p {
+  margin: 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.c360-groupbars-empty p + p {
+  margin-top: 6px;
+}
+
+.c360-groupbars-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--c360-legend, #f3f8fa);
+  border: 1px solid var(--c360-line-soft, #dbe4e8);
+}
+
+.c360-groupbars-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-groupbars-leg i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: #007fa3;
+}
+
+.c360-groupbars-leg.previous i {
+  background: #f2a900;
+}
+
+.c360-groupbars-leg.target i {
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
+  background: #007fa3;
+}
+
+.c360-groupbars-plot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 220px;
+  padding: 8px 4px 0 0;
+}
+
+.c360-groupbars-yaxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 2px 28px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c360-chart-xlabel, #5b6b70);
+  line-height: 1;
+}
+
+.c360-groupbars-grid {
+  position: absolute;
+  left: 28px;
+  right: 0;
+  top: 8px;
+  bottom: 28px;
+  pointer-events: none;
+}
+
+.c360-groupbars-grid > i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--c360-chart-grid, #e7eef1);
+}
+
+.c360-groupbars-meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px dashed #007fa3;
+  opacity: 0.85;
+}
+
+.c360-groupbars-cols {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 220px;
+  padding-bottom: 28px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.c360-groupbars-col {
+  flex: 1 1 52px;
+  min-width: 48px;
+  max-width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.c360-groupbars-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 180px;
+}
+
+.c360-groupbars-bar {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 28px;
+  min-width: 14px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, #2aa0c2, #007fa3);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%);
+  transition: height 0.35s ease;
+}
+
+.c360-groupbars-bar span {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 25%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.c360-groupbars-bar.previous {
+  background: linear-gradient(180deg, #ffc44d, #f2a900);
+}
+
+.c360-groupbars-bar.previous span {
+  color: #4a3200;
+  text-shadow: none;
+}
+
+.c360-groupbars-bar.current.tone-healthy {
+  background: linear-gradient(180deg, #3cb87f, #1f8a5b);
+}
+.c360-groupbars-bar.current.tone-acceptable {
+  background: linear-gradient(180deg, #e0a63a, #c98512);
+}
+.c360-groupbars-bar.current.tone-critical {
+  background: linear-gradient(180deg, #e06b5c, #c44b3c);
+}
+.c360-groupbars-bar.current.tone-pending {
+  background: linear-gradient(180deg, #a8b7bc, #8aa0a6);
+}
+
+.c360-groupbars-xlabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--c360-chart-xlabel, #5b6b70);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.c360-groupbars-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--c360-ink-soft, #58696d);
+}
+
+html.dark .c360-groupbars-legend,
+html.dark .c360-groupbars-empty {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 420px) {
+  .c360-groupbars-pair {
+    height: 150px;
+  }
+  .c360-groupbars-cols,
+  .c360-groupbars-plot {
+    min-height: 190px;
+  }
+}
+
 .c360-linechart-exec {
   display: flex;
   flex-wrap: wrap;
