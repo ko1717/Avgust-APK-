@@ -1,6 +1,6 @@
 /*
- * Detalle por capítulo: tabla de subcapítulos + gráfica por capítulo
- * en Todas las fincas y Por finca.
+ * Capítulos MIPE unificados: las 5 barras + catálogo de subcapítulos
+ * en Todas las fincas y Por finca, con una sola leyenda.
  */
 import puppeteer from 'puppeteer';
 import fs from 'fs';
@@ -84,74 +84,86 @@ await wait(600);
 const allView = await p.evaluate(() => {
   const board = document.querySelector('#c360-metrics-board');
   const detail = document.querySelector('#c360-chapter-detail');
-  const afterCharts = !!(
-    document.querySelector('.c360-metrics-charts') &&
-    detail &&
-    document.querySelector('.c360-metrics-charts').compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING
-  );
+  const charts = document.querySelector('.c360-metrics-charts');
   const rows = [...document.querySelectorAll('.c360-chdetail-row')].map((el) => el.getAttribute('data-chapter'));
+  const legend = detail?.querySelector('.c360-metrics-legend')?.innerText || '';
+  const titles = [...document.querySelectorAll('#c360-metrics-board h3, #c360-metrics-board .c360-card-head h3')].map(
+    (el) => (el.textContent || '').trim()
+  );
   return {
     hasDetail: !!detail,
-    afterCharts,
+    insideCharts: !!(charts && detail && charts.contains(detail)),
     chapters: rows,
     title: detail?.querySelector('h3')?.textContent || '',
-    barsStillThere: !!document.querySelector('.c360-metrics-charts .c360-hbar-chart'),
+    unifiedBars: document.querySelectorAll('#c360-chapter-detail .c360-chdetail-bar').length,
+    extraFindingsChart: titles.some((t) => /Hallazgos por capítulo/i.test(t)),
+    extraScoreChart: titles.some((t) => /Indicador por capítulo/i.test(t)),
+    legendHasHealthy: /Saludable/i.test(legend),
+    legendHasCritical: /Crítico/i.test(legend),
+    legendHasPending: /Sin medición/i.test(legend),
+    legendHasMeta: /Meta 80%/i.test(legend),
     hiddenSubs: [...document.querySelectorAll('.c360-chdetail-subs')].every((el) => el.hidden),
+    noChartBtn: !document.querySelector('[data-chart-chapter]'),
   };
 });
-check('Todas: el detalle queda después de las barras de capítulo', allView.hasDetail && allView.afterCharts, JSON.stringify(allView));
-check('Todas: hay filas de capítulo y las barras originales siguen', allView.chapters.length >= 3 && allView.barsStillThere, JSON.stringify(allView.chapters));
+check(
+  'Todas: los 5 capítulos MIPE aparecen en un solo bloque',
+  allView.hasDetail &&
+    allView.insideCharts &&
+    allView.chapters.join(',') === '1,2,3,4,5' &&
+    allView.unifiedBars === 5,
+  JSON.stringify(allView)
+);
+check(
+  'Todas: una sola leyenda (estado + meta) y no hay gráfica duplicada',
+  allView.legendHasHealthy &&
+    allView.legendHasCritical &&
+    allView.legendHasPending &&
+    allView.legendHasMeta &&
+    !allView.extraFindingsChart &&
+    !allView.extraScoreChart &&
+    allView.noChartBtn,
+  JSON.stringify(allView)
+);
 check('Todas: los subcapítulos arrancan cerrados', allView.hiddenSubs);
 
 await p.evaluate(() => {
-  const row = document.querySelector('.c360-chdetail-row[data-chapter="4"] [data-toggle-chapter]');
-  row?.click();
+  document.querySelector('.c360-chdetail-row[data-chapter="4"] [data-toggle-chapter]')?.click();
 });
 await wait(400);
 const expanded = await p.evaluate(() => {
   const row = document.querySelector('.c360-chdetail-row[data-chapter="4"]');
-  const tableText = row?.querySelector('.c360-chdetail-table')?.innerText || '';
-  const chartHidden = row?.querySelector('.c360-chdetail-chart')?.hidden;
+  const text = row?.innerText || '';
+  const ids = [...row.querySelectorAll('.c360-chdetail-subbar strong')].map((el) => el.textContent.trim());
   return {
     open: row?.classList.contains('is-open'),
-    has46: /4\.1/.test(tableText) && /Equipos de dosificación|Calidad del agua/i.test(tableText),
-    has410: /4\.2/.test(tableText) && /Programa del bombero/i.test(tableText),
-    chartHidden,
-    tableText: tableText.replace(/\s+/g, ' ').slice(0, 220),
+    has41: /4\.1/.test(text) && /Equipos de dosificación/i.test(text),
+    has46: /4\.6/.test(text) && /Calidad del agua/i.test(text),
+    has410: /4\.10/.test(text) && /Mezcla final/i.test(text),
+    pending46: /4\.6[\s\S]*Sin evaluar/i.test(text),
+    count: row?.querySelectorAll('.c360-chdetail-subbar').length || 0,
+    ids: ids.slice(0, 12),
   };
 });
-check('Todas: al tocar cap. 4 se ven subcapítulos medidos', expanded.open && expanded.has46 && expanded.has410, JSON.stringify(expanded));
-check('Todas: la gráfica del capítulo no se abre sola', !!expanded.chartHidden);
+check(
+  'Todas: al tocar cap. 4 se ve el catálogo 4.1–4.10',
+  expanded.open && expanded.has41 && expanded.has46 && expanded.has410 && expanded.count === 10,
+  JSON.stringify(expanded)
+);
+check('Todas: 4.6 no medido queda en gris / Sin evaluar', expanded.pending46, JSON.stringify(expanded));
 
-await p.evaluate(() => document.querySelector('.c360-chdetail-row[data-chapter="4"] [data-chart-chapter]')?.click());
-await wait(400);
-const chartOpen = await p.evaluate(() => {
-  const row = document.querySelector('.c360-chdetail-row[data-chapter="4"]');
-  const chart = row?.querySelector('.c360-chdetail-chart');
-  const pressed = row?.querySelector('[data-chart-chapter]')?.getAttribute('aria-pressed');
-  const labels = [...(chart?.querySelectorAll('.c360-hbar-head strong') || [])].map((el) => el.textContent.trim());
-  return {
-    visible: chart && !chart.hidden,
-    pressed,
-    has46bar: labels.some((t) => /4\.1/.test(t)),
-    onlyThis: [...document.querySelectorAll('.c360-chdetail-chart')].filter((el) => !el.hidden).length === 1,
-    labels: labels.slice(0, 8),
-  };
-});
-check('Todas: el botón Gráfica muestra barras solo del cap. 4', chartOpen.visible && chartOpen.has46bar && chartOpen.onlyThis, JSON.stringify(chartOpen));
-
-await p.evaluate(() => {
-  document.querySelector('#c360-chapter-detail')?.scrollIntoView({ block: 'start' });
-});
+await p.evaluate(() => document.querySelector('#c360-chapter-detail')?.scrollIntoView({ block: 'start' }));
 await wait(300);
 await p.screenshot({ path: path.join(OUT, 'metricas_todas_detalle_cap4.png') });
 
 await p.evaluate(() => document.querySelector('#c360-metrics-board [data-mode="farm"]')?.click());
 await wait(800);
-const farmView = await p.evaluate((farmName) => {
+await p.evaluate((farmName) => {
   const sel = document.querySelector('#c360-metrics-board select[data-field="farm"]');
   if (sel) {
-    const hit = [...sel.options].find((o) => /San Isidro/i.test(o.value + ' ' + o.textContent) || (o.value || '').includes(farmName));
+    const hit = [...sel.options].find(
+      (o) => /San Isidro/i.test(o.value + ' ' + o.textContent) || (o.value || '').includes(farmName)
+    );
     if (hit) {
       sel.value = hit.value;
       sel.dispatchEvent(new Event('change', { bubbles: true }));
@@ -163,25 +175,32 @@ await wait(900);
 
 const farmDetail = await p.evaluate(() => {
   const detail = document.querySelector('#c360-chapter-detail');
-  const afterCharts = !!(
-    document.querySelector('.c360-metrics-charts') &&
-    detail &&
-    document.querySelector('.c360-metrics-charts').compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING
-  );
+  const charts = document.querySelector('.c360-metrics-charts');
+  const chapters = [...document.querySelectorAll('.c360-chdetail-row')].map((el) => el.getAttribute('data-chapter'));
   document.querySelector('.c360-chdetail-row[data-chapter="5"] [data-toggle-chapter]')?.click();
   const row = document.querySelector('.c360-chdetail-row[data-chapter="5"]');
-  const tableText = row?.querySelector('.c360-chdetail-table')?.innerText || '';
+  const text = row?.innerText || '';
   return {
     hasDetail: !!detail,
-    afterCharts,
+    insideCharts: !!(charts && detail && charts.contains(detail)),
+    chapters,
     open5: row?.classList.contains('is-open'),
-    has51: /5\.1/.test(tableText) && /Presión/i.test(tableText),
-    hasResult: /Sí cumple|No cumple/i.test(tableText),
-    tableText: tableText.replace(/\s+/g, ' ').slice(0, 240),
+    has51: /5\.1/.test(text) && /Presión/i.test(text),
+    has511: /5\.11/.test(text) && /Registro de aplicación/i.test(text),
+    hasResult: /Sí cumple|No cumple/i.test(text),
+    count: row?.querySelectorAll('.c360-chdetail-subbar').length || 0,
+    tableText: text.replace(/\s+/g, ' ').slice(0, 280),
   };
 });
-check('Por finca: el mismo bloque queda después de las barras', farmDetail.hasDetail && farmDetail.afterCharts);
-check('Por finca: cap. 5 muestra 5.1 presión y el resultado', farmDetail.open5 && farmDetail.has51 && farmDetail.hasResult, farmDetail.tableText);
+check(
+  'Por finca: los 5 capítulos quedan en el mismo bloque de barras',
+  farmDetail.hasDetail && farmDetail.insideCharts && farmDetail.chapters.join(',') === '1,2,3,4,5'
+);
+check(
+  'Por finca: cap. 5 muestra 5.1–5.11 y el resultado',
+  farmDetail.open5 && farmDetail.has51 && farmDetail.has511 && farmDetail.hasResult && farmDetail.count === 11,
+  farmDetail.tableText
+);
 
 await p.evaluate(() => document.querySelector('#c360-chapter-detail')?.scrollIntoView({ block: 'start' }));
 await wait(300);

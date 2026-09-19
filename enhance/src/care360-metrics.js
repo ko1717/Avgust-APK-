@@ -54,6 +54,83 @@
     "5.11": "Registro de aplicación",
   };
 
+  var CHAPTER_ITEMS = {
+    1: ["1.1", "1.2", "1.3", "1.4"],
+    2: ["2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8"],
+    3: ["3.1", "3.2", "3.3", "3.4"],
+    4: ["4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9", "4.10"],
+    5: ["5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "5.7", "5.8", "5.9", "5.10", "5.11"],
+  };
+
+  function officialChapterIds() {
+    return Object.keys(CHAPTER_TITLES)
+      .map(Number)
+      .sort(function (a, b) {
+        return a - b;
+      });
+  }
+
+  function catalogIds(chapterId) {
+    return (CHAPTER_ITEMS[Number(chapterId)] || []).slice();
+  }
+
+  function emptyChapter(id) {
+    return {
+      id: id,
+      title: CHAPTER_TITLES[id] || "Capítulo " + id,
+      applicable: 0,
+      findings: 0,
+      score: null,
+      status: "pending",
+      farms: 0,
+    };
+  }
+
+  function fillOfficialChapters(chapters) {
+    var byId = {};
+    (chapters || []).forEach(function (c) {
+      byId[Number(c.id)] = c;
+    });
+    return officialChapterIds().map(function (id) {
+      return byId[id] || emptyChapter(id);
+    });
+  }
+
+  function emptySub(id, chapterId) {
+    return mapSubchapter({
+      id: id,
+      chapter: Number(chapterId),
+      applicable: 0,
+      findings: 0,
+      text: itemShort(id),
+      answer: "",
+    });
+  }
+
+  function fillOfficialSubchapters(subchapters) {
+    var byId = {};
+    (subchapters || []).forEach(function (it) {
+      byId[it.id] = it;
+    });
+    var out = [];
+    officialChapterIds().forEach(function (ch) {
+      catalogIds(ch).forEach(function (id) {
+        out.push(byId[id] || emptySub(id, ch));
+        delete byId[id];
+      });
+    });
+    Object.keys(byId)
+      .sort(sortItemId)
+      .forEach(function (id) {
+        out.push(byId[id]);
+      });
+    return out;
+  }
+
+  function isMeasuredSub(it) {
+    return !!(it && (it.applicable > 0 || it.answer === "SI" || it.answer === "NO"));
+  }
+
   function itemShort(id, ans) {
     if (ITEM_SHORT[id]) return ITEM_SHORT[id];
     var raw = ans && typeof ans === "object" ? ans.text : "";
@@ -356,8 +433,8 @@
 
     return {
       farms: farms,
-      chapters: chapters,
-      subchapters: subchapters,
+      chapters: fillOfficialChapters(chapters),
+      subchapters: fillOfficialSubchapters(subchapters),
       items: items,
       score: totalApp ? Math.round(((totalApp - totalFind) / totalApp) * 100) : null,
       findings: totalFind,
@@ -1599,9 +1676,6 @@
           score: st.score,
           status: scoreStatus(st.score),
         };
-      })
-      .filter(function (c) {
-        return c.applicable > 0;
       });
 
     var items = [];
@@ -1646,8 +1720,8 @@
       years: years,
       timeline: timeline,
       chartTimeline: bucketTimeline(timeline),
-      chapters: chapters,
-      subchapters: subchapters,
+      chapters: fillOfficialChapters(chapters),
+      subchapters: fillOfficialSubchapters(subchapters),
       items: items,
       visits: filtered.length,
       findings: totalFindings,
@@ -2017,6 +2091,7 @@
         '<span class="c360-leg-item tone-healthy" role="listitem"><i></i>Saludable ≥80%</span>' +
         '<span class="c360-leg-item tone-acceptable" role="listitem"><i></i>Aceptable 50–79%</span>' +
         '<span class="c360-leg-item tone-critical" role="listitem"><i></i>Crítico &lt;50%</span>' +
+        '<span class="c360-leg-item tone-pending" role="listitem"><i></i>Sin medición</span>' +
         '<span class="c360-leg-item target" role="listitem"><i></i>Meta 80%</span>' +
         "</div>"
       );
@@ -2203,108 +2278,133 @@
     return html;
   }
 
+  function scoreBarFill(score) {
+    if (score == null || isNaN(score) || score <= 0) return 0;
+    return Math.max(4, Math.min(100, Math.round(score)));
+  }
+
+  function renderUnifiedBar(opts) {
+    var score = opts.score;
+    var tone = opts.tone || scoreStatus(score);
+    var meta = opts.meta || "";
+    var pill = opts.pill || "";
+    var extraClass = opts.extraClass || "";
+    var tag = opts.button ? "button" : "div";
+    var open = !!opts.open;
+    var html =
+      "<" +
+      tag +
+      (opts.button
+        ? ' type="button" aria-expanded="' + (open ? "true" : "false") + '"'
+        : "") +
+      ' class="c360-hbar-row tone-' +
+      tone +
+      (opts.button ? " c360-hbar-hit" : "") +
+      (open ? " is-open" : "") +
+      (extraClass ? " " + extraClass : "") +
+      '"' +
+      (opts.toggleId != null ? ' data-toggle-chapter="' + opts.toggleId + '"' : "") +
+      (opts.role ? ' role="' + opts.role + '"' : "") +
+      ">";
+    html += '<div class="c360-hbar-head">';
+    html += "<strong>" + escapeHtml(opts.label || "") + "</strong>";
+    if (meta) html += '<span class="c360-hbar-meta">' + escapeHtml(meta) + "</span>";
+    html += "</div>";
+    html += '<div class="c360-hbar-track-wrap"><div class="c360-hbar-track">';
+    html +=
+      '<div class="c360-hbar-fill tone-' +
+      tone +
+      '" style="width:' +
+      scoreBarFill(score) +
+      '%"></div>';
+    html += '<i class="c360-hbar-target" style="left:80%" aria-hidden="true"></i></div>';
+    html +=
+      '<strong class="c360-hbar-value">' + (score == null ? "—" : score + "%") + "</strong></div>";
+    if (pill) html += pill;
+    html += "</" + tag + ">";
+    return html;
+  }
+
+  function resultPill(answer) {
+    var tone = answer === "NO" ? "critical" : answer === "SI" ? "healthy" : "pending";
+    return (
+      '<span class="c360-mpill tone-' +
+      tone +
+      '">' +
+      escapeHtml(answerLabel(answer)) +
+      "</span>"
+    );
+  }
+
   function renderChapterDetail(data) {
-    var chapters = (data && data.chapters) || [];
-    if (!chapters.length) return "";
+    var chapters = fillOfficialChapters((data && data.chapters) || []);
+    var allSubs = fillOfficialSubchapters((data && data.subchapters) || []);
     var farmMode = state.mode === "farm";
+    var openId = state.openChapter != null ? Number(state.openChapter) : null;
     var html =
       '<section class="c360-metrics-card c360-metrics-section c360-chapter-detail" id="c360-chapter-detail">';
     html += cardHead(
-      "Detalle por capítulo",
+      "Capítulos MIPE",
       farmMode
-        ? "Última visita. Tocá un capítulo para ver subcapítulos. La gráfica es solo de ese capítulo."
-        : "Periodo seleccionado. Tocá un capítulo para ver subcapítulos. La gráfica es solo de ese capítulo."
+        ? "Los 5 capítulos de la última visita. Una sola barra: color = estado, largo = indicador, meta 80%. Tocá un capítulo para ver todos sus subcapítulos."
+        : "Los 5 capítulos del periodo. Una sola barra: color = estado, largo = indicador, meta 80%. Tocá un capítulo para ver todos sus subcapítulos."
     );
-    html += '<div class="c360-chdetail">';
+    html += legendHtml("score");
+    html += '<div class="c360-chdetail c360-chdetail-unified" role="list">';
     chapters.forEach(function (c) {
-      var subs = ((data && data.subchapters) || []).filter(function (it) {
-        if (Number(it.chapter) !== Number(c.id)) return false;
-        return it.applicable > 0 || it.answer === "SI" || it.answer === "NO";
+      var catalog = allSubs.filter(function (it) {
+        return Number(it.chapter) === Number(c.id);
       });
-      html += '<article class="c360-chdetail-row" data-chapter="' + c.id + '">';
-      html += '<div class="c360-chdetail-main">';
-      html +=
-        '<button type="button" class="c360-chdetail-toggle" data-toggle-chapter="' +
-        c.id +
-        '" aria-expanded="false">';
-      html += '<span class="c360-chdetail-id">' + escapeHtml(String(c.id)) + "</span>";
-      html +=
-        '<span class="c360-chdetail-title"><strong>' +
-        escapeHtml(c.title) +
-        "</strong><span>" +
-        (c.applicable || 0) +
-        " criterio" +
-        ((c.applicable || 0) === 1 ? "" : "s") +
-        "</span></span>";
-      html +=
-        '<span class="c360-chdetail-kpi"><strong>' +
-        (c.score == null ? "—" : c.score + "%") +
-        "</strong>" +
-        barHtml(c.score, c.status) +
-        "</span>";
-      html +=
-        '<span class="c360-chdetail-find">' +
+      var measured = catalog.filter(isMeasuredSub);
+      var isOpen = openId === Number(c.id);
+      var meta =
         (c.findings || 0) +
         " hallazgo" +
         ((c.findings || 0) === 1 ? "" : "s") +
-        "</span>";
-      html += '<span class="c360-chdetail-chev" aria-hidden="true"></span>';
-      html += "</button>";
-      if (subs.length) {
-        html +=
-          '<button type="button" class="c360-alert-btn c360-chdetail-chartbtn" data-chart-chapter="' +
-          c.id +
-          '" aria-pressed="false" title="Ver gráfica de este capítulo">Gráfica</button>';
-      }
-      html += "</div>";
-      html += '<div class="c360-chdetail-subs" hidden>';
-      if (!subs.length) {
-        html += '<p class="muted">Sin subcapítulos medidos en este corte.</p>';
-      } else {
-        html += '<div class="c360-chdetail-table-wrap"><table class="c360-chdetail-table"><thead><tr>';
-        html += "<th>Subcapítulo</th><th>Criterio</th>";
-        if (farmMode) html += "<th>Resultado</th>";
-        html += "<th>Indicador</th><th>Hallazgos</th></tr></thead><tbody>";
-        subs.forEach(function (it) {
-          html += '<tr class="tone-' + (it.status || "pending") + '">';
-          html += "<th>" + escapeHtml(it.id) + "</th>";
-          html += "<td>" + escapeHtml(it.title || itemShort(it.id)) + "</td>";
-          if (farmMode) {
-            var ansTone =
-              it.answer === "NO" ? "critical" : it.answer === "SI" ? "healthy" : "pending";
-            html +=
-              '<td><span class="c360-mpill tone-' +
-              ansTone +
-              '">' +
-              escapeHtml(answerLabel(it.answer)) +
-              "</span></td>";
-          }
-          html +=
-            "<td>" +
-            (it.score == null ? "—" : it.score + "%") +
-            barHtml(it.score, it.status) +
-            "</td>";
-          html += "<td>" + (it.findings || 0) + "</td></tr>";
+        " · " +
+        measured.length +
+        " de " +
+        (catalog.length || catalogIds(c.id).length) +
+        " evaluados";
+      html +=
+        '<article class="c360-chdetail-row' +
+        (isOpen ? " is-open" : "") +
+        '" data-chapter="' +
+        c.id +
+        '" role="listitem">';
+      html += renderUnifiedBar({
+        label: c.id + ". " + (c.title || CHAPTER_TITLES[c.id] || ""),
+        score: c.score,
+        tone: c.status || scoreStatus(c.score),
+        meta: meta,
+        button: true,
+        open: isOpen,
+        toggleId: c.id,
+        extraClass: "c360-chdetail-bar",
+      });
+      html +=
+        '<div class="c360-chdetail-subs"' +
+        (isOpen ? "" : " hidden") +
+        '>';
+      html +=
+        '<p class="c360-chdetail-subs-note">Catálogo completo del capítulo ' +
+        c.id +
+        ". Gris = todavía no se midió.</p>";
+      html += '<div class="c360-hbar-chart c360-chdetail-subbars">';
+      catalog.forEach(function (it) {
+        var subMeta = isMeasuredSub(it)
+          ? (it.findings || 0) + " hallazgo" + ((it.findings || 0) === 1 ? "" : "s")
+          : "Sin evaluar";
+        html += renderUnifiedBar({
+          label: it.id + " · " + (it.title || itemShort(it.id)),
+          score: it.score,
+          tone: it.status || scoreStatus(it.score),
+          meta: subMeta,
+          extraClass: "c360-chdetail-subbar" + (isMeasuredSub(it) ? "" : " is-pending"),
+          pill: farmMode ? resultPill(it.answer) : "",
         });
-        html += "</tbody></table></div>";
-      }
-      html += "</div>";
-      if (subs.length) {
-        html += '<div class="c360-chdetail-chart" hidden>';
-        html += chartBars(
-          subs.map(function (it) {
-            return {
-              label: it.id + " · " + (it.title || itemShort(it.id)),
-              score: it.score,
-              findings: it.findings,
-              applicable: it.applicable,
-            };
-          }),
-          "score"
-        );
-        html += "</div>";
-      }
-      html += "</article>";
+      });
+      html += "</div></div></article>";
     });
     html += "</div></section>";
     return html;
@@ -2888,44 +2988,8 @@
     html += "</section>";
 
     html += '<div class="c360-metrics-charts">';
-    html += '<section class="c360-metrics-card c360-metrics-exec-chart">';
-    html += cardHead(
-      "Indicador por capítulo",
-      "Cumplimiento del periodo. Línea de meta en 80%. Tocá un capítulo para profundizar."
-    );
-    html += chartBars(
-      data.chapters.map(function (c) {
-        return {
-          label: c.id + ". " + shortTitle(c.title),
-          score: c.score,
-          findings: c.findings,
-          applicable: c.applicable,
-          chapterId: c.id,
-        };
-      }),
-      "score"
-    );
-    html += "</section>";
-    html += '<section class="c360-metrics-card c360-metrics-exec-chart">';
-    html += cardHead(
-      "Hallazgos por capítulo",
-      "No cumple concentrados. Más largo = más prioridad de atención."
-    );
-    html += chartBars(
-      data.chapters.map(function (c) {
-        return {
-          label: c.id + ". " + shortTitle(c.title),
-          findings: c.findings,
-          score: c.score,
-          applicable: c.applicable,
-          chapterId: c.id,
-        };
-      }),
-      "findings"
-    );
-    html += "</section></div>";
-
     html += renderChapterDetail(data);
+    html += "</div>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead("Subcapítulos con más hallazgos", "Criterios que más se incumplen.");
@@ -3113,42 +3177,8 @@
     html += "</section>";
 
     html += '<div class="c360-metrics-charts">';
-    html += '<section class="c360-metrics-card c360-metrics-exec-chart">';
-    html += cardHead(
-      "Capítulos · última visita",
-      (data.lastDate ? "Visita del " + formatDateEs(data.lastDate) + "." : "Sin visita reciente.") +
-        " Meta 80%. Tocá un capítulo para ver No cumple."
-    );
-    html += chartBars(
-      data.chapters.map(function (c) {
-        return {
-          label: c.id + ". " + shortTitle(c.title),
-          score: c.score,
-          findings: c.findings,
-          applicable: c.applicable,
-          chapterId: c.id,
-        };
-      }),
-      "score"
-    );
-    html += "</section>";
-    html += '<section class="c360-metrics-card c360-metrics-exec-chart">';
-    html += cardHead("Hallazgos por capítulo", "No cumple en la última visita · más largo = más urgente.");
-    html += chartBars(
-      data.chapters.map(function (c) {
-        return {
-          label: c.id + ". " + shortTitle(c.title),
-          findings: c.findings,
-          score: c.score,
-          applicable: c.applicable,
-          chapterId: c.id,
-        };
-      }),
-      "findings"
-    );
-    html += "</section></div>";
-
     html += renderChapterDetail(data);
+    html += "</div>";
     html += renderNocumpleDetail(data);
     return html;
   }
@@ -3681,9 +3711,11 @@
       findings: findings,
     };
     if (state.mode === "farm") state.nocumpleOpen = true;
+    state.openChapter = ch;
     render();
     window.setTimeout(function () {
-      var el = q("#c360-metrics-focus");
+      var row = q('.c360-chdetail-row[data-chapter="' + ch + '"]');
+      var el = row || q("#c360-metrics-focus");
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 40);
   }
@@ -3782,49 +3814,24 @@
         ev.stopPropagation();
         var row = btn.closest(".c360-chdetail-row");
         if (!row) return;
+        var chapterId = Number(btn.getAttribute("data-toggle-chapter") || row.getAttribute("data-chapter"));
         var open = !row.classList.contains("is-open");
+        state.openChapter = open ? chapterId : null;
         qa(".c360-chdetail-row", root).forEach(function (other) {
           var toggle = q("[data-toggle-chapter]", other);
           var subs = q(".c360-chdetail-subs", other);
-          var chart = q(".c360-chdetail-chart", other);
-          var chartBtn = q("[data-chart-chapter]", other);
-          other.classList.toggle("is-open", open && other === row);
-          if (toggle) toggle.setAttribute("aria-expanded", open && other === row ? "true" : "false");
-          if (subs) subs.hidden = !(open && other === row);
-          if (chart) chart.hidden = true;
-          if (chartBtn) chartBtn.setAttribute("aria-pressed", "false");
+          var isThis = open && other === row;
+          other.classList.toggle("is-open", isThis);
+          if (toggle) {
+            toggle.setAttribute("aria-expanded", isThis ? "true" : "false");
+            toggle.classList.toggle("is-open", isThis);
+          }
+          if (subs) subs.hidden = !isThis;
         });
         if (open) {
           window.setTimeout(function () {
             if (row.scrollIntoView) row.scrollIntoView({ behavior: "smooth", block: "nearest" });
           }, 40);
-        }
-      });
-    });
-    qa("[data-chart-chapter]", root).forEach(function (btn) {
-      btn.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        var row = btn.closest(".c360-chdetail-row");
-        if (!row) return;
-        var wasPressed = btn.getAttribute("aria-pressed") === "true";
-        var toggle = q("[data-toggle-chapter]", row);
-        if (!row.classList.contains("is-open") && toggle) toggle.click();
-        qa(".c360-chdetail-chart", root).forEach(function (el) {
-          el.hidden = true;
-        });
-        qa("[data-chart-chapter]", root).forEach(function (other) {
-          other.setAttribute("aria-pressed", "false");
-        });
-        if (!wasPressed) {
-          var chart = q(".c360-chdetail-chart", row);
-          if (chart) {
-            chart.hidden = false;
-            btn.setAttribute("aria-pressed", "true");
-            window.setTimeout(function () {
-              if (chart.scrollIntoView) chart.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            }, 40);
-          }
         }
       });
     });
