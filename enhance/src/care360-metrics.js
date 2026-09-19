@@ -193,26 +193,38 @@
     );
   }
 
-  function capSubDefinitionNote(mode) {
+  function seriesLabels(mode) {
     if (mode === "farm") {
-      return (
-        "Capítulos = indicador de la última visita · Subcapítulos = promedio de cumplimiento por criterio en todo el periodo."
-      );
+      return {
+        cap: "Última visita",
+        sub: "Periodo",
+        title: "Cumplimiento por capítulo",
+        note:
+          "Si el naranja va más alto, la última visita salió más floja que el resto del periodo. Si el azul va más alto, esa visita mejoró.",
+      };
     }
-    return (
-      "Capítulos = indicador del capítulo en el periodo (todas las respuestas) · Subcapítulos = promedio de cumplimiento por criterio (peso igual)."
-    );
+    return {
+      cap: "Periodo",
+      sub: "Por ítem",
+      title: "Cumplimiento por capítulo",
+      note:
+        "Azul junta todas las respuestas del capítulo. Naranja promedia cada ítem con el mismo peso.",
+    };
+  }
+
+  function capSubDefinitionNote(mode) {
+    return seriesLabels(mode).note;
   }
 
   function snapChaptersLead(mode, data) {
     if (mode === "farm") {
       return (
-        "Cap = última visita" +
+        "Azul: última visita" +
         (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
-        " · Sub = periodo"
+        " · Naranja: cómo vienen los ítems en el periodo"
       );
     }
-    return "Cap = periodo · Sub = promedio por criterio";
+    return "Azul: todas las respuestas del periodo · Naranja: promedio de cada ítem";
   }
 
   function buildCatalog(visits) {
@@ -848,12 +860,7 @@
       modeLabel: state.mode === "farm" ? "Por finca · " + (state.farm || "") : "Todas las fincas",
       periodFrom: formatDateEs(state.dateFrom) || "Todo",
       periodTo: formatDateEs(state.dateTo) || "Todo",
-      chaptersNote:
-        state.mode === "farm"
-          ? "Capítulos = última visita" +
-            (data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
-            " · Subcapítulos = promedio por criterio del periodo"
-          : "Capítulos = periodo (respuestas ponderadas) · Subcapítulos = promedio por criterio (peso igual)",
+      chaptersNote: snapChaptersLead(state.mode, data),
       findingsNote:
         state.mode === "farm"
           ? "No cumple de la última visita (el KPI de hallazgos suma todo el periodo)"
@@ -991,7 +998,14 @@
       }
       if (data.chapters && data.chapters.length) {
         lines.push(snap.chaptersNote);
-        lines.push("Capítulo,Título,Indicador %,Subcapítulos %,Hallazgos,Aplicables,Estado");
+        var series = seriesLabels(state.mode);
+        lines.push(
+          "Capítulo,Título," +
+            series.cap +
+            " %," +
+            series.sub +
+            " %,Hallazgos,Aplicables,Estado"
+        );
         data.chapters.forEach(function (c) {
           lines.push(
             [
@@ -1590,8 +1604,12 @@
       if (capRows.length) {
         capSubHtml =
           "<div class='groupbars capsub'><div class='groupbars-leg'>" +
-          "<span class='cap'><i></i>Capítulos</span>" +
-          "<span class='sub'><i></i>Subcapítulos</span>" +
+          "<span class='cap'><i></i>" +
+          escapeHtml(seriesLabels(farmOnly ? "farm" : "all").cap) +
+          "</span>" +
+          "<span class='sub'><i></i>" +
+          escapeHtml(seriesLabels(farmOnly ? "farm" : "all").sub) +
+          "</span>" +
           "<span class='t'><i></i>Meta " +
           META_TARGET +
           "%</span></div><div class='groupbars-plot pair'>";
@@ -1626,11 +1644,18 @@
           "</p></div>";
       }
       body += section(
-        "Capítulos y subcapítulos",
-        snap.chaptersNote + " · comparación lado a lado (meta " + META_TARGET + "%).",
+        seriesLabels(farmOnly ? "farm" : "all").title,
+        snap.chaptersNote + " · meta " + META_TARGET + "%.",
         capSubHtml +
           table(
-            ["Capítulo", "Capítulos %", "Subcapítulos %", "Hallazgos", "Aplicables", "Estado"],
+            [
+              "Capítulo",
+              seriesLabels(farmOnly ? "farm" : "all").cap + " %",
+              seriesLabels(farmOnly ? "farm" : "all").sub + " %",
+              "Hallazgos",
+              "Aplicables",
+              "Estado",
+            ],
             data.chapters.map(function (c) {
               return [
                 "<strong>" + escapeHtml(c.id + ". " + c.title) + "</strong>",
@@ -2124,6 +2149,7 @@
       return c && (c.score != null || c.subScore != null || c.applicable > 0);
     });
     if (!rows.length) return "";
+    var series = seriesLabels(state.mode);
 
     var focusCh =
       state.focus && state.focus.type === "chapter" ? Number(state.focus.chapter) : null;
@@ -2133,8 +2159,12 @@
       '<table class="c360-metrics-table c360-capsub-table">' +
       "<thead><tr>" +
       "<th>Capítulo</th>" +
-      "<th>Cap %</th>" +
-      "<th>Sub %</th>" +
+      "<th>" +
+      escapeHtml(series.cap) +
+      "</th>" +
+      "<th>" +
+      escapeHtml(series.sub) +
+      "</th>" +
       "<th>Hall.</th>" +
       "<th>Aplicables</th>" +
       "<th>Estado</th>" +
@@ -2155,8 +2185,8 @@
         escapeHtml(label) +
         '">';
       html += td("Capítulo", "<strong>" + escapeHtml(label) + "</strong>");
-      html += td("Cap %", scoreCell(c.score));
-      html += td("Sub %", scoreCell(c.subScore));
+      html += td(series.cap, scoreCell(c.score));
+      html += td(series.sub, scoreCell(c.subScore));
       html += td("Hallazgos", String(c.findings != null ? c.findings : "—"));
       html += td("Aplicables", String(c.applicable != null ? c.applicable : "—"));
       html += td(
@@ -2521,6 +2551,7 @@
    * Tocá un capítulo para abrir el detalle.
    */
   function chartCapitulosSubcapitulos(chapters) {
+    var series = seriesLabels(state.mode);
     var rows = (chapters || []).filter(function (c) {
       return c && (c.score != null || c.subScore != null);
     });
@@ -2528,7 +2559,7 @@
       return (
         '<div class="c360-groupbars c360-groupbars-empty">' +
         "<p><strong>Sin datos de capítulos</strong></p>" +
-        "<p>Cuando haya visitas revisadas, verás el indicador de cada capítulo junto al promedio de sus criterios en el periodo.</p></div>"
+        "<p>Cuando haya visitas revisadas, verás la última visita junto al promedio de los ítems en el periodo.</p></div>"
       );
     }
 
@@ -2541,19 +2572,25 @@
       if (focusCh != null && Number(c.id) === focusCh) selected = c;
     });
     var html =
-      '<div class="c360-groupbars c360-groupbars-capsub" role="group" aria-label="Indicador por capítulos y subcapítulos">';
+      '<div class="c360-groupbars c360-groupbars-capsub" role="group" aria-label="' +
+      escapeHtml(series.title) +
+      '">';
     html +=
       '<div class="c360-groupbars-legend" role="list">' +
       '<button type="button" class="c360-groupbars-leg cap' +
       (hideCap ? " is-off" : "") +
       '" data-capsub-toggle="cap" role="listitem" aria-pressed="' +
       (hideCap ? "false" : "true") +
-      '"><i></i>Capítulos</button>' +
+      '"><i></i>' +
+      escapeHtml(series.cap) +
+      "</button>" +
       '<button type="button" class="c360-groupbars-leg sub' +
       (hideSub ? " is-off" : "") +
       '" data-capsub-toggle="sub" role="listitem" aria-pressed="' +
       (hideSub ? "false" : "true") +
-      '"><i></i>Subcapítulos</button>' +
+      '"><i></i>' +
+      escapeHtml(series.sub) +
+      "</button>" +
       '<span class="c360-groupbars-leg target" role="listitem"><i></i>Meta ' +
       META_TARGET +
       "%</span>" +
@@ -2590,8 +2627,8 @@
         c.id +
         '" title="' +
         escapeHtml(fullLabel) +
-        (cap != null ? " · capítulo " + cap + "%" : "") +
-        (sub != null ? " · subcapítulos " + sub + "%" : "") +
+        (cap != null ? " · " + series.cap + " " + cap + "%" : "") +
+        (sub != null ? " · " + series.sub + " " + sub + "%" : "") +
         ' · tocar para detalle" aria-label="Ver detalle de ' +
         escapeHtml(fullLabel) +
         '" aria-pressed="' +
@@ -2633,17 +2670,26 @@
         "</strong>";
       html += '<div class="c360-capsub-peek-metrics">';
       html +=
-        '<span class="cap"><i></i>Capítulos <b>' +
+        '<span class="cap"><i></i>' +
+        escapeHtml(series.cap) +
+        " <b>" +
         (selected.score == null ? "—" : selected.score + "%") +
         "</b></span>";
       html +=
-        '<span class="sub"><i></i>Subcapítulos <b>' +
+        '<span class="sub"><i></i>' +
+        escapeHtml(series.sub) +
+        " <b>" +
         (selected.subScore == null ? "—" : selected.subScore + "%") +
         "</b></span>";
       if (delta != null) {
         html +=
           '<span class="delta">' +
-          (delta === 0 ? "Iguales" : (delta > 0 ? "+" : "") + delta + " pts cap vs sub") +
+          (delta === 0
+            ? "Iguales"
+            : (delta > 0 ? "+" : "") +
+              delta +
+              " pts vs " +
+              escapeHtml(series.sub.toLowerCase())) +
           "</span>";
       }
       html += "</div>";
@@ -3546,9 +3592,13 @@
     html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
-    html += cardHead("Capítulos y subcapítulos", snapChaptersLead("all", data));
+    html += cardHead(seriesLabels("all").title, snapChaptersLead("all", data));
     html += chartCapitulosSubcapitulos(data.chapters);
     html += renderCapSubTable(data.chapters);
+    html +=
+      '<p class="muted c360-capsub-hint">' +
+      escapeHtml(seriesLabels("all").note) +
+      "</p>";
     html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
@@ -3710,9 +3760,13 @@
     html += renderFocusPanel();
 
     html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
-    html += cardHead("Capítulos y subcapítulos", snapChaptersLead("farm", data));
+    html += cardHead(seriesLabels("farm").title, snapChaptersLead("farm", data));
     html += chartCapitulosSubcapitulos(data.chapters);
     html += renderCapSubTable(data.chapters);
+    html +=
+      '<p class="muted c360-capsub-hint">' +
+      escapeHtml(seriesLabels("farm").note) +
+      "</p>";
     html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
@@ -4279,17 +4333,22 @@
         ((focus.findings || 0) === 1 ? "" : "s") +
         "</p></div>";
       if (focus.score != null || focus.subScore != null) {
-        html += '<div class="c360-capsub-compare" role="group" aria-label="Capítulos vs subcapítulos">';
         html +=
-          '<div class="c360-capsub-compare-item cap"><span>Capítulos' +
-          (state.mode === "farm" ? " · última visita" : " · periodo") +
+          '<div class="c360-capsub-compare" role="group" aria-label="' +
+          escapeHtml(seriesLabels(state.mode).title) +
+          '">';
+        html +=
+          '<div class="c360-capsub-compare-item cap"><span>' +
+          escapeHtml(seriesLabels(state.mode).cap) +
           "</span><strong>" +
           (focus.score == null ? "—" : focus.score + "%") +
           "</strong>" +
           barHtml(focus.score, scoreStatus(focus.score)) +
           "</div>";
         html +=
-          '<div class="c360-capsub-compare-item sub"><span>Subcapítulos · periodo</span><strong>' +
+          '<div class="c360-capsub-compare-item sub"><span>' +
+          escapeHtml(seriesLabels(state.mode).sub) +
+          "</span><strong>" +
           (focus.subScore == null ? "—" : focus.subScore + "%") +
           "</strong>" +
           barHtml(focus.subScore, scoreStatus(focus.subScore)) +
@@ -4428,11 +4487,8 @@
       type: "chapter",
       title: ch + ". " + title,
       subtitle:
-        (score == null ? "Sin indicador" : "Capítulos " + score + "%") +
-        (subScore == null ? "" : " · Subcapítulos " + subScore + "%") +
-        (state.mode === "farm"
-          ? " · cap. última visita / sub. periodo"
-          : " · ambas del periodo"),
+        (score == null ? "Sin indicador" : seriesLabels(state.mode).cap + " " + score + "%") +
+        (subScore == null ? "" : " · " + seriesLabels(state.mode).sub + " " + subScore + "%"),
       chapter: ch,
       items: items.slice(0, 20),
       score: score,
