@@ -57,7 +57,7 @@ INDEX_PATCHES: list[tuple[str, str, str]] = [
     (
         "título capítulo 1",
         "title:`Almacén e inventarios de PPC`",
-        "title:`Almacén y manejo de inventario`",
+        "title:`Almacenamiento y manejo de inventario`",
     ),
     (
         "título capítulo 2",

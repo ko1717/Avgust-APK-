@@ -1,5 +1,5 @@
 /*
- * AVGUST CARE 360 — capa profesional 1.5.22.
+ * AVGUST CARE 360 — capa profesional 1.5.23.
  *
  * Comportamiento aditivo sobre la aplicación compilada: lockup de marca,
  * píldora de conexión, espejo de guardado, buscadores en listas, resaltado
@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var PRO_VERSION = "1.5.22";
+  var PRO_VERSION = "1.5.23";
   var SUN_KEY = "c360-sun";
 
   var BRAND_SVG =

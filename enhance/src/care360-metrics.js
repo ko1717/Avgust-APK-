@@ -7,7 +7,7 @@
 
   var ROOT_ID = "c360-metrics-board";
   var CHAPTER_TITLES = {
-    1: "Almacén y manejo de inventario",
+    1: "Almacenamiento y manejo de inventario",
     2: "Mediciones y pesaje de PPC's",
     3: "Transporte interno",
     4: "Preparación de mezclas",

@@ -46,7 +46,7 @@ def main() -> int:
             ("envases originales", "envases originales" in source),
             ("implementos", "Los implementos de aspersión" in source),
             ("metodología", "title:`METODOLOGÍA`" in source),
-            ("capítulo 1 Almacén y manejo", "title:`Almacén y manejo de inventario`" in source),
+            ("capítulo 1 Almacenamiento y manejo", "title:`Almacenamiento y manejo de inventario`" in source),
             ("capítulo 2 Mediciones y pesaje", "title:`Mediciones y pesaje de PPC's`" in source),
             ("sin título viejo cap. 1", "Almacén e inventarios de PPC" not in source),
             ("sin título viejo cap. 2", "Medición y dosificación de PPC" not in source),
