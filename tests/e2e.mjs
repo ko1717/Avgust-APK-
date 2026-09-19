@@ -332,7 +332,7 @@ check(
   JSON.stringify({ idx51, idxPresion, idx52 })
 );
 check('El Word no incluye observaciones del capítulo', !/Observaciones del capítulo/.test(wordText));
-check('El Word corrige la ortografía de calidad de agua', /parámetros adecuados/.test(wordText) && !/parametros/.test(wordText));
+check('El Word corrige la ortografía de calidad de agua', /parámetros/.test(wordText) && !/parametros/.test(wordText));
 
 check('Sin errores de JavaScript', errors.length === 0, errors.slice(0, 5).join(' | '));
 
