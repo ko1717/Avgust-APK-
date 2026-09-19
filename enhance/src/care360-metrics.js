@@ -644,6 +644,7 @@
     (chapters || []).forEach(function (c) {
       if (c.id === id) ch = c;
     });
+    if (!ch) return { value: "—", tone: "pending", score: null };
     var kpiScore = ch.subScore != null ? ch.subScore : ch.score;
     if (kpiScore == null) return { value: "—", tone: "pending", score: null };
     return { value: kpiScore + "%", tone: scoreStatus(kpiScore), score: kpiScore };
