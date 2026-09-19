@@ -150,6 +150,71 @@
     };
   }
 
+  /**
+   * Subcapítulos: promedio no ponderado del cumplimiento por criterio
+   * a lo largo de todas las visitas del periodo (peso igual por criterio).
+   * Así puede divergir del indicador del capítulo (ponderado / última visita).
+   */
+  function periodItemAverageScore(visits, chapterId, catalog) {
+    var items = (catalog && catalog[chapterId]) || [];
+    if (!items.length) {
+      var seen = {};
+      (visits || []).forEach(function (v) {
+        Object.keys(v.answers || {}).forEach(function (id) {
+          if (Number(String(id).split(".")[0]) !== Number(chapterId)) return;
+          seen[id] = true;
+        });
+      });
+      items = Object.keys(seen).sort(function (a, b) {
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
+    }
+    var rates = [];
+    items.forEach(function (iid) {
+      var app = 0;
+      var find = 0;
+      (visits || []).forEach(function (v) {
+        if (!visitUsable(v)) return;
+        var ans = v.answers && v.answers[iid];
+        if (!ans) return;
+        var val = answerValue(ans);
+        if (val === "SI" || val === "NO") {
+          app += 1;
+          if (val === "NO") find += 1;
+        }
+      });
+      if (app > 0) rates.push(Math.round(((app - find) / app) * 100));
+    });
+    if (!rates.length) return null;
+    return Math.round(
+      rates.reduce(function (n, s) {
+        return n + s;
+      }, 0) / rates.length
+    );
+  }
+
+  function capSubDefinitionNote(mode) {
+    if (mode === "farm") {
+      return (
+        "Capítulos = indicador de la última visita · Subcapítulos = promedio de cumplimiento por criterio en todo el periodo."
+      );
+    }
+    return (
+      "Capítulos = indicador del capítulo en el periodo (todas las respuestas) · Subcapítulos = promedio de cumplimiento por criterio (peso igual)."
+    );
+  }
+
+  function snapChaptersLead(mode, data) {
+    if (mode === "farm") {
+      return (
+        "Cap = última visita" +
+        (data && data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
+        " · Sub = periodo"
+      );
+    }
+    return "Cap = periodo · Sub = promedio por criterio";
+  }
+
   function buildCatalog(visits) {
     var catalog = {};
     visits.forEach(function (v) {
@@ -242,13 +307,34 @@
       .sort()
       .map(function (id) {
         var c = byChapter[id];
+        // Capítulos: cumplimiento ponderado del periodo (todas las respuestas).
         var score = c.applicable ? Math.round(((c.applicable - c.findings) / c.applicable) * 100) : null;
+        // Subcapítulos: promedio no ponderado por criterio (peso igual).
+        var itemScores = Object.keys(byItem)
+          .map(function (iid) {
+            return byItem[iid];
+          })
+          .filter(function (it) {
+            return it.chapter === id && it.applicable > 0;
+          })
+          .map(function (it) {
+            return Math.round(((it.applicable - it.findings) / it.applicable) * 100);
+          });
+        var subScore = itemScores.length
+          ? Math.round(
+              itemScores.reduce(function (n, s) {
+                return n + s;
+              }, 0) / itemScores.length
+            )
+          : null;
         return {
           id: id,
           title: CHAPTER_TITLES[id] || "Capítulo " + id,
           applicable: c.applicable,
           findings: c.findings,
           score: score,
+          subScore: subScore,
+          subCount: itemScores.length,
           status: scoreStatus(score),
           farms: Object.keys(c.farms).length,
         };
@@ -330,6 +416,16 @@
           find += st.findings;
         });
         var score = app ? Math.round(((app - find) / app) * 100) : null;
+        var visitRefs = list.map(function (v) {
+          return {
+            id: v.id || "",
+            farm: String(v.farm || "").trim(),
+            date: v.date || date,
+            responsible: v.responsible || v.technician || "",
+            score: visitScore(v).score,
+            findings: visitScore(v).findings,
+          };
+        });
         return {
           date: date,
           label: formatDateEs(date),
@@ -338,19 +434,65 @@
           findings: find,
           visits: list.length,
           status: scoreStatus(score),
-          visitRefs: list.map(function (v) {
-            return {
-              id: v.id || "",
-              farm: v.farm || "",
-              date: v.date || date,
-              responsible: v.responsible || v.technician || "",
-              score: visitScore(v).score,
-              findings: visitScore(v).findings,
-            };
-          }),
+          farm: timelineFarmLabel(visitRefs),
+          responsible:
+            visitRefs.length === 1 ? visitRefs[0].responsible || "" : "",
+          visitRefs: visitRefs,
         };
       });
     return bucketTimeline(daily);
+  }
+
+  /** Nombre(s) de finca desde visitRefs — nunca cae al farm del filtro UI. */
+  function timelineFarmLabel(visitRefs) {
+    var names = [];
+    var seen = {};
+    (visitRefs || []).forEach(function (vr) {
+      var n = String((vr && vr.farm) || "").trim();
+      if (!n) return;
+      var key = n.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      names.push(n);
+    });
+    if (!names.length) return "";
+    if (names.length === 1) return names[0];
+    if (names.length <= 3) return names.join(", ");
+    return names.length + " fincas";
+  }
+
+  /** Filas del informe: una por visita cuando hay visitRefs (finca correcta). */
+  function expandTimelineForReport(timeline) {
+    var out = [];
+    (timeline || []).forEach(function (r) {
+      if (r && r.visitRefs && r.visitRefs.length) {
+        r.visitRefs.forEach(function (vr) {
+          var score = vr.score != null ? vr.score : r.score;
+          out.push({
+            date: vr.date || r.date,
+            label: formatDateEs(vr.date || r.date),
+            shortLabel: formatDateShort(vr.date || r.date),
+            score: score,
+            findings: vr.findings != null ? vr.findings : r.findings,
+            status: scoreStatus(score),
+            responsible: vr.responsible || "",
+            farm: vr.farm || "",
+          });
+        });
+        return;
+      }
+      out.push({
+        date: r.date,
+        label: r.label || formatDateEs(r.date),
+        shortLabel: r.shortLabel || formatDateShort(r.date),
+        score: r.score,
+        findings: r.findings,
+        status: r.status || scoreStatus(r.score),
+        responsible: r.responsible || "",
+        farm: r.farm || "",
+      });
+    });
+    return out;
   }
 
   function bucketTimeline(rows) {
@@ -403,6 +545,7 @@
           findings: b.findings,
           visits: b.visits,
           status: scoreStatus(score),
+          farm: timelineFarmLabel(b.visitRefs),
           visitRefs: b.visitRefs,
         };
       });
@@ -707,9 +850,10 @@
       periodTo: formatDateEs(state.dateTo) || "Todo",
       chaptersNote:
         state.mode === "farm"
-          ? "Capítulos de la última visita" +
-            (data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "")
-          : "Capítulos del periodo (todas las visitas)",
+          ? "Capítulos = última visita" +
+            (data.lastDate ? " (" + formatDateEs(data.lastDate) + ")" : "") +
+            " · Subcapítulos = promedio por criterio del periodo"
+          : "Capítulos = periodo (respuestas ponderadas) · Subcapítulos = promedio por criterio (peso igual)",
       findingsNote:
         state.mode === "farm"
           ? "No cumple de la última visita (el KPI de hallazgos suma todo el periodo)"
@@ -836,7 +980,7 @@
                 r.findings,
                 statusLabel(r.status),
                 r.responsible || "",
-                r.farm || state.farm || "",
+                r.farm || timelineFarmLabel(r.visitRefs) || "",
               ]
                 .map(csvEscape)
                 .join(",")
@@ -847,10 +991,18 @@
       }
       if (data.chapters && data.chapters.length) {
         lines.push(snap.chaptersNote);
-        lines.push("Capítulo,Título,Indicador %,Hallazgos,Aplicables,Estado");
+        lines.push("Capítulo,Título,Indicador %,Subcapítulos %,Hallazgos,Aplicables,Estado");
         data.chapters.forEach(function (c) {
           lines.push(
-            [c.id, c.title, c.score, c.findings, c.applicable, statusLabel(c.status)]
+            [
+              c.id,
+              c.title,
+              c.score,
+              c.subScore != null ? c.subScore : "",
+              c.findings,
+              c.applicable,
+              statusLabel(c.status),
+            ]
               .map(csvEscape)
               .join(",")
           );
@@ -902,6 +1054,236 @@
 
   function reportScoreTone(score) {
     return reportToneClass(scoreStatus(score));
+  }
+
+  /**
+   * SVG de Evolución para el informe HTML/PDF (auto-contenido, print-friendly).
+   * Misma lectura que chartLine del tablero: meta 80%, puntos, etiquetas, chips.
+   */
+  function reportLineChart(rows) {
+    var points = (rows || []).filter(function (r) {
+      return r && r.score != null;
+    });
+    if (!points.length) {
+      return (
+        "<div class='linechart empty'><div class='linechart-exec'>" +
+        "<span class='chip-line target'><i></i>Meta " +
+        META_TARGET +
+        "%</span>" +
+        "<span class='chip-line mute'>Sin puntos aún</span></div>" +
+        "<p class='muted'>Cuando haya visitas revisadas en el periodo, verás la tendencia frente a la meta.</p></div>"
+      );
+    }
+
+    var W = 720;
+    var H = 300;
+    var padL = 36;
+    var padR = 24;
+    var padT = 36;
+    var padB = 44;
+    var innerW = W - padL - padR;
+    var innerH = H - padT - padB;
+    function yAt(pct) {
+      return padT + innerH - (Math.max(0, Math.min(100, pct)) / 100) * innerH;
+    }
+    function scoreLabel(score) {
+      var n = Number(score);
+      if (isNaN(n)) return "—";
+      return (Math.round(n * 10) / 10).toFixed(n % 1 === 0 ? 0 : 1) + "%";
+    }
+    function smoothPath(list) {
+      if (!list.length) return "";
+      if (list.length === 1) return "M " + list[0].x + " " + list[0].y;
+      var d = "M " + list[0].x + " " + list[0].y;
+      for (var i = 0; i < list.length - 1; i++) {
+        var a = list[i];
+        var b = list[i + 1];
+        var cx = (a.x + b.x) / 2;
+        d += " C " + cx + " " + a.y + ", " + cx + " " + b.y + ", " + b.x + " " + b.y;
+      }
+      return d;
+    }
+
+    var coords = points.map(function (p, i) {
+      var x =
+        padL + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
+      return { x: x, y: yAt(p.score), p: p };
+    });
+    var metaY = yAt(META_TARGET);
+    var last = points[points.length - 1];
+    var prev = points.length > 1 ? points[points.length - 2] : null;
+    var stepDelta = last && prev ? deltaPts(last.score, prev.score) : null;
+    var lastStatus = scoreStatus(last.score);
+    var lastVsMeta = vsMetaPts(last.score);
+    var sparse = points.length < 3;
+    var lineColor = "#1f8a5b";
+    var metaColor = "#007fa3";
+
+    var exec =
+      "<div class='linechart-exec' role='list' aria-label='Resumen de evolución'>" +
+      "<span class='chip-line target' role='listitem'><i></i>Meta " +
+      META_TARGET +
+      "%</span>" +
+      "<span class='chip-line tone-" +
+      reportToneClass(lastStatus) +
+      "' role='listitem'><i></i>Último " +
+      scoreLabel(last.score) +
+      " · " +
+      escapeHtml(statusLabel(lastStatus)) +
+      "</span>";
+    if (stepDelta != null && !isNaN(stepDelta)) {
+      exec +=
+        "<span class='chip-line delta' role='listitem'>" +
+        escapeHtml(formatSignedPts(stepDelta)) +
+        " vs visita anterior</span>";
+    }
+    if (lastVsMeta != null && !isNaN(lastVsMeta)) {
+      exec +=
+        "<span class='chip-line delta' role='listitem'>" +
+        escapeHtml(formatSignedPts(lastVsMeta)) +
+        " vs meta</span>";
+    }
+    exec += "</div>";
+
+    var svg =
+      '<svg viewBox="0 0 ' +
+      W +
+      " " +
+      H +
+      '" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Evolución del indicador vs meta ' +
+      META_TARGET +
+      '%">';
+
+    for (var g = 0; g <= 4; g++) {
+      var gy = padT + (innerH * g) / 4;
+      var gPct = 100 - g * 25;
+      svg +=
+        '<line x1="' +
+        padL +
+        '" y1="' +
+        gy +
+        '" x2="' +
+        (W - padR) +
+        '" y2="' +
+        gy +
+        '" stroke="#e8eef1" stroke-width="1"/>';
+      svg +=
+        '<text x="' +
+        (padL - 8) +
+        '" y="' +
+        (gy + 3) +
+        '" text-anchor="end" font-size="11" fill="#5b6f76" font-family="Segoe UI,Helvetica Neue,sans-serif">' +
+        gPct +
+        "</text>";
+    }
+
+    svg +=
+      '<line x1="' +
+      padL +
+      '" y1="' +
+      metaY +
+      '" x2="' +
+      (W - padR) +
+      '" y2="' +
+      metaY +
+      '" stroke="' +
+      metaColor +
+      '" stroke-width="1.75" stroke-dasharray="6 5"/>';
+
+    var path = smoothPath(coords);
+    if (coords.length >= 2) {
+      var area =
+        path +
+        " L " +
+        coords[coords.length - 1].x +
+        " " +
+        (padT + innerH) +
+        " L " +
+        coords[0].x +
+        " " +
+        (padT + innerH) +
+        " Z";
+      svg += '<path d="' + area + '" fill="rgba(31,138,91,0.06)"/>';
+    }
+    svg +=
+      '<path d="' +
+      path +
+      '" fill="none" stroke="' +
+      lineColor +
+      '" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>';
+
+    coords.forEach(function (c, idx) {
+      var isLast = idx === coords.length - 1;
+      var isFirst = idx === 0;
+      var aboveMeta = c.y < metaY - 2;
+      var nearMeta = Math.abs(c.y - metaY) < 18;
+      var preferAbove = true;
+      if (nearMeta && !aboveMeta) preferAbove = false;
+      if (c.y > padT + innerH - 28) preferAbove = true;
+      var labelY = preferAbove ? c.y - 14 : c.y + 20;
+      if (preferAbove && labelY < padT + 10) labelY = padT + 12;
+
+      var xLabel = c.p.shortLabel || c.p.label || formatDateShort(c.p.date);
+      var xAnchor = "middle";
+      var xPos = c.x;
+      var valAnchor = "middle";
+      var valX = c.x;
+      if (coords.length >= 2 && isFirst) {
+        xAnchor = "start";
+        xPos = Math.max(padL, c.x - 2);
+        valAnchor = "start";
+        valX = Math.min(W - padR - 4, c.x + 10);
+      } else if (coords.length >= 2 && isLast) {
+        xAnchor = "end";
+        xPos = Math.min(W - padR, c.x + 2);
+        valAnchor = "end";
+        valX = Math.max(padL + 4, c.x - 8);
+      }
+
+      svg +=
+        '<circle cx="' +
+        c.x +
+        '" cy="' +
+        c.y +
+        '" r="' +
+        (isLast ? 7 : 6) +
+        '" fill="#fff" stroke="' +
+        lineColor +
+        '" stroke-width="' +
+        (isLast ? 3 : 2.5) +
+        '"/>';
+      svg +=
+        '<text x="' +
+        valX +
+        '" y="' +
+        labelY +
+        '" text-anchor="' +
+        valAnchor +
+        '" font-size="13" font-weight="700" fill="#14262c" font-family="Segoe UI,Helvetica Neue,sans-serif">' +
+        scoreLabel(c.p.score) +
+        "</text>";
+      svg +=
+        '<text x="' +
+        xPos +
+        '" y="' +
+        (H - 10) +
+        '" text-anchor="' +
+        xAnchor +
+        '" font-size="11" fill="#5b6f76" font-family="Segoe UI,Helvetica Neue,sans-serif">' +
+        escapeHtml(xLabel) +
+        "</text>";
+    });
+
+    svg += "</svg>";
+
+    var note = "";
+    if (points.length === 1) {
+      note = "<p class='linechart-note'>Una sola visita · sumá aseguramientos para ver evolución.</p>";
+    } else if (sparse) {
+      note = "<p class='linechart-note'>Pocas visitas · la tendencia se aclara con más datos.</p>";
+    }
+
+    return "<div class='linechart'>" + exec + svg + note + "</div>";
   }
 
   function buildExportReportHtml() {
@@ -1034,29 +1416,44 @@
     body += "</div></header>";
 
     var scoreTone = reportScoreTone(snap.score);
+    var mixVsMeta = vsMetaPts(snap.mix.score);
+    var doseVsMeta = vsMetaPts(snap.dose.score);
     body += "<section class='kpi-strip'>";
     body += kpiCard(
       "Indicador",
       snap.score == null ? "—" : snap.score + "%",
-      cmp && cmp.enabled ? fmtDelta(cmp.scoreDelta, " pts") : "Cumplimiento",
+      cmp && cmp.enabled
+        ? fmtDelta(cmp.scoreDelta, " pts")
+        : snap.score != null
+          ? formatSignedPts(vsMetaPts(snap.score)) + " vs meta " + META_TARGET + "%"
+          : "Cumplimiento",
       scoreTone
     );
     body += kpiCard(
       "Mezclas",
       snap.mix.score == null ? "—" : snap.mix.score + "%",
-      "Capítulo 4",
+      mixVsMeta != null
+        ? formatSignedPts(mixVsMeta) + " vs meta " + META_TARGET + "%"
+        : "Capítulo 4",
       reportScoreTone(snap.mix.score)
     );
     body += kpiCard(
       "Dosis",
       snap.dose.score == null ? "—" : snap.dose.score + "%",
-      "Capítulo 2",
+      doseVsMeta != null
+        ? formatSignedPts(doseVsMeta) + " vs meta " + META_TARGET + "%"
+        : "Capítulo 2",
       reportScoreTone(snap.dose.score)
     );
     body += kpiCard(
       "Hallazgos",
       data.findings || 0,
-      cmp && cmp.enabled ? fmtDelta(cmp.findingsDelta, "") : "No cumple en el periodo",
+      cmp && cmp.enabled
+        ? fmtDelta(cmp.findingsDelta, "")
+        : "suma del periodo · " +
+            (data.visits || 0) +
+            " visita" +
+            ((data.visits || 0) === 1 ? "" : "s"),
       data.findings ? "bad" : "ok"
     );
     body += kpiCard(
@@ -1125,59 +1522,127 @@
 
     if (data.timeline && data.timeline.length) {
       var farmOnly = state.mode === "farm";
+      var chartRows = (data.chartTimeline || data.timeline || [])
+        .filter(function (r) {
+          return r && r.score != null;
+        })
+        .slice(-12);
+      var chartHtml = reportLineChart(chartRows);
+      var tableRows = farmOnly
+        ? data.timeline
+        : expandTimelineForReport(data.timeline);
+      var evoLead = farmOnly
+        ? "Historial de «" + (state.farm || "la finca seleccionada") + "»."
+        : data.firstDate || data.lastDate
+          ? formatDateEs(data.firstDate) +
+            " → " +
+            formatDateEs(data.lastDate) +
+            " · " +
+            (data.visits || tableRows.length) +
+            " visitas" +
+            (data.farms && data.farms.length
+              ? " · " +
+                data.farms.length +
+                " finca" +
+                (data.farms.length === 1 ? "" : "s")
+              : "")
+          : "Puntos del periodo con indicador y hallazgos.";
       body += section(
         farmOnly ? "Visitas por fecha" : "Evolución / visitas",
-        farmOnly
-          ? "Historial de «" + (state.farm || "la finca seleccionada") + "»."
-          : "Puntos del periodo con indicador y hallazgos.",
-        farmOnly
-          ? table(
-              ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
-              data.timeline.map(function (r) {
-                return [
-                  r.label || formatDateEs(r.date),
-                  scoreCell(r.score),
-                  r.findings,
-                  pill(statusLabel(r.status), reportToneClass(r.status)),
-                  r.responsible || "—",
-                ];
-              }),
-              { htmlCols: { 1: true, 3: true } }
-            )
-          : table(
-              ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
-              data.timeline.map(function (r) {
-                return [
-                  r.label || formatDateEs(r.date),
-                  scoreCell(r.score),
-                  r.findings,
-                  pill(statusLabel(r.status), reportToneClass(r.status)),
-                  r.responsible || "—",
-                  r.farm || state.farm || "—",
-                ];
-              }),
-              { htmlCols: { 1: true, 3: true } }
-            )
+        evoLead,
+        chartHtml +
+          (farmOnly
+            ? table(
+                ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable"],
+                tableRows.map(function (r) {
+                  return [
+                    r.label || formatDateEs(r.date),
+                    scoreCell(r.score),
+                    r.findings,
+                    pill(statusLabel(r.status), reportToneClass(r.status)),
+                    r.responsible || "—",
+                  ];
+                }),
+                { htmlCols: { 1: true, 3: true } }
+              )
+            : table(
+                ["Fecha", "Indicador", "Hallazgos", "Estado", "Responsable", "Finca"],
+                tableRows.map(function (r) {
+                  return [
+                    r.label || formatDateEs(r.date),
+                    scoreCell(r.score),
+                    r.findings,
+                    pill(statusLabel(r.status), reportToneClass(r.status)),
+                    r.responsible || "—",
+                    r.farm || "—",
+                  ];
+                }),
+                { htmlCols: { 1: true, 3: true } }
+              ))
       );
     }
 
     if (data.chapters && data.chapters.length) {
+      var capSubHtml = "";
+      var capRows = data.chapters.filter(function (c) {
+        return c && (c.score != null || c.subScore != null);
+      });
+      if (capRows.length) {
+        capSubHtml =
+          "<div class='groupbars capsub'><div class='groupbars-leg'>" +
+          "<span class='cap'><i></i>Capítulos</span>" +
+          "<span class='sub'><i></i>Subcapítulos</span>" +
+          "<span class='t'><i></i>Meta " +
+          META_TARGET +
+          "%</span></div><div class='groupbars-plot pair'>";
+        capRows.forEach(function (c) {
+          var cap = c.score != null ? Number(c.score) : null;
+          var sub = c.subScore != null ? Number(c.subScore) : null;
+          var capH = cap == null ? 0 : Math.max(0, Math.min(100, cap));
+          var subH = sub == null ? 0 : Math.max(0, Math.min(100, sub));
+          capSubHtml +=
+            "<div class='groupbars-col'><div class='groupbars-pair'>" +
+            (cap == null
+              ? ""
+              : "<div class='groupbars-bar cap' style='height:" +
+                Math.max(capH, 4) +
+                "%'><span>" +
+                cap +
+                "%</span></div>") +
+            (sub == null
+              ? ""
+              : "<div class='groupbars-bar sub' style='height:" +
+                Math.max(subH, 4) +
+                "%'><span>" +
+                sub +
+                "%</span></div>") +
+            "</div><div class='groupbars-x'>" +
+            escapeHtml(c.id + ". " + shortTitle(c.title || "")) +
+            "</div></div>";
+        });
+        capSubHtml +=
+          "</div><p class='muted' style='margin:8px 0 0;font-size:11.5px'>" +
+          escapeHtml(capSubDefinitionNote(farmOnly ? "farm" : "all")) +
+          "</p></div>";
+      }
       body += section(
-        snap.chaptersNote,
-        "Meta de referencia: 80% de cumplimiento.",
-        table(
-          ["Capítulo", "Indicador", "Hallazgos", "Aplicables", "Estado"],
-          data.chapters.map(function (c) {
-            return [
-              "<strong>" + escapeHtml(c.id + ". " + c.title) + "</strong>",
-              scoreCell(c.score),
-              c.findings,
-              c.applicable,
-              pill(statusLabel(c.status), reportToneClass(c.status)),
-            ];
-          }),
-          { htmlCols: { 0: true, 1: true, 4: true } }
-        )
+        "Capítulos y subcapítulos",
+        snap.chaptersNote + " · comparación lado a lado (meta " + META_TARGET + "%).",
+        capSubHtml +
+          table(
+            ["Capítulo", "Capítulos %", "Subcapítulos %", "Hallazgos", "Aplicables", "Estado"],
+            data.chapters.map(function (c) {
+              return [
+                "<strong>" + escapeHtml(c.id + ". " + c.title) + "</strong>",
+                scoreCell(c.score),
+                scoreCell(c.subScore),
+                c.findings,
+                c.applicable,
+                pill(statusLabel(c.status), reportToneClass(c.status)),
+              ];
+            }),
+            { htmlCols: { 0: true, 1: true, 2: true, 5: true } }
+          )
       );
     }
 
@@ -1241,6 +1706,10 @@
       ".kpi-label{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}" +
       ".kpi-value{display:block;font-size:28px;line-height:1;letter-spacing:-.03em;font-weight:700}" +
       ".kpi-note{display:block;margin-top:8px;font-size:12px;color:var(--muted)}" +
+      ".kpi.tone-ok .kpi-note{color:#146b45}" +
+      ".kpi.tone-mid .kpi-note{color:#8a5a00}" +
+      ".kpi.tone-bad .kpi-note{color:#9b1c1c}" +
+      ".kpi.tone-info .kpi-note{color:#0b5f74}" +
       ".kpi.tone-ok{border-color:#b7e0c5;background:linear-gradient(180deg,#f3fbf6,#fff)}" +
       ".kpi.tone-mid{border-color:#f0d59a;background:linear-gradient(180deg,#fff9ef,#fff)}" +
       ".kpi.tone-bad{border-color:#f0b4ae;background:linear-gradient(180deg,#fff5f3,#fff)}" +
@@ -1280,6 +1749,45 @@
       ".score-cell.tone-ok .bar i{background:#1f8a5b}" +
       ".score-cell.tone-mid .bar i{background:#c98512}" +
       ".score-cell.tone-bad .bar i{background:#c23b2e}" +
+      ".groupbars{margin:0 0 14px;padding:12px 12px 8px;border:1px solid var(--line);border-radius:14px;background:#fff}" +
+      ".groupbars-leg{display:flex;flex-wrap:wrap;gap:10px 14px;margin:0 0 10px;font-size:11px;font-weight:700;color:var(--muted)}" +
+      ".groupbars-leg span{display:inline-flex;align-items:center;gap:6px}" +
+      ".groupbars-leg i{width:10px;height:10px;border-radius:3px;background:var(--accent)}" +
+      ".groupbars-leg .t i{width:3px;height:12px;border-radius:1px;background:#007fa3}" +
+      ".groupbars-leg .cap i{background:#5b9bd5}" +
+      ".groupbars-leg .sub i{background:#ed7d31}" +
+      ".groupbars-plot{display:flex;align-items:flex-end;gap:10px;min-height:160px;padding:8px 4px 0;" +
+      "border-bottom:1px solid var(--line);background:linear-gradient(180deg,transparent 19%,#eef4f6 20%,transparent 21%," +
+      "transparent 39%,#eef4f6 40%,transparent 41%,transparent 59%,#eef4f6 60%,transparent 61%,transparent 79%,#eef4f6 80%,transparent 81%)}" +
+      ".groupbars-col{flex:1 1 0;min-width:36px;display:flex;flex-direction:column;align-items:center;gap:6px}" +
+      ".groupbars-pair{display:flex;align-items:flex-end;justify-content:center;gap:3px;width:100%;height:140px}" +
+      ".groupbars-bar{width:100%;max-width:42px;border-radius:8px 8px 3px 3px;min-height:4px;display:flex;align-items:flex-start;" +
+      "justify-content:center;padding-top:4px;color:#fff;font-size:10px;font-weight:700;background:var(--accent)}" +
+      ".groupbars-plot.pair .groupbars-bar{max-width:22px;font-size:9px}" +
+      ".groupbars-bar.tone-ok{background:linear-gradient(180deg,#3cb87f,#1f8a5b)}" +
+      ".groupbars-bar.tone-mid{background:linear-gradient(180deg,#e0a63a,#c98512)}" +
+      ".groupbars-bar.tone-bad{background:linear-gradient(180deg,#e06b5c,#c44b3c)}" +
+      ".groupbars-bar.cap{background:linear-gradient(180deg,#7eb3de,#5b9bd5)}" +
+      ".groupbars-bar.sub{background:linear-gradient(180deg,#f2a06a,#ed7d31)}" +
+      ".groupbars-x{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;max-width:72px}" +
+      ".linechart{margin:0 0 14px;padding:12px 12px 8px;border:1px solid var(--line);border-radius:14px;background:#fff}" +
+      ".linechart.empty{padding:16px}" +
+      ".linechart-exec{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}" +
+      ".chip-line{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:11.5px;" +
+      "font-weight:700;border:1px solid var(--line);background:#f7fafb;color:var(--muted)}" +
+      ".chip-line i{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}" +
+      ".chip-line.target{color:var(--accent);border-color:#b7dceb;background:#f0f9fc}" +
+      ".chip-line.target i{width:14px;height:0;border-radius:0;border-top:2px dashed var(--accent);background:transparent}" +
+      ".chip-line.tone-ok{color:#146b45;border-color:#b7e0c5;background:#f3fbf6}" +
+      ".chip-line.tone-ok i{background:#1f8a5b}" +
+      ".chip-line.tone-mid{color:#8a5a00;border-color:#f0d59a;background:#fff9ef}" +
+      ".chip-line.tone-mid i{background:#c98512}" +
+      ".chip-line.tone-bad{color:#9b1c1c;border-color:#f0b4ae;background:#fff5f3}" +
+      ".chip-line.tone-bad i{background:#c44b3c}" +
+      ".chip-line.delta{font-weight:600;color:var(--ink)}" +
+      ".chip-line.mute{background:#eef2f4}" +
+      ".linechart svg{display:block;width:100%;height:auto;max-height:280px}" +
+      ".linechart-note{margin:8px 0 2px;font-size:11.5px;color:var(--muted);font-style:italic}" +
       ".muted{color:var(--muted)}" +
       ".foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;" +
       "margin-top:8px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}" +
@@ -1515,18 +2023,31 @@
     var chapters = Object.keys(CHAPTER_TITLES)
       .map(Number)
       .map(function (id) {
-        var st = last ? chapterScore(last.answers || {}, id, catalog) : { applicable: 0, findings: 0, score: null };
+        // Capítulos: indicador ponderado de la última visita.
+        var st = last
+          ? chapterScore(last.answers || {}, id, catalog)
+          : { applicable: 0, findings: 0, score: null };
+        // Subcapítulos: promedio por criterio en todo el periodo (puede divergir).
+        var subScore = periodItemAverageScore(filtered, id, catalog);
+        var subCount = (catalog[id] || []).filter(function (iid) {
+          return filtered.some(function (v) {
+            var val = v.answers && v.answers[iid] && answerValue(v.answers[iid]);
+            return val === "SI" || val === "NO";
+          });
+        }).length;
         return {
           id: id,
           title: CHAPTER_TITLES[id],
           applicable: st.applicable,
           findings: st.findings,
           score: st.score,
+          subScore: subScore,
+          subCount: subCount,
           status: scoreStatus(st.score),
         };
       })
       .filter(function (c) {
-        return c.applicable > 0;
+        return c.applicable > 0 || c.subScore != null;
       });
 
     var items = [];
@@ -1574,6 +2095,83 @@
       w +
       '%"></i></span>'
     );
+  }
+
+  /** Celda % con barra de color (estilo informe) para el tablero. */
+  function scoreCell(score) {
+    if (score == null || score === "" || isNaN(Number(score))) {
+      return '<span class="muted">—</span>';
+    }
+    var n = Number(score);
+    var tone = scoreStatus(n);
+    return (
+      '<div class="c360-score-cell tone-' +
+      tone +
+      '"><strong>' +
+      n +
+      "%</strong>" +
+      barHtml(n, tone) +
+      "</div>"
+    );
+  }
+
+  /**
+   * Tabla Capítulos / Subcapítulos del informe, reutilizada en el tablero.
+   * Filas tocables para enfocar el mismo capítulo que el gráfico.
+   */
+  function renderCapSubTable(chapters) {
+    var rows = (chapters || []).filter(function (c) {
+      return c && (c.score != null || c.subScore != null || c.applicable > 0);
+    });
+    if (!rows.length) return "";
+
+    var focusCh =
+      state.focus && state.focus.type === "chapter" ? Number(state.focus.chapter) : null;
+
+    var html =
+      '<div class="c360-metrics-table-wrap c360-capsub-table-wrap">' +
+      '<table class="c360-metrics-table c360-capsub-table">' +
+      "<thead><tr>" +
+      "<th>Capítulo</th>" +
+      "<th>Cap %</th>" +
+      "<th>Sub %</th>" +
+      "<th>Hall.</th>" +
+      "<th>Aplicables</th>" +
+      "<th>Estado</th>" +
+      "</tr></thead><tbody>";
+
+    rows.forEach(function (c) {
+      var status = c.status || scoreStatus(c.score);
+      var isOn = focusCh != null && Number(c.id) === focusCh;
+      var label = c.id + ". " + (c.title || CHAPTER_TITLES[c.id] || "Capítulo " + c.id);
+      html +=
+        '<tr class="c360-capsub-row' +
+        (isOn ? " is-selected" : "") +
+        '" data-focus-chapter="' +
+        c.id +
+        '" tabindex="0" role="button" aria-pressed="' +
+        (isOn ? "true" : "false") +
+        '" title="Ver detalle de ' +
+        escapeHtml(label) +
+        '">';
+      html += td("Capítulo", "<strong>" + escapeHtml(label) + "</strong>");
+      html += td("Cap %", scoreCell(c.score));
+      html += td("Sub %", scoreCell(c.subScore));
+      html += td("Hallazgos", String(c.findings != null ? c.findings : "—"));
+      html += td("Aplicables", String(c.applicable != null ? c.applicable : "—"));
+      html += td(
+        "Estado",
+        '<span class="c360-mpill tone-' +
+          status +
+          '">' +
+          escapeHtml(statusLabel(status)) +
+          "</span>"
+      );
+      html += "</tr>";
+    });
+
+    html += "</tbody></table></div>";
+    return html;
   }
 
   function chartLine(rows, compareRows) {
@@ -1905,12 +2503,280 @@
       });
     }
     html += "</svg>";
-    if (sparse) {
+    if (points.length === 1) {
       html +=
-        '<p class="c360-linechart-sparse-note">Pocas visitas en el periodo · la tendencia se aclara con más aseguramientos.</p>';
-    } else if (points.length === 1) {
+        '<p class="c360-linechart-sparse-note">Una sola visita · sumá aseguramientos para ver evolución.</p>';
+    } else if (sparse) {
       html +=
-        '<p class="c360-linechart-sparse-note">Una sola visita en el corte · sumá aseguramientos para ver evolución.</p>';
+        '<p class="c360-linechart-sparse-note">Pocas visitas · la tendencia se aclara con más datos.</p>';
+    }
+    html += "</div>";
+    return html;
+  }
+
+  /**
+   * Barras agrupadas Capítulos vs Subcapítulos (estilo Excel Fig1/Fig2).
+   * Capítulos = indicador del capítulo (última visita en finca / periodo en Todas).
+   * Subcapítulos = promedio de cumplimiento por criterio en el periodo.
+   * Tocá un capítulo para abrir el detalle.
+   */
+  function chartCapitulosSubcapitulos(chapters) {
+    var rows = (chapters || []).filter(function (c) {
+      return c && (c.score != null || c.subScore != null);
+    });
+    if (!rows.length) {
+      return (
+        '<div class="c360-groupbars c360-groupbars-empty">' +
+        "<p><strong>Sin datos de capítulos</strong></p>" +
+        "<p>Cuando haya visitas revisadas, verás el indicador de cada capítulo junto al promedio de sus criterios en el periodo.</p></div>"
+      );
+    }
+
+    var hideCap = !!(state.capSubHide && state.capSubHide.cap);
+    var hideSub = !!(state.capSubHide && state.capSubHide.sub);
+    var focusCh =
+      state.focus && state.focus.type === "chapter" ? Number(state.focus.chapter) : null;
+    var selected = null;
+    rows.forEach(function (c) {
+      if (focusCh != null && Number(c.id) === focusCh) selected = c;
+    });
+    var html =
+      '<div class="c360-groupbars c360-groupbars-capsub" role="group" aria-label="Indicador por capítulos y subcapítulos">';
+    html +=
+      '<div class="c360-groupbars-legend" role="list">' +
+      '<button type="button" class="c360-groupbars-leg cap' +
+      (hideCap ? " is-off" : "") +
+      '" data-capsub-toggle="cap" role="listitem" aria-pressed="' +
+      (hideCap ? "false" : "true") +
+      '"><i></i>Capítulos</button>' +
+      '<button type="button" class="c360-groupbars-leg sub' +
+      (hideSub ? " is-off" : "") +
+      '" data-capsub-toggle="sub" role="listitem" aria-pressed="' +
+      (hideSub ? "false" : "true") +
+      '"><i></i>Subcapítulos</button>' +
+      '<span class="c360-groupbars-leg target" role="listitem"><i></i>Meta ' +
+      META_TARGET +
+      "%</span>" +
+      "</div>";
+
+    html += '<div class="c360-groupbars-plot">';
+    html += '<div class="c360-groupbars-yaxis" aria-hidden="true">';
+    [100, 75, 50, 25, 0].forEach(function (t) {
+      html += "<span>" + t + "</span>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="c360-groupbars-grid" aria-hidden="true">' +
+      '<i style="bottom:100%"></i><i style="bottom:75%"></i><i style="bottom:50%"></i><i style="bottom:25%"></i><i style="bottom:0"></i>' +
+      '<b class="c360-groupbars-meta" style="bottom:' +
+      META_TARGET +
+      '%"></b>' +
+      "</div>";
+    html += '<div class="c360-groupbars-cols">';
+    rows.forEach(function (c) {
+      var cap = c.score != null ? c.score : null;
+      var sub = c.subScore != null ? c.subScore : null;
+      var capH = cap == null ? 0 : Math.max(0, Math.min(100, cap));
+      var subH = sub == null ? 0 : Math.max(0, Math.min(100, sub));
+      var fullLabel = c.id + ". " + shortTitle(c.title || CHAPTER_TITLES[c.id] || "");
+      var label = axisChapterLabel(c.id, c.title || CHAPTER_TITLES[c.id] || "");
+      var isOn = focusCh != null && Number(c.id) === focusCh;
+      html +=
+        '<button type="button" class="c360-groupbars-col has-compare c360-groupbars-hit' +
+        (isOn ? " is-selected" : "") +
+        (hideCap ? " hide-cap" : "") +
+        (hideSub ? " hide-sub" : "") +
+        '" data-focus-chapter="' +
+        c.id +
+        '" title="' +
+        escapeHtml(fullLabel) +
+        (cap != null ? " · capítulo " + cap + "%" : "") +
+        (sub != null ? " · subcapítulos " + sub + "%" : "") +
+        ' · tocar para detalle" aria-label="Ver detalle de ' +
+        escapeHtml(fullLabel) +
+        '" aria-pressed="' +
+        (isOn ? "true" : "false") +
+        '">';
+      html += '<div class="c360-groupbars-pair">';
+      if (!hideCap) {
+        html +=
+          '<div class="c360-groupbars-bar cap" style="height:' +
+          (cap == null ? 0 : Math.max(capH, 3)) +
+          '%"><span>' +
+          (cap == null ? "" : cap + "%") +
+          "</span></div>";
+      }
+      if (!hideSub) {
+        html +=
+          '<div class="c360-groupbars-bar sub" style="height:' +
+          (sub == null ? 0 : Math.max(subH, 3)) +
+          '%"><span>' +
+          (sub == null ? "" : sub + "%") +
+          "</span></div>";
+      }
+      html += "</div>";
+      html +=
+        '<div class="c360-groupbars-xlabel">' + axisLabelHtml(label) + "</div>";
+      html += "</button>";
+    });
+    html += "</div></div>";
+
+    if (selected) {
+      var delta =
+        selected.score != null && selected.subScore != null
+          ? selected.score - selected.subScore
+          : null;
+      html += '<div class="c360-capsub-peek" role="status">';
+      html +=
+        "<strong>" +
+        escapeHtml(selected.id + ". " + (selected.title || CHAPTER_TITLES[selected.id] || "")) +
+        "</strong>";
+      html += '<div class="c360-capsub-peek-metrics">';
+      html +=
+        '<span class="cap"><i></i>Capítulos <b>' +
+        (selected.score == null ? "—" : selected.score + "%") +
+        "</b></span>";
+      html +=
+        '<span class="sub"><i></i>Subcapítulos <b>' +
+        (selected.subScore == null ? "—" : selected.subScore + "%") +
+        "</b></span>";
+      if (delta != null) {
+        html +=
+          '<span class="delta">' +
+          (delta === 0 ? "Iguales" : (delta > 0 ? "+" : "") + delta + " pts cap vs sub") +
+          "</span>";
+      }
+      html += "</div>";
+      html += "<p>Tocá de nuevo para cerrar.</p>";
+      html += "</div>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  /**
+   * Barras agrupadas por fecha (periodo actual vs anterior).
+   */
+  function chartGroupedBars(rows, compareRows) {
+    var current = (rows || []).filter(function (r) {
+      return r && (r.score != null || r.shortLabel || r.label || r.date);
+    });
+    var previous = (compareRows || []).filter(function (r) {
+      return r && r.score != null;
+    });
+    var hasCompare = previous.length > 0;
+    if (!current.length && !previous.length) {
+      return (
+        '<div class="c360-groupbars c360-groupbars-empty">' +
+        "<p><strong>Sin datos de indicador</strong></p>" +
+        "<p>Cuando haya visitas revisadas, verás barras por fecha frente a la meta del " +
+        META_TARGET +
+        "%.</p></div>"
+      );
+    }
+
+    // Emparejar por etiqueta corta / fecha; si no, por índice.
+    var groups = [];
+    var usedPrev = {};
+    var n = Math.max(current.length, previous.length);
+    for (var i = 0; i < n; i++) {
+      var cur = current[i] || null;
+      var prev = null;
+      if (hasCompare) {
+        if (cur) {
+          var key = String(cur.shortLabel || cur.label || cur.date || "");
+          for (var j = 0; j < previous.length; j++) {
+            if (usedPrev[j]) continue;
+            var pk = String(previous[j].shortLabel || previous[j].label || previous[j].date || "");
+            if (key && pk && key === pk) {
+              prev = previous[j];
+              usedPrev[j] = true;
+              break;
+            }
+          }
+        }
+        if (!prev && previous[i] && !usedPrev[i]) {
+          prev = previous[i];
+          usedPrev[i] = true;
+        }
+      }
+      if (!cur && !prev) continue;
+      groups.push({
+        label: (cur && (cur.shortLabel || cur.label || formatDateShort(cur.date))) ||
+          (prev && (prev.shortLabel || prev.label || formatDateShort(prev.date))) ||
+          "—",
+        current: cur && cur.score != null ? cur.score : null,
+        previous: prev && prev.score != null ? prev.score : null,
+        status: cur && cur.score != null ? scoreStatus(cur.score) : "pending",
+        findings: cur && cur.findings != null ? cur.findings : null,
+      });
+    }
+
+    var html =
+      '<div class="c360-groupbars" role="img" aria-label="Evolución del indicador por fecha' +
+      (hasCompare ? ", comparando con el periodo anterior" : "") +
+      '">';
+    html +=
+      '<div class="c360-groupbars-legend" role="list">' +
+      '<span class="c360-groupbars-leg current" role="listitem"><i></i>Periodo actual</span>' +
+      (hasCompare
+        ? '<span class="c360-groupbars-leg previous" role="listitem"><i></i>Periodo anterior</span>'
+        : "") +
+      '<span class="c360-groupbars-leg target" role="listitem"><i></i>Meta ' +
+      META_TARGET +
+      "%</span>" +
+      "</div>";
+
+    html += '<div class="c360-groupbars-plot">';
+    html += '<div class="c360-groupbars-yaxis" aria-hidden="true">';
+    [100, 75, 50, 25, 0].forEach(function (t) {
+      html += "<span>" + t + "</span>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="c360-groupbars-grid" aria-hidden="true">' +
+      '<i style="bottom:100%"></i><i style="bottom:75%"></i><i style="bottom:50%"></i><i style="bottom:25%"></i><i style="bottom:0"></i>' +
+      '<b class="c360-groupbars-meta" style="bottom:' +
+      META_TARGET +
+      '%"></b>' +
+      "</div>";
+    html += '<div class="c360-groupbars-cols">';
+    groups.forEach(function (g) {
+      var curH = g.current == null ? 0 : Math.max(0, Math.min(100, g.current));
+      var prevH = g.previous == null ? 0 : Math.max(0, Math.min(100, g.previous));
+      html +=
+        '<div class="c360-groupbars-col' +
+        (hasCompare ? " has-compare" : "") +
+        '" title="' +
+        escapeHtml(g.label) +
+        (g.current != null ? " · actual " + g.current + "%" : "") +
+        (g.previous != null ? " · anterior " + g.previous + "%" : "") +
+        '">';
+      html += '<div class="c360-groupbars-pair">';
+      if (hasCompare) {
+        html +=
+          '<div class="c360-groupbars-bar previous" style="height:' +
+          (g.previous == null ? 0 : Math.max(prevH, 3)) +
+          '%"><span>' +
+          (g.previous == null ? "" : g.previous + "%") +
+          "</span></div>";
+      }
+      html +=
+        '<div class="c360-groupbars-bar current tone-' +
+        g.status +
+        '" style="height:' +
+        (g.current == null ? 0 : Math.max(curH, 3)) +
+        '%"><span>' +
+        (g.current == null ? "" : g.current + "%") +
+        "</span></div>";
+      html += "</div>";
+      html += '<div class="c360-groupbars-xlabel">' + escapeHtml(g.label) + "</div>";
+      html += "</div>";
+    });
+    html += "</div></div>";
+    if (groups.length < 3) {
+      html +=
+        '<p class="c360-groupbars-note">Pocas mediciones en el corte · con más visitas la comparación por fecha se vuelve más clara.</p>';
     }
     html += "</div>";
     return html;
@@ -2254,6 +3120,7 @@
     openChapter: null,
     focus: null,
     compare: false,
+    capSubHide: { cap: false, sub: false },
     notice: "",
     noticeError: false,
     importExpanded: false,
@@ -2263,6 +3130,7 @@
     pendingVisits: null,
     boardMounted: false,
     nocumpleOpen: true,
+    alertsOpen: false,
   };
 
   async function loadVisits() {
@@ -2601,6 +3469,11 @@
     var findingsDelta =
       prevData && prevData.visits > 0 ? data.findings - (prevData.findings || 0) : null;
     var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
+    // Si la franja de comparación ya muestra deltas, no repetirlos en los KPIs.
+    var kpiDelta = cmp.enabled && cmp.prevWin ? null : heroDelta;
+    var sideDeltaMix = cmp.enabled && cmp.prevWin ? null : mixDelta;
+    var sideDeltaDose = cmp.enabled && cmp.prevWin ? null : doseDelta;
+    var sideDeltaFind = cmp.enabled && cmp.prevWin ? null : findingsDelta;
     var periodNote =
       data.visits != null
         ? data.visits +
@@ -2626,7 +3499,7 @@
       {
         featured: true,
         score: data.score,
-        delta: heroDelta,
+        delta: kpiDelta,
         status: scoreStatus(data.score),
         note: periodNote,
       }
@@ -2634,12 +3507,12 @@
     html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
       score: mix.score,
-      delta: mixDelta,
+      delta: sideDeltaMix,
       showStatus: false,
     });
     html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
       score: dose.score,
-      delta: doseDelta,
+      delta: sideDeltaDose,
       showStatus: false,
     });
     html += kpiCard(
@@ -2648,7 +3521,7 @@
       data.findings ? "critical" : "healthy",
       ICONS.findings,
       {
-        delta: findingsDelta,
+        delta: sideDeltaFind,
         invertDelta: true,
         unit: "count",
         hideMeta: true,
@@ -2663,15 +3536,7 @@
     html += cardHead(
       "Evolución",
       data.firstDate || data.lastDate
-        ? formatDateEs(data.firstDate) +
-          " → " +
-          formatDateEs(data.lastDate) +
-          " · " +
-          data.visits +
-          " visitas · " +
-          data.farms.length +
-          " finca" +
-          (data.farms.length === 1 ? "" : "s")
+        ? formatDateEs(data.firstDate) + " → " + formatDateEs(data.lastDate)
         : "Sin visitas en el periodo"
     );
     html += chartLine(data.timeline, state.compare && prevData ? prevData.timeline : null);
@@ -2679,6 +3544,12 @@
 
     html += renderAlerts(alerts);
     html += renderFocusPanel();
+
+    html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
+    html += cardHead("Capítulos y subcapítulos", snapChaptersLead("all", data));
+    html += chartCapitulosSubcapitulos(data.chapters);
+    html += renderCapSubTable(data.chapters);
+    html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead("Resumen por finca", "Toca una finca para ver detalle.");
@@ -2761,6 +3632,10 @@
     var findingsDelta =
       prevData && prevData.visits > 0 ? data.findings - (prevData.findings || 0) : null;
     var heroDelta = cmp.scoreDelta != null ? cmp.scoreDelta : trend;
+    var kpiDelta = cmp.enabled && cmp.prevWin ? null : heroDelta;
+    var sideDeltaMix = cmp.enabled && cmp.prevWin ? null : mixDelta;
+    var sideDeltaDose = cmp.enabled && cmp.prevWin ? null : doseDelta;
+    var sideDeltaFind = cmp.enabled && cmp.prevWin ? null : findingsDelta;
     var periodNote =
       data.visits != null
         ? data.visits + " visita" + (data.visits === 1 ? "" : "s")
@@ -2785,7 +3660,7 @@
       {
         featured: true,
         score: lastScore,
-        delta: heroDelta,
+        delta: kpiDelta,
         status: scoreStatus(lastScore),
         note: periodNote,
       }
@@ -2793,12 +3668,12 @@
     html += '<div class="c360-metrics-kpis-side">';
     html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
       score: mix.score,
-      delta: mixDelta,
+      delta: sideDeltaMix,
       showStatus: false,
     });
     html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
       score: dose.score,
-      delta: doseDelta,
+      delta: sideDeltaDose,
       showStatus: false,
     });
     html += kpiCard(
@@ -2807,7 +3682,7 @@
       data.findings ? "critical" : "healthy",
       ICONS.findings,
       {
-        delta: findingsDelta,
+        delta: sideDeltaFind,
         invertDelta: true,
         unit: "count",
         hideMeta: true,
@@ -2822,12 +3697,7 @@
     html += cardHead(
       "Evolución",
       data.firstDate || data.lastDate
-        ? formatDateEs(data.firstDate) +
-          " → " +
-          formatDateEs(data.lastDate) +
-          " · " +
-          data.visits +
-          " visitas"
+        ? formatDateEs(data.firstDate) + " → " + formatDateEs(data.lastDate)
         : "Sin visitas en el periodo"
     );
     html += chartLine(
@@ -2838,6 +3708,12 @@
 
     html += renderAlerts(alerts);
     html += renderFocusPanel();
+
+    html += '<section class="c360-metrics-card c360-metrics-capsub-block">';
+    html += cardHead("Capítulos y subcapítulos", snapChaptersLead("farm", data));
+    html += chartCapitulosSubcapitulos(data.chapters);
+    html += renderCapSubTable(data.chapters);
+    html += "</section>";
 
     html += '<section class="c360-metrics-card c360-metrics-section">';
     html += cardHead(
@@ -3039,6 +3915,34 @@
 
   function shortTitle(title) {
     return String(title || "").replace(/^Capítulo\s+/i, "");
+  }
+
+  /** Etiquetas cortas del eje X: caben en móvil sin partir sílabas. */
+  var AXIS_CHAPTER_SHORT = {
+    1: "Almacén",
+    2: "Medición",
+    3: "Transporte",
+    4: "Mezclas",
+    5: "Aplicación",
+  };
+
+  function axisChapterLabel(id, title) {
+    var short = AXIS_CHAPTER_SHORT[Number(id)];
+    if (short) return id + ". " + short;
+    var t = shortTitle(title);
+    if (t.length > 14) t = t.slice(0, 13).replace(/\s+\S*$/, "") || t.slice(0, 12);
+    return id + ". " + t;
+  }
+
+  /** Solo permite cortes en espacios (evita «Transport e» / «Aplicació n»). */
+  function axisLabelHtml(label) {
+    return String(label || "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(function (word) {
+        return "<span class=\"c360-axis-word\">" + escapeHtml(word) + "</span>";
+      })
+      .join(" ");
   }
 
   function setNotice(text, isError) {
@@ -3246,46 +4150,66 @@
 
   function renderAlerts(alerts) {
     if (!alerts || !alerts.length) return "";
-    var html = '<section class="c360-metrics-alerts-bar" aria-label="Qué atender">';
+    var open = !!state.alertsOpen;
+    var visible = open ? alerts.slice(0, 2) : [];
+    var html = '<section class="c360-metrics-alerts-bar' + (open ? " is-open" : " is-collapsed") + '" aria-label="Qué atender">';
     html +=
-      '<div class="c360-alerts-head"><div><strong>Qué atender</strong><span>' +
+      '<button type="button" class="c360-alerts-head c360-alerts-toggle" data-act="toggle-alerts" aria-expanded="' +
+      (open ? "true" : "false") +
+      '"><div><strong>Qué atender</strong><span>' +
       alerts.length +
-      "</span></div>" +
-      legendHtml("alerts") +
-      "</div>";
-    html += '<div class="c360-alerts-grid">';
-    alerts.forEach(function (a) {
+      "</span></div><em>" +
+      (open ? "Ocultar" : "Ver") +
+      "</em></button>";
+    if (!open) {
+      var first = alerts[0];
       html +=
-        '<article class="c360-alert-chip tone-' +
-        (a.tone || "warn") +
-        '"><strong>' +
-        escapeHtml(a.title) +
-        "</strong><p>" +
-        escapeHtml(a.text || "") +
-        '</p><div class="c360-alert-actions">';
-      if (a.farm && state.mode !== "farm") {
+        '<p class="c360-alerts-summary">' +
+        escapeHtml(first.title || "") +
+        (alerts.length > 1 ? " · +" + (alerts.length - 1) + " más" : "") +
+        "</p>";
+    } else {
+      html += '<div class="c360-alerts-grid">';
+      visible.forEach(function (a) {
         html +=
-          '<button type="button" class="c360-alert-btn" data-open-farm="' +
-          escapeHtml(a.farm) +
-          '">Finca</button>';
-      }
-      if (a.chapter != null) {
+          '<article class="c360-alert-chip tone-' +
+          (a.tone || "warn") +
+          '"><strong>' +
+          escapeHtml(a.title) +
+          "</strong><p>" +
+          escapeHtml(a.text || "") +
+          '</p><div class="c360-alert-actions">';
+        if (a.farm && state.mode !== "farm") {
+          html +=
+            '<button type="button" class="c360-alert-btn" data-open-farm="' +
+            escapeHtml(a.farm) +
+            '">Finca</button>';
+        }
+        if (a.chapter != null) {
+          html +=
+            '<button type="button" class="c360-alert-btn" data-focus-chapter="' +
+            a.chapter +
+            '">Capítulo</button>';
+        }
+        if (a.farm && a.date) {
+          html +=
+            '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
+            escapeHtml(a.farm) +
+            '" data-open-date="' +
+            escapeHtml(a.date) +
+            '">Abrir</button>';
+        }
+        html += "</div></article>";
+      });
+      if (alerts.length > 2) {
         html +=
-          '<button type="button" class="c360-alert-btn" data-focus-chapter="' +
-          a.chapter +
-          '">Capítulo</button>';
+          '<p class="c360-alerts-more muted">+' +
+          (alerts.length - 2) +
+          " aviso(s) más en el informe.</p>";
       }
-      if (a.farm && a.date) {
-        html +=
-          '<button type="button" class="c360-alert-btn primary" data-open-visit="' +
-          escapeHtml(a.farm) +
-          '" data-open-date="' +
-          escapeHtml(a.date) +
-          '">Abrir</button>';
-      }
-      html += "</div></article>";
-    });
-    html += "</div></section>";
+      html += "</div>";
+    }
+    html += "</section>";
     return html;
   }
 
@@ -3354,6 +4278,28 @@
         "</strong> hallazgo" +
         ((focus.findings || 0) === 1 ? "" : "s") +
         "</p></div>";
+      if (focus.score != null || focus.subScore != null) {
+        html += '<div class="c360-capsub-compare" role="group" aria-label="Capítulos vs subcapítulos">';
+        html +=
+          '<div class="c360-capsub-compare-item cap"><span>Capítulos' +
+          (state.mode === "farm" ? " · última visita" : " · periodo") +
+          "</span><strong>" +
+          (focus.score == null ? "—" : focus.score + "%") +
+          "</strong>" +
+          barHtml(focus.score, scoreStatus(focus.score)) +
+          "</div>";
+        html +=
+          '<div class="c360-capsub-compare-item sub"><span>Subcapítulos · periodo</span><strong>' +
+          (focus.subScore == null ? "—" : focus.subScore + "%") +
+          "</strong>" +
+          barHtml(focus.subScore, scoreStatus(focus.subScore)) +
+          "</div>";
+        html += "</div>";
+        html +=
+          '<p class="c360-capsub-compare-note muted">' +
+          escapeHtml(capSubDefinitionNote(state.mode)) +
+          "</p>";
+      }
       if (!items.length) {
         html += '<p class="muted">Sin respuestas No cumple en este capítulo para el corte actual.</p>';
       } else {
@@ -3413,9 +4359,15 @@
 
   function focusChapter(chapterId, contextData) {
     var ch = Number(chapterId);
+    if (state.focus && state.focus.type === "chapter" && Number(state.focus.chapter) === ch) {
+      state.focus = null;
+      render();
+      return;
+    }
     var title = CHAPTER_TITLES[ch] || "Capítulo " + ch;
     var items = [];
     var score = null;
+    var subScore = null;
     var findings = 0;
     if (state.mode === "farm" && contextData && contextData.last) {
       var last = contextData.last;
@@ -3436,6 +4388,7 @@
       });
       if (chRow) {
         score = chRow.score;
+        subScore = chRow.subScore;
         findings = chRow.findings;
       }
     } else {
@@ -3464,22 +4417,32 @@
         contextData.chapters.forEach(function (c) {
           if (c.id === ch) row = c;
         });
-        if (row) score = row.score;
+        if (row) {
+          score = row.score;
+          subScore = row.subScore;
+          if (row.findings != null) findings = row.findings;
+        }
       }
     }
     state.focus = {
       type: "chapter",
       title: ch + ". " + title,
-      subtitle: state.mode === "farm" ? "Última visita de la finca" : "Hallazgos del periodo",
+      subtitle:
+        (score == null ? "Sin indicador" : "Capítulos " + score + "%") +
+        (subScore == null ? "" : " · Subcapítulos " + subScore + "%") +
+        (state.mode === "farm"
+          ? " · cap. última visita / sub. periodo"
+          : " · ambas del periodo"),
       chapter: ch,
       items: items.slice(0, 20),
       score: score,
+      subScore: subScore,
       findings: findings,
     };
     if (state.mode === "farm") state.nocumpleOpen = true;
     render();
     window.setTimeout(function () {
-      var el = q("#c360-metrics-focus");
+      var el = q("#c360-metrics-focus") || q(".c360-capsub-peek");
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 40);
   }
@@ -3588,6 +4551,22 @@
         }
       });
     });
+    qa("[data-capsub-toggle]", root).forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var key = btn.getAttribute("data-capsub-toggle");
+        if (!state.capSubHide) state.capSubHide = { cap: false, sub: false };
+        var next = !state.capSubHide[key];
+        // No apagar ambas series a la vez.
+        if (next) {
+          var other = key === "cap" ? "sub" : "cap";
+          if (state.capSubHide[other]) return;
+        }
+        state.capSubHide[key] = next;
+        render();
+      });
+    });
     qa("[data-open-visit]", root).forEach(function (btn) {
       btn.addEventListener("click", function (ev) {
         ev.preventDefault();
@@ -3618,6 +4597,14 @@
           var el = q("#c360-nocumple-detail");
           if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 40);
+      });
+    }
+    var toggleAlerts = q('[data-act="toggle-alerts"]', root);
+    if (toggleAlerts) {
+      toggleAlerts.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        state.alertsOpen = !state.alertsOpen;
+        render();
       });
     }
     var clearNotice = q('[data-act="clear-notice"]', root);

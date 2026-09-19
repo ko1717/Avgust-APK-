@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.13, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.20, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.14-Android.apk`](./dist/AVGUST-CARE-360-1.5.14-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.21-Android.apk`](./dist/AVGUST-CARE-360-1.5.21-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.14**. Se instala encima de 1.4.x–1.5.13
+En la cabecera de la app debe verse **v1.5.21**. Se instala encima de 1.4.x–1.5.20
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,14 +27,14 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.14
+## Qué incluye 1.5.21
 
 - Informe Word: calidad de agua, mezcla final, presión, equipo y volumen/tiempo
   quedan junto al ítem del capítulo (4.6, 5.1, 5.3, 5.6).
 - Se quitan las observaciones y recomendaciones de capítulo del informe.
 - Ortografía de los criterios MIPE y de los títulos del documento.
-- Lo anterior de 1.5.13: borrar visita/informe/solicitud/finca, panel de
-  calidad fijo, modo oscuro y lector, seguimiento y métricas por finca.
+- Incluye lo de 1.5.20: Métricas en teléfono, Qué atender colapsado, Cap vs Sub,
+  Evolución en línea e informe unificado.
 
 ---
 
@@ -62,7 +62,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.14-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.21-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 
@@ -83,7 +83,3 @@ tools/dev-preview.sh                 # http://localhost:8080
 ```bash
 cd tests && npm install && npm test   # requiere la vista previa en :8080
 ```
-
-### Demos de importación
-
-Ver `tools/demo/README.md`.

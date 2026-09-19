@@ -1,5 +1,5 @@
 /*
- * AVGUST CARE 360 — capa profesional 1.5.14.
+ * AVGUST CARE 360 — capa profesional 1.5.21.
  *
  * Se carga después de care360-enhance.css, por lo que sus reglas ganan por
  * cascada ante igual especificidad. Todo es aditivo: no modifica el código
@@ -306,6 +306,19 @@ html.dark .c360-pro-conn {
   font-size: 13px;
   font-weight: 700;
   color: var(--c360-ink-soft);
+  pointer-events: none;
+}
+
+/* En Métricas: arriba a la derecha, nunca encima de la tabla Capítulos */
+body.c360-on-metrics .c360-pro-save,
+body:has(#c360-metrics-board) .c360-pro-save {
+  bottom: auto;
+  top: max(10px, env(safe-area-inset-top, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: 80;
+  max-width: min(70vw, 220px);
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 .c360-pro-save[data-visible="1"] {
