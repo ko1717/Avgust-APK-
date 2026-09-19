@@ -2,7 +2,7 @@
 """Ajustes del informe final y del consolidado de aseguramientos.
 
 - Sí / No → Sí cumple / No cumple (formulario, informe HTML, Word, métricas).
-- Mediciones de Cap. 4 y 5 dentro del capítulo correspondiente en el Word.
+- Mediciones de Cap. 4 y 5 debajo del subcapítulo (4.6, 5.1, 5.3, 5.6).
 - Mezcla final junto a Cap. 4.6 (calidad del agua).
 - Hallazgos por capítulo más detallados en el consolidado (UI y Word).
 """
@@ -108,6 +108,84 @@ WORD_MEASURE_NEW = (
     "e.conclusion&&"
 )
 
+# Tablas al final del capítulo (tras observaciones). Se mueven debajo del ítem.
+WORD_CHAPTER_END = (
+    "for(let n of t.items){let t=e.answers[n.id];"
+    "s(`${n.id} · ${t?.value===`SI`?`Sí cumple`:t?.value===`NO`?`No cumple`:t?.value===`NA`?`No aplica`:`Sin evaluar`}`,Iv.HEADING_2),"
+    "o(n.text),t?.observation&&o(`Hallazgo / observación: ${t.observation}`),"
+    "t?.recommendation&&o(`Recomendación: ${t.recommendation}`)}"
+    "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
+    "e.recommendations[t.id]&&(s(`Recomendaciones del capítulo`,Iv.HEADING_2),o(e.recommendations[t.id]));"
+    "let xf=[[4,`4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[4,`4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
+    "[5,`5.1 Presión`,[`pressure`,`implementPressure`]],"
+    "[5,`5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+    "[5,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+    "xf.filter(([n])=>n===t.id).forEach(([,a,o])=>{let r=o.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+    "r.length&&(s(a,Iv.HEADING_2),c(r))})}"
+)
+
+WORD_UNDER_ITEM = (
+    "let xf=[[`4.6`,`4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[`4.6`,`4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
+    "[`5.1`,`5.1 Presión`,[`pressure`,`implementPressure`]],"
+    "[`5.3`,`5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+    "[`5.6`,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+    "for(let n of t.items){let a=e.answers[n.id];"
+    "s(`${n.id} · ${a?.value===`SI`?`Sí cumple`:a?.value===`NO`?`No cumple`:a?.value===`NA`?`No aplica`:`Sin evaluar`}`,Iv.HEADING_2),"
+    "o(n.text),a?.observation&&o(`Hallazgo / observación: ${a.observation}`),"
+    "a?.recommendation&&o(`Recomendación: ${a.recommendation}`),"
+    "xf.filter(([i])=>i===n.id).forEach(([,l,k])=>{let r=k.filter(t=>e.measurements[t]).map(t=>[kf[t],e.measurements[t]]);"
+    "r.length&&(s(l,Iv.HEADING_2),c(r))})}"
+    "e.notes[t.id]&&(s(`Observaciones del capítulo`,Iv.HEADING_2),o(e.notes[t.id])),"
+    "e.recommendations[t.id]&&(s(`Recomendaciones del capítulo`,Iv.HEADING_2),o(e.recommendations[t.id]))}"
+)
+
+HTML_ITEM_OLD = (
+    "t.items.map(t=>{let n=e.answers[t.id];return(0,K.jsxs)(`div`,{children:["
+    "(0,K.jsxs)(`h3`,{children:[t.id,` · `,n?.value===`SI`?`Sí cumple`:n?.value===`NO`?`No cumple`:n?.value===`NA`?`No aplica`:`Sin evaluar`]}),"
+    "(0,K.jsx)(`p`,{children:t.text}),"
+    "n?.observation&&(0,K.jsxs)(`p`,{children:[(0,K.jsx)(`strong`,{children:`Hallazgo / observación: `}),n.observation]}),"
+    "n?.recommendation&&(0,K.jsxs)(`p`,{children:[(0,K.jsx)(`strong`,{children:`Recomendación: `}),n.recommendation]})]},t.id)})"
+)
+
+HTML_ITEM_NEW = (
+    "t.items.map(t=>{let n=e.answers[t.id],"
+    "xf=[[`4.6`,`4.6 Calidad del agua`,[`ph`,`hardness`,`conductivity`]],"
+    "[`4.6`,`4.6 Mezcla final`,[`mixPh`,`mixConductivity`]],"
+    "[`5.1`,`5.1 Presión`,[`pressure`,`implementPressure`]],"
+    "[`5.3`,`5.3 Equipo de aplicación`,[`equipment`,`implement`]],"
+    "[`5.6`,`5.6 Volumen y tiempo por cama`,[`volume`,`time`]]];"
+    "return(0,K.jsxs)(`div`,{children:["
+    "(0,K.jsxs)(`h3`,{children:[t.id,` · `,n?.value===`SI`?`Sí cumple`:n?.value===`NO`?`No cumple`:n?.value===`NA`?`No aplica`:`Sin evaluar`]}),"
+    "(0,K.jsx)(`p`,{children:t.text}),"
+    "n?.observation&&(0,K.jsxs)(`p`,{children:[(0,K.jsx)(`strong`,{children:`Hallazgo / observación: `}),n.observation]}),"
+    "n?.recommendation&&(0,K.jsxs)(`p`,{children:[(0,K.jsx)(`strong`,{children:`Recomendación: `}),n.recommendation]}),"
+    "...xf.filter(([i,,k])=>i===t.id&&k.some(i=>e.measurements[i])).map(([i,a,o])=>(0,K.jsxs)(`div`,{className:`c360-report-inline-measures`,"
+    "children:[(0,K.jsx)(`h3`,{children:a}),(0,K.jsx)(`table`,{children:(0,K.jsx)(`tbody`,{children:o.filter(i=>e.measurements[i]).map(i=>(0,K.jsxs)(`tr`,{children:[(0,K.jsx)(`th`,{children:kf[i]}),(0,K.jsx)(`td`,{children:e.measurements[i]})]},i))})})]},a))]},t.id)})"
+)
+
+HTML_DUMP_OLD = (
+    "Object.values(e.measurements).some(Boolean)&&(0,K.jsxs)(K.Fragment,{children:["
+    "(0,K.jsx)(`h2`,{children:`Mediciones de campo`}),"
+    "(0,K.jsx)(`table`,{children:(0,K.jsx)(`tbody`,{children:Object.entries(kf).filter(([t])=>e.measurements[t]).map(([t,n])=>(0,K.jsxs)(`tr`,{children:[(0,K.jsx)(`th`,{children:n}),(0,K.jsx)(`td`,{children:e.measurements[t]})]},t))})})]})"
+)
+
+HTML_DUMP_KEYS = (
+    "`ph`,`hardness`,`conductivity`,`mixPh`,`mixConductivity`,"
+    "`pressure`,`implementPressure`,`equipment`,`implement`,`volume`,`time`"
+)
+
+HTML_DUMP_NEW = (
+    "Object.entries(kf).filter(([t])=>e.measurements[t]&&!["
+    + HTML_DUMP_KEYS
+    + "].includes(t)).length&&(0,K.jsxs)(K.Fragment,{children:["
+    "(0,K.jsx)(`h2`,{children:`Mediciones de campo`}),"
+    "(0,K.jsx)(`table`,{children:(0,K.jsx)(`tbody`,{children:Object.entries(kf).filter(([t])=>e.measurements[t]&&!["
+    + HTML_DUMP_KEYS
+    + "].includes(t)).map(([t,n])=>(0,K.jsxs)(`tr`,{children:[(0,K.jsx)(`th`,{children:n}),(0,K.jsx)(`td`,{children:e.measurements[t]})]},t))})})]})"
+)
+
 K6_OLD = (
     "i(`Hallazgos por capítulo`),"
     "a([[`Capítulo`,`Hallazgos`,`Criterios aplicables`,`Indicador`,`Fincas`],..."
@@ -162,19 +240,35 @@ def patch_file(path: Path) -> list[str]:
     source, simple = apply_simple(source, INDEX_PATCHES)
     applied.extend(simple)
 
-    if "xf.filter(([n])=>n===t.id)" not in source:
-        relocated = False
-        for old in WORD_TRAILING_VARIANTS:
-            if old in source:
-                source = source.replace(old, WORD_MEASURE_NEW, 1)
-                applied.append("mediciones Word dentro del capítulo")
-                relocated = True
-                break
-        if not relocated and "let xf=[[`Cap. 4 · 4.6 Calidad del agua`" in source:
-            # Soft fail: leave for diagnostics
-            pass
+    if "xf.filter(([i])=>i===n.id)" not in source:
+        if "xf.filter(([n])=>n===t.id)" not in source:
+            relocated = False
+            for old in WORD_TRAILING_VARIANTS:
+                if old in source:
+                    source = source.replace(old, WORD_MEASURE_NEW, 1)
+                    applied.append("mediciones Word dentro del capítulo")
+                    relocated = True
+                    break
+            if not relocated and "let xf=[[`Cap. 4 · 4.6 Calidad del agua`" in source:
+                # Soft fail: leave for diagnostics
+                pass
+        if WORD_CHAPTER_END in source:
+            source = source.replace(WORD_CHAPTER_END, WORD_UNDER_ITEM, 1)
+            applied.append("mediciones Word debajo del subcapítulo")
+        elif "xf.filter(([n])=>n===t.id)" in source:
+            applied.append("mediciones Word dentro del capítulo (pendiente anclar al ítem)")
     else:
-        applied.append("mediciones Word dentro del capítulo (ya estaba)")
+        applied.append("mediciones Word debajo del subcapítulo (ya estaba)")
+
+    if "c360-report-inline-measures" not in source:
+        if HTML_ITEM_OLD in source:
+            source = source.replace(HTML_ITEM_OLD, HTML_ITEM_NEW, 1)
+            applied.append("mediciones HTML debajo del subcapítulo")
+        if HTML_DUMP_OLD in source:
+            source = source.replace(HTML_DUMP_OLD, HTML_DUMP_NEW, 1)
+            applied.append("ocultar dump HTML de mediciones ya ancladas")
+    else:
+        applied.append("mediciones HTML debajo del subcapítulo (ya estaba)")
 
     if "Hallazgos por capítulo · detalle" not in source and "${t.id}. ${t.title} · detalle" not in source:
         if K6_OLD in source:

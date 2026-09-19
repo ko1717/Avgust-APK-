@@ -238,6 +238,26 @@ check('El informe agrupa las mediciones por capítulo MIPE',
   && /Lanza/.test(report) && /Estacionaria/.test(report) && /12/.test(report),
   report.replace(/\n/g, ' ').slice(0, 280)
 );
+const tableBetween = (text, startRe, tableRe, endRe) => {
+  const start = text.search(startRe);
+  const table = text.search(tableRe);
+  const end = text.search(endRe);
+  return start >= 0 && table > start && (end < 0 || table < end);
+};
+check('La tabla de calidad del agua queda debajo de 4.6',
+  tableBetween(report, /4\.6\s*·/, /Calidad del agua/, /4\.7\s*·|Observaciones del capítulo/),
+  report.replace(/\n/g, ' ').slice(0, 240)
+);
+check('La tabla de presión queda debajo de 5.1',
+  tableBetween(report, /5\.1\s*·/, /5\.1 Presión|Presión de la bomba/, /5\.2\s*·|Observaciones del capítulo/),
+  report.replace(/\n/g, ' ').slice(0, 240)
+);
+check('La tabla de equipo queda debajo de 5.3',
+  tableBetween(report, /5\.3\s*·/, /Equipo de aplicación/, /5\.4\s*·|Observaciones del capítulo/)
+);
+check('La tabla de volumen/tiempo queda debajo de 5.6',
+  tableBetween(report, /5\.6\s*·/, /Volumen y tiempo por cama|Volumen por cama/, /5\.7\s*·|Observaciones del capítulo/)
+);
 await p.evaluate(() => {
   const heading = [...document.querySelectorAll('.report-paper h2')].find((el) => /Mediciones de campo/i.test(el.textContent || ''));
   if (heading) heading.scrollIntoView({ block: 'start' });
@@ -314,6 +334,18 @@ check('El Word lleva las mediciones por capítulo MIPE',
   && /Implementos de aplicación/.test(wordText) && /Estacionaria/.test(wordText)
   && /Lanza/.test(wordText),
   wordText.slice(Math.max(0, wordText.indexOf('Calidad del agua')), Math.max(0, wordText.indexOf('Calidad del agua')) + 420)
+);
+check('El Word pone calidad del agua debajo de 4.6',
+  tableBetween(wordText, /4\.6\s*·/, /Calidad del agua/, /4\.7\s*·|Observaciones del capítulo/)
+);
+check('El Word pone presión debajo de 5.1',
+  tableBetween(wordText, /5\.1\s*·/, /5\.1 Presión|Presión de la bomba/, /5\.2\s*·|Observaciones del capítulo/)
+);
+check('El Word pone equipo debajo de 5.3',
+  tableBetween(wordText, /5\.3\s*·/, /Equipo de aplicación/, /5\.4\s*·|Observaciones del capítulo/)
+);
+check('El Word pone volumen/tiempo debajo de 5.6',
+  tableBetween(wordText, /5\.6\s*·/, /Volumen y tiempo por cama|Volumen por cama/, /5\.7\s*·|Observaciones del capítulo/)
 );
 
 check('Sin errores de JavaScript', errors.length === 0, errors.slice(0, 5).join(' | '));

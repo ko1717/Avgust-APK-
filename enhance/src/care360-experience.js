@@ -829,15 +829,33 @@
     });
   }
 
+  function criterionHeadingRe(code) {
+    return new RegExp(
+      "^" + String(code).replace(".", "\\.") + "(?:\\s*[·.•\\-–—]|\\s+(?:Sí|No|Sin)|\\s*$)",
+      "i"
+    );
+  }
+
   function findReportCriterionAnchor(chapterSection, code) {
     if (!chapterSection || !code) return null;
+    var re = criterionHeadingRe(code);
     var heading = qa("h3", chapterSection).find(function (node) {
-      return new RegExp("^" + code.replace(".", "\\.") + "\\s*·", "i").test((node.textContent || "").trim());
+      if (node.closest(".c360-report-chapter-measures, .c360-report-inline-measures")) return false;
+      return re.test((node.textContent || "").trim());
     });
     if (!heading) return null;
+    var block = heading.parentElement;
+    if (block && block !== chapterSection && block.tagName === "DIV" && q("h3", block) === heading) {
+      return block;
+    }
     var anchor = heading;
     var node = heading.nextElementSibling;
-    while (node && node.tagName !== "H3" && !node.classList.contains("c360-report-chapter-measures")) {
+    while (
+      node &&
+      node.tagName !== "H3" &&
+      !node.classList.contains("c360-report-chapter-measures") &&
+      !node.classList.contains("c360-report-inline-measures")
+    ) {
       anchor = node;
       node = node.nextElementSibling;
     }
@@ -898,6 +916,16 @@
       var used = [];
       var movedAny = false;
       MEASURE_PLACEMENTS.forEach(function (group) {
+        var alreadyInline = qa(".c360-report-inline-measures", paper).some(function (el) {
+          var title = ((q("h3", el) && q("h3", el).textContent) || "").trim();
+          return title.indexOf(group.title) !== -1;
+        });
+        if (alreadyInline || q('.c360-report-chapter-measures[data-group="' + group.id + '"]', paper)) {
+          rows.forEach(function (row) {
+            if (group.test.test(row.label) && used.indexOf(row.label) === -1) used.push(row.label);
+          });
+          return;
+        }
         var items = rows.filter(function (row) {
           return group.test.test(row.label) && used.indexOf(row.label) === -1;
         });

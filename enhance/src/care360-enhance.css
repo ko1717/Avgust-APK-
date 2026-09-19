@@ -799,7 +799,8 @@ html.dark .c360-delete-btn {
 }
 
 .c360-report-measures,
-.c360-report-chapter-measures {
+.c360-report-chapter-measures,
+.c360-report-inline-measures {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -807,7 +808,8 @@ html.dark .c360-delete-btn {
 }
 
 .c360-report-measures section h3,
-.c360-report-chapter-measures h3 {
+.c360-report-chapter-measures h3,
+.c360-report-inline-measures h3 {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -817,7 +819,8 @@ html.dark .c360-delete-btn {
 }
 
 .c360-report-measures table,
-.c360-report-chapter-measures table {
+.c360-report-chapter-measures table,
+.c360-report-inline-measures table {
   width: 100%;
   border-collapse: collapse;
 }
@@ -825,7 +828,9 @@ html.dark .c360-delete-btn {
 .c360-report-measures th,
 .c360-report-measures td,
 .c360-report-chapter-measures th,
-.c360-report-chapter-measures td {
+.c360-report-chapter-measures td,
+.c360-report-inline-measures th,
+.c360-report-inline-measures td {
   padding: 8px 10px;
   border-bottom: 1px solid var(--c360-line);
   text-align: left;
@@ -833,7 +838,8 @@ html.dark .c360-delete-btn {
 }
 
 .c360-report-measures th,
-.c360-report-chapter-measures th {
+.c360-report-chapter-measures th,
+.c360-report-inline-measures th {
   width: 48%;
   color: var(--c360-ink-soft);
   font-weight: 700;
