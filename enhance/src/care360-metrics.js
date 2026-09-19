@@ -2392,7 +2392,8 @@
         ". Gris = todavía no se midió.</p>";
       html += '<div class="c360-hbar-chart c360-chdetail-subbars">';
       catalog.forEach(function (it) {
-        var subMeta = isMeasuredSub(it)
+        var measured = isMeasuredSub(it);
+        var subMeta = measured
           ? (it.findings || 0) + " hallazgo" + ((it.findings || 0) === 1 ? "" : "s")
           : "Sin evaluar";
         html += renderUnifiedBar({
@@ -2400,8 +2401,8 @@
           score: it.score,
           tone: it.status || scoreStatus(it.score),
           meta: subMeta,
-          extraClass: "c360-chdetail-subbar" + (isMeasuredSub(it) ? "" : " is-pending"),
-          pill: farmMode ? resultPill(it.answer) : "",
+          extraClass: "c360-chdetail-subbar" + (measured ? "" : " is-pending"),
+          pill: farmMode && (it.answer === "SI" || it.answer === "NO") ? resultPill(it.answer) : "",
         });
       });
       html += "</div></div></article>";

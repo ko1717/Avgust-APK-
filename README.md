@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.13, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.14, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.14-Android.apk`](./dist/AVGUST-CARE-360-1.5.14-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.15-Android.apk`](./dist/AVGUST-CARE-360-1.5.15-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.14**. Se instala encima de 1.4.x–1.5.13
+En la cabecera de la app debe verse **v1.5.15**. Se instala encima de 1.4.x–1.5.14
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,10 +27,11 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.14
+## Qué incluye 1.5.15
 
+- Métricas: los **5 capítulos MIPE** en una sola gráfica de barras, con leyenda (Saludable / Aceptable / Crítico / Sin medición / Meta 80%).
+- Al tocar un capítulo se ve el catálogo completo de subcapítulos, con la misma barra.
 - Informe Word y vista previa: tablas de mediciones debajo de 4.6, 5.1, 5.3 y 5.6.
-- Métricas: detalle por capítulo (tabla de subcapítulos y gráfica puntual) en Por finca y Todas.
 - **Borrar visita**, **versión de informe**, **solicitud** y **finca**.
 - Panel **Calidad de la visita** fijo, modo oscuro y modo lector (☀).
 - Seguimiento compacto, agenda en vivo y métricas Por finca sin mezclar.
@@ -61,7 +62,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.14-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.15-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 
