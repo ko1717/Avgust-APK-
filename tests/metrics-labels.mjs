@@ -33,10 +33,8 @@ check(
   "CSV usa las mismas columnas de serie",
   /series\.cap\s*\+\s*" %,"/.test(js) && /series\.sub\s*\+\s*" %,/.test(js)
 );
-check(
-  "Todas calcula primera y última visita por finca",
-  /firstVisitsByFarm/.test(js) && /lastVisitsByFarm/.test(js) && /visitSetChapterScore/.test(js)
-);
+check("KPI de capítulo 2 se llama Mediciones y pesaje", /KPI_LABEL_DOSE = "Mediciones y pesaje"/.test(js));
+check("KPI de capítulo 2 ya no dice Dosis", !/kpiCard\("Dosis"/.test(js) && !/"Dosis"/.test(js));
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} pruebas superadas.`);

@@ -91,6 +91,8 @@ check(
   allProbe.lead
 );
 check("Todas: columnas Primera visita y Última visita", allProbe.heads.includes("Primera visita") && allProbe.heads.includes("Última visita"), allProbe.heads.join(","));
+check("KPI Mediciones y pesaje", /Mediciones y pesaje/.test(allProbe.text));
+check("KPI ya no dice Dosis", !/\bDosis\b/.test(allProbe.text));
 
 await page.evaluate(() => {
   document.querySelector(".c360-metrics-capsub-block")?.scrollIntoView({ block: "start" });
@@ -138,7 +140,8 @@ if (!reportHtml) {
 check("Informe de métricas generado", reportHtml.length > 400, "len=" + reportHtml.length);
 check("Informe: columna Primera visita", /Primera visita/i.test(reportHtml));
 check("Informe: columna Última visita", /Última visita/i.test(reportHtml));
-check("Informe: no dice Por ítem", !/Por ítem/i.test(reportHtml));
+check("Informe: KPI Mediciones y pesaje", /Mediciones y pesaje/.test(reportHtml));
+check("Informe: no dice Dosis", !/\bDosis\b/.test(reportHtml));
 check(
   "Informe: lead de Todas",
   /primera visita de cada finca/i.test(reportHtml) && /última visita de cada finca/i.test(reportHtml),

@@ -13,6 +13,8 @@
     4: "Preparación de mezclas",
     5: "Aplicación de PPC",
   };
+  var KPI_LABEL_MIX = "Mezclas";
+  var KPI_LABEL_DOSE = "Mediciones y pesaje";
 
   function qa(sel, root) {
     return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -947,7 +949,7 @@
       lines.push("Modo," + csvEscape(snap.modeLabel));
       lines.push("Periodo," + csvEscape(snap.periodFrom) + "," + csvEscape(snap.periodTo));
       lines.push(
-        "KPIs,Indicador %,Mezclas %,Dosis %,Hallazgos periodo,Visitas"
+        "KPIs,Indicador %," + KPI_LABEL_MIX + " %," + KPI_LABEL_DOSE + " %,Hallazgos periodo,Visitas"
       );
       lines.push(
         [
@@ -1503,7 +1505,7 @@
       scoreTone
     );
     body += kpiCard(
-      "Mezclas",
+      KPI_LABEL_MIX,
       snap.mix.score == null ? "—" : snap.mix.score + "%",
       mixVsMeta != null
         ? formatSignedPts(mixVsMeta) + " vs meta " + META_TARGET + "%"
@@ -1511,7 +1513,7 @@
       reportScoreTone(snap.mix.score)
     );
     body += kpiCard(
-      "Dosis",
+      KPI_LABEL_DOSE,
       snap.dose.score == null ? "—" : snap.dose.score + "%",
       doseVsMeta != null
         ? formatSignedPts(doseVsMeta) + " vs meta " + META_TARGET + "%"
@@ -3605,12 +3607,12 @@
       }
     );
     html += '<div class="c360-metrics-kpis-side">';
-    html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
+    html += kpiCard(KPI_LABEL_MIX, mix.value, mix.tone, ICONS.mix, {
       score: mix.score,
       delta: sideDeltaMix,
       showStatus: false,
     });
-    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
+    html += kpiCard(KPI_LABEL_DOSE, dose.value, dose.tone, ICONS.water, {
       score: dose.score,
       delta: sideDeltaDose,
       showStatus: false,
@@ -3770,12 +3772,12 @@
       }
     );
     html += '<div class="c360-metrics-kpis-side">';
-    html += kpiCard("Mezclas", mix.value, mix.tone, ICONS.mix, {
+    html += kpiCard(KPI_LABEL_MIX, mix.value, mix.tone, ICONS.mix, {
       score: mix.score,
       delta: sideDeltaMix,
       showStatus: false,
     });
-    html += kpiCard("Dosis", dose.value, dose.tone, ICONS.water, {
+    html += kpiCard(KPI_LABEL_DOSE, dose.value, dose.tone, ICONS.water, {
       score: dose.score,
       delta: sideDeltaDose,
       showStatus: false,
