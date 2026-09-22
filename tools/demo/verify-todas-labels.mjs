@@ -116,6 +116,24 @@ check(
   JSON.stringify(sideKpis.mix)
 );
 
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+await wait(400);
+await page.evaluate(() => {
+  document.querySelector("#c360-metrics-board")?.scrollIntoView({ block: "start" });
+  window.scrollTo(0, 0);
+});
+await wait(300);
+const kpiStrip = await page.$(".c360-metrics-kpis");
+const kpiShot = path.join(OUT, "metricas_kpi_mediciones_pesaje_1528.png");
+if (kpiStrip) {
+  await kpiStrip.screenshot({ path: kpiShot });
+} else {
+  await page.screenshot({ path: kpiShot, fullPage: false });
+}
+await page.screenshot({ path: path.join(OUT, "metricas_phone_390_kpis_1528.png"), fullPage: false });
+await page.setViewport({ width: 820, height: 1180, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+await wait(200);
+
 await page.evaluate(() => {
   document.querySelector(".c360-metrics-capsub-block")?.scrollIntoView({ block: "start" });
 });
