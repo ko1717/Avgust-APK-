@@ -27,7 +27,10 @@
   <div class="shell">
     <p class="demo-banner">
       Demo con <strong>4 informes</strong> de <strong>Finca San Isidro</strong>
-      (oct 2025 40% → dic 60% → mar 2026 90% → jun 70%).
+      (oct 2025 40% → dic 60% → mar 2026 90% → jun 70%) y uno de
+      <strong>Finca El Roble</strong>.
+      En San Isidro el capítulo 2 falta en la primera y la última visita,
+      pero está en las del medio: el KPI Mediciones y pesaje debe mostrar %.
       Abre Métricas → finca San Isidro para ver Evolución con 4 puntos.
     </p>
     <nav class="module-nav" role="tablist">
@@ -65,7 +68,7 @@
         crop: "Rosa",
         zone: "Antioquia",
         answers: mkAnswers({
-          "1.1": "NO", "1.2": "SI", "2.1": "NO", "2.2": "SI", "3.1": "NO",
+          "1.1": "NO", "1.2": "SI", "3.1": "NO",
           "4.1": "NO", "4.2": "SI", "5.1": "NO", "5.2": "SI", "5.3": "NO",
         }),
       },
@@ -104,8 +107,21 @@
         crop: "Rosa",
         zone: "Antioquia",
         answers: mkAnswers({
-          "1.1": "SI", "1.2": "SI", "2.1": "SI", "2.2": "SI", "3.1": "NO",
+          "1.1": "SI", "1.2": "SI", "3.1": "NO",
           "4.1": "SI", "4.2": "NO", "5.1": "NO", "5.2": "SI", "5.3": "SI",
+        }),
+      },
+      {
+        farm: "Finca El Roble",
+        date: "2026-02-10",
+        reviewed: true,
+        serviceKind: "assurance",
+        responsible: "Marta Díaz",
+        crop: "Clavel",
+        zone: "Cundinamarca",
+        answers: mkAnswers({
+          "1.1": "SI", "1.2": "SI", "3.1": "SI",
+          "4.1": "SI", "4.2": "SI", "5.1": "NO", "5.2": "SI",
         }),
       },
     ];

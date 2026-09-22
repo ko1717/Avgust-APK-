@@ -260,6 +260,30 @@
     };
   }
 
+  /** % ponderado del periodo (SI/NO del capítulo en todas las visitas del recorte). */
+  function periodChapterScore(stats) {
+    var applicable = (stats && stats.applicable) || 0;
+    var findings = (stats && stats.findings) || 0;
+    if (!applicable) return { applicable: 0, findings: 0, score: null };
+    return {
+      applicable: applicable,
+      findings: findings,
+      score: Math.round(((applicable - findings) / applicable) * 100),
+    };
+  }
+
+  /**
+   * KPI de capítulo: última visita, si no hay SI/NO la primera, y si ambas
+   * quedan vacías el % ponderado del periodo. No inventa un número sin SI/NO.
+   */
+  function pickChapterKpiScore(ch) {
+    if (!ch) return null;
+    if (ch.subScore != null && !isNaN(Number(ch.subScore))) return Number(ch.subScore);
+    if (ch.score != null && !isNaN(Number(ch.score))) return Number(ch.score);
+    if (ch.periodScore != null && !isNaN(Number(ch.periodScore))) return Number(ch.periodScore);
+    return null;
+  }
+
   function seriesLabels() {
     return {
       cap: "Primera visita",
@@ -395,20 +419,24 @@
         var c = byChapter[id] || { farms: {} };
         var firstSt = visitSetChapterScore(firstVisits, id, catalog);
         var lastSt = visitSetChapterScore(lastVisits, id, catalog);
+        var periodSt = periodChapterScore(c);
+        var kpiScore =
+          lastSt.score != null ? lastSt.score : firstSt.score != null ? firstSt.score : periodSt.score;
         return {
           id: id,
           title: CHAPTER_TITLES[id] || "Capítulo " + id,
-          applicable: lastSt.applicable,
-          findings: lastSt.findings,
+          applicable: lastSt.applicable || periodSt.applicable,
+          findings: lastSt.applicable ? lastSt.findings : periodSt.findings,
           score: firstSt.score,
           subScore: lastSt.score,
-          subCount: lastSt.applicable,
-          status: scoreStatus(lastSt.score != null ? lastSt.score : firstSt.score),
+          periodScore: periodSt.score,
+          subCount: lastSt.applicable || periodSt.applicable,
+          status: scoreStatus(kpiScore),
           farms: Object.keys(c.farms || {}).length,
         };
       })
       .filter(function (c) {
-        return c.score != null || c.subScore != null;
+        return c.score != null || c.subScore != null || c.periodScore != null;
       });
 
     var periodApp = 0;
@@ -643,11 +671,12 @@
 
   function chapterKpi(chapters, id) {
     var ch = null;
+    var want = Number(id);
     (chapters || []).forEach(function (c) {
-      if (c.id === id) ch = c;
+      if (Number(c.id) === want) ch = c;
     });
     if (!ch) return { value: "—", tone: "pending", score: null };
-    var kpiScore = ch.subScore != null ? ch.subScore : ch.score;
+    var kpiScore = pickChapterKpiScore(ch);
     if (kpiScore == null) return { value: "—", tone: "pending", score: null };
     return { value: kpiScore + "%", tone: scoreStatus(kpiScore), score: kpiScore };
   }
@@ -2107,8 +2136,28 @@
 
     var first = filtered[0];
     var last = filtered[filtered.length - 1];
-    var chapters = Object.keys(CHAPTER_TITLES)
+    var farmByChapter = {};
+    filtered.forEach(function (v) {
+      Object.keys(v.answers || {}).forEach(function (aid) {
+        var val = answerValue(v.answers[aid]);
+        if (val !== "SI" && val !== "NO") return;
+        var ch = Number(String(aid).split(".")[0]);
+        if (!ch) return;
+        if (!farmByChapter[ch]) farmByChapter[ch] = { applicable: 0, findings: 0 };
+        farmByChapter[ch].applicable += 1;
+        if (val === "NO") farmByChapter[ch].findings += 1;
+      });
+    });
+    var chapterIdSet = {};
+    Object.keys(CHAPTER_TITLES).forEach(function (id) {
+      chapterIdSet[id] = true;
+    });
+    Object.keys(farmByChapter).forEach(function (id) {
+      chapterIdSet[id] = true;
+    });
+    var chapters = Object.keys(chapterIdSet)
       .map(Number)
+      .sort()
       .map(function (id) {
         var firstSt = first
           ? chapterScore(first.answers || {}, id, catalog)
@@ -2116,19 +2165,23 @@
         var lastSt = last
           ? chapterScore(last.answers || {}, id, catalog)
           : { applicable: 0, findings: 0, score: null };
+        var periodSt = periodChapterScore(farmByChapter[id]);
+        var kpiScore =
+          lastSt.score != null ? lastSt.score : firstSt.score != null ? firstSt.score : periodSt.score;
         return {
           id: id,
-          title: CHAPTER_TITLES[id],
-          applicable: lastSt.applicable,
-          findings: lastSt.findings,
+          title: CHAPTER_TITLES[id] || "Capítulo " + id,
+          applicable: lastSt.applicable || periodSt.applicable,
+          findings: lastSt.applicable ? lastSt.findings : periodSt.findings,
           score: firstSt.score,
           subScore: lastSt.score,
-          subCount: lastSt.applicable,
-          status: scoreStatus(lastSt.score != null ? lastSt.score : firstSt.score),
+          periodScore: periodSt.score,
+          subCount: lastSt.applicable || periodSt.applicable,
+          status: scoreStatus(kpiScore),
         };
       })
       .filter(function (c) {
-        return c.score != null || c.subScore != null;
+        return c.score != null || c.subScore != null || c.periodScore != null;
       });
 
     var items = [];
@@ -3673,7 +3726,7 @@
       data.chapters.map(function (c) {
         return {
           label: c.id + ". " + shortTitle(c.title),
-          score: c.subScore != null ? c.subScore : c.score,
+          score: pickChapterKpiScore(c),
           findings: c.findings,
           applicable: c.applicable,
           chapterId: c.id,
@@ -3906,7 +3959,7 @@
       data.chapters.map(function (c) {
         return {
           label: c.id + ". " + shortTitle(c.title),
-          score: c.subScore != null ? c.subScore : c.score,
+          score: pickChapterKpiScore(c),
           findings: c.findings,
           applicable: c.applicable,
           chapterId: c.id,
@@ -4910,6 +4963,13 @@
       }
     }, 2000);
   }
+
+  window.Care360Metrics = {
+    aggregateAll: aggregateAll,
+    aggregateFarm: aggregateFarm,
+    chapterKpi: chapterKpi,
+    pickChapterKpiScore: pickChapterKpiScore,
+  };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

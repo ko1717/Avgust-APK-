@@ -35,6 +35,16 @@ check(
 );
 check("KPI de capítulo 2 se llama Mediciones y pesaje", /KPI_LABEL_DOSE = "Mediciones y pesaje"/.test(js));
 check("KPI de capítulo 2 ya no dice Dosis", !/kpiCard\("Dosis"/.test(js) && !/"Dosis"/.test(js));
+check(
+  "KPI usa última, luego primera, luego periodo",
+  /function pickChapterKpiScore/.test(js) &&
+    /ch\.subScore != null/.test(js) &&
+    /ch\.periodScore != null/.test(js)
+);
+check(
+  "aggregateAll no descarta capítulo solo con score de periodo",
+  /c\.score != null \|\| c\.subScore != null \|\| c\.periodScore != null/.test(js)
+);
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} pruebas superadas.`);

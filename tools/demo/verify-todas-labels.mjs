@@ -94,6 +94,28 @@ check("Todas: columnas Primera visita y Última visita", allProbe.heads.includes
 check("KPI Mediciones y pesaje", /Mediciones y pesaje/.test(allProbe.text));
 check("KPI ya no dice Dosis", !/\bDosis\b/.test(allProbe.text));
 
+const sideKpis = await page.evaluate(() => {
+  const cards = [...document.querySelectorAll(".c360-mkpi")].map((el) => ({
+    label: (el.querySelector(".c360-mkpi-label")?.textContent || "").trim(),
+    value: (el.querySelector(".c360-mkpi-value")?.textContent || "").trim(),
+  }));
+  return {
+    dose: cards.find((c) => /Mediciones y pesaje/i.test(c.label)) || null,
+    mix: cards.find((c) => /Mezclas/i.test(c.label)) || null,
+    cards,
+  };
+});
+check(
+  "KPI Mediciones y pesaje muestra % aunque falte en la última visita",
+  !!(sideKpis.dose && /^\d+%$/.test(sideKpis.dose.value)),
+  JSON.stringify(sideKpis.dose)
+);
+check(
+  "KPI Mezclas muestra %",
+  !!(sideKpis.mix && /^\d+%$/.test(sideKpis.mix.value)),
+  JSON.stringify(sideKpis.mix)
+);
+
 await page.evaluate(() => {
   document.querySelector(".c360-metrics-capsub-block")?.scrollIntoView({ block: "start" });
 });
@@ -183,6 +205,18 @@ const farmProbe = await page.evaluate(() => {
 });
 check("Por finca: leyenda Primera visita", farmProbe.legend.some((x) => /Primera visita/i.test(x)), farmProbe.legend.join(" | "));
 check("Por finca: columnas iguales", farmProbe.heads.includes("Primera visita") && farmProbe.heads.includes("Última visita"), farmProbe.heads.join(","));
+const farmKpis = await page.evaluate(() => {
+  const cards = [...document.querySelectorAll(".c360-mkpi")].map((el) => ({
+    label: (el.querySelector(".c360-mkpi-label")?.textContent || "").trim(),
+    value: (el.querySelector(".c360-mkpi-value")?.textContent || "").trim(),
+  }));
+  return cards.find((c) => /Mediciones y pesaje/i.test(c.label)) || null;
+});
+check(
+  "Por finca: Mediciones y pesaje muestra % con datos de periodo",
+  !!(farmKpis && /^\d+%$/.test(farmKpis.value)),
+  JSON.stringify(farmKpis)
+);
 
 await page.evaluate(() => {
   document.querySelector(".c360-metrics-capsub-block")?.scrollIntoView({ block: "start" });
@@ -197,7 +231,7 @@ const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} pruebas superadas.`);
 fs.writeFileSync(
   path.join(OUT, "verify-todas-labels.json"),
-  JSON.stringify({ results, allProbe, farmProbe }, null, 2)
+  JSON.stringify({ results, allProbe, farmProbe, sideKpis, farmKpis }, null, 2)
 );
 
 await browser.close();
