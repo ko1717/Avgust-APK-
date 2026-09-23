@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+import patch_draft  # noqa: E402
 import patch_measurements  # noqa: E402
 import patch_report  # noqa: E402
 
@@ -33,6 +34,7 @@ def main() -> int:
         js = extract_seed_js(work)
         applied_m = patch_measurements.patch_file(js)
         applied_r = patch_report.patch_file(js)
+        applied_d = patch_draft.patch_file(js)
         source = js.read_text(encoding="utf-8")
         checks = [
             ("mediciones junto al ítem", "xf.filter(([i])=>i===n.id)" in source),
@@ -50,9 +52,12 @@ def main() -> int:
             ("capítulo 2 Mediciones y pesaje", "title:`Mediciones y pesaje de PPC's`" in source),
             ("sin título viejo cap. 1", "Almacén e inventarios de PPC" not in source),
             ("sin título viejo cap. 2", "Medición y dosificación de PPC" not in source),
+            ("visita nueva incluye capítulo 2", "chapters:[2,3,4,5]" in source),
+            ("visita nueva ya no nace solo en 3–5", "chapters:[3,4,5]" not in source),
         ]
         print("patch_measurements:", ", ".join(applied_m) or "(nada)")
         print("patch_report:", ", ".join(applied_r) or "(nada)")
+        print("patch_draft:", ", ".join(applied_d) or "(nada)")
         failed = 0
         for name, ok in checks:
             print(("PASS  " if ok else "FAIL  ") + name)

@@ -15,6 +15,8 @@
   };
   var KPI_LABEL_MIX = "Mezclas";
   var KPI_LABEL_DOSE = "Mediciones y pesaje";
+  var KPI_EMPTY_VALUE = "Sin evaluar";
+  var KPI_EMPTY_DOSE_NOTE = "Este periodo no tiene el capítulo 2";
 
   function qa(sel, root) {
     return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -675,10 +677,14 @@
     (chapters || []).forEach(function (c) {
       if (Number(c.id) === want) ch = c;
     });
-    if (!ch) return { value: "—", tone: "pending", score: null };
+    if (!ch) return { value: KPI_EMPTY_VALUE, tone: "pending", score: null };
     var kpiScore = pickChapterKpiScore(ch);
-    if (kpiScore == null) return { value: "—", tone: "pending", score: null };
+    if (kpiScore == null) return { value: KPI_EMPTY_VALUE, tone: "pending", score: null };
     return { value: kpiScore + "%", tone: scoreStatus(kpiScore), score: kpiScore };
+  }
+
+  function doseEmptyNote(dose) {
+    return dose && dose.score == null ? KPI_EMPTY_DOSE_NOTE : "";
   }
 
   function vsMetaPts(score) {
@@ -1543,10 +1549,12 @@
     );
     body += kpiCard(
       KPI_LABEL_DOSE,
-      snap.dose.score == null ? "—" : snap.dose.score + "%",
+      snap.dose.score == null ? KPI_EMPTY_VALUE : snap.dose.score + "%",
       doseVsMeta != null
         ? formatSignedPts(doseVsMeta) + " vs meta " + META_TARGET + "%"
-        : "Capítulo 2",
+        : snap.dose.score == null
+          ? KPI_EMPTY_DOSE_NOTE
+          : "Capítulo 2",
       reportScoreTone(snap.dose.score)
     );
     body += kpiCard(
@@ -3669,6 +3677,7 @@
       score: dose.score,
       delta: sideDeltaDose,
       showStatus: false,
+      note: doseEmptyNote(dose),
     });
     html += kpiCard(
       "Hallazgos",
@@ -3834,6 +3843,7 @@
       score: dose.score,
       delta: sideDeltaDose,
       showStatus: false,
+      note: doseEmptyNote(dose),
     });
     html += kpiCard(
       "Hallazgos",
@@ -4969,6 +4979,8 @@
     aggregateFarm: aggregateFarm,
     chapterKpi: chapterKpi,
     pickChapterKpiScore: pickChapterKpiScore,
+    KPI_EMPTY_VALUE: KPI_EMPTY_VALUE,
+    KPI_EMPTY_DOSE_NOTE: KPI_EMPTY_DOSE_NOTE,
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.29, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.30, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.30-Android.apk`](./dist/AVGUST-CARE-360-1.5.30-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.31-Android.apk`](./dist/AVGUST-CARE-360-1.5.31-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.30**. Se instala encima de 1.4.x–1.5.29
+En la cabecera de la app debe verse **v1.5.31**. Se instala encima de 1.4.x–1.5.30
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,15 +27,17 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.30
+## Qué incluye 1.5.31
 
-- Se revirtió el experimento de 1.5.29: la visita nueva vuelve a nacer con
-  los capítulos **3–5** del formulario compilado. No se fuerzan 1 y 2 vacíos.
-- Si el técnico responde **Mediciones y pesaje** (2.x), esas respuestas y las
-  mediciones de campo se guardan y viajan en el respaldo `.care360`. Si la
-  visita nunca tuvo 2.x, el KPI queda en raya (—); no se inventa un porcentaje.
-- Incluye 1.5.28: KPI de Mediciones y pesaje con % del periodo si hay SI/NO.
-- Incluye 1.5.27–1.5.26: Primera vs Última visita, nombres de capítulo y Word.
+- El KPI **Mediciones y pesaje** solo usa respuestas SI/NO de **2.1–2.8**.
+  El pH, la dureza, la presión y el 4.1 (pesar en campo) son del capítulo 4 o 5:
+  alimentan **Mezclas**, no este recuadro. Si el periodo no tiene 2.x, el
+  recuadro dice **Sin evaluar** (no un porcentaje inventado).
+- «Nueva visita» deja marcado el capítulo 2 (el catálogo compilado sí tiene
+  esos 8 criterios). Hay que responder Sí cumple / No cumple para que salga %.
+  El capítulo 1 (almacén) sigue opcional. No se fuerzan los cinco capítulos.
+- Incluye 1.5.30: si hay 2.x, se guardan sin rellenar 1–5 vacíos.
+- Incluye 1.5.28–1.5.26: KPI de periodo, Primera vs Última visita y Word.
 
 ---
 
@@ -63,7 +65,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.30-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.31-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 

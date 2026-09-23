@@ -249,7 +249,7 @@ const oldVisit = [
   },
 ];
 const honest = metrics.chapterKpi(metrics.aggregateAll(oldVisit).chapters, 2);
-check("sin 2.x el KPI de pesaje queda en raya", honest.value === "—", JSON.stringify(honest));
+check("sin 2.x el KPI de pesaje dice Sin evaluar", honest.value === "Sin evaluar", JSON.stringify(honest));
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} pruebas de persistencia superadas.`);

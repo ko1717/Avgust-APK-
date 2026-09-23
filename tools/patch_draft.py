@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evita que el borrador local se abra solo al entrar a Visitas.
+"""Ajustes del borrador local y de la visita nueva.
 
 Tras borrar una versión de informe, el borrador automático suele seguir en el
 dispositivo. El bundle original lo recupera y abre el editor («Nueva visita
@@ -9,6 +9,8 @@ del diálogo nativo.
 Cambios:
 1. Recuperar el borrador en memoria, pero no abrir el editor solo.
 2. «Nueva visita» descarta el borrador sucio en lugar de guardarlo primero.
+3. La visita nueva nace con el capítulo 2 (2.1–2.8 del catálogo Tf), además
+   de 3–5. Sin eso el KPI de Mediciones y pesaje no tiene SI/NO que contar.
 """
 
 from __future__ import annotations
@@ -41,9 +43,16 @@ NEW_SE = (
     "g(t||Af()),k(!!(t&&!t.id)),B(``),v(`datos`),b(t?.chapters[0]||3),l(!0),u(`visits`)}"
 )
 
+# El catálogo Tf tiene 2.1–2.8. «Nueva visita» llama ce() → Af() y, si
+# Af() nace en [3,4,5], esos ítems nunca se responden. Incluir 2 no inventa
+# un porcentaje: solo deja el capítulo visible para evaluarlo.
+OLD_AF_CHAPTERS = "responsible:`Wilson Castro`,rtc:``,chapters:[3,4,5],answers:{}"
+NEW_AF_CHAPTERS = "responsible:`Wilson Castro`,rtc:``,chapters:[2,3,4,5],answers:{}"
+
 MARKERS = (
     "Hay un borrador local. Usa «Continuar borrador»",
     "if(!e&&O){try{await M8(`/api/draft`,{method:`DELETE`})",
+    "chapters:[2,3,4,5]",
 )
 
 
@@ -76,6 +85,13 @@ def patch_file(path: Path) -> list[str]:
         applied.append("nueva visita descarta borrador")
     elif MARKERS[1] not in source and "async function se(e){let t=e;if(O){" in source:
         return []
+
+    if OLD_AF_CHAPTERS in source:
+        source = source.replace(OLD_AF_CHAPTERS, NEW_AF_CHAPTERS, 1)
+        applied.append("visita nueva incluye capítulo 2")
+    elif "function Af()" in source and "chapters:[3,4,5]" in source and "chapters:[2,3,4,5]" not in source:
+        source = source.replace("chapters:[3,4,5]", "chapters:[2,3,4,5]", 1)
+        applied.append("visita nueva incluye capítulo 2")
 
     if applied:
         path.write_text(source, encoding="utf-8")

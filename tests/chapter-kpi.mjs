@@ -146,9 +146,23 @@ const empty = api.aggregateAll([
   visit("Finca A", "2025-06-01", { "4.1": "NO" }),
 ]);
 check(
-  "Todas: sin SI/NO de capítulo 2 el KPI sigue en raya",
-  api.chapterKpi(empty.chapters, 2).value === "—",
+  "Todas: sin SI/NO de capítulo 2 el KPI dice Sin evaluar",
+  api.chapterKpi(empty.chapters, 2).value === "Sin evaluar",
   JSON.stringify(api.chapterKpi(empty.chapters, 2))
+);
+
+// Como el pantallazo de campo: 3 visitas / 2 fincas, solo 3–5 (Nueva visita).
+const fieldLike = api.aggregateAll([
+  visit("Finca Norte", "2025-07-03", { "3.1": "SI", "4.1": "SI", "4.2": "SI", "5.1": "NO" }),
+  visit("Finca Norte", "2026-03-11", { "3.1": "SI", "4.1": "SI", "4.2": "NO", "5.1": "SI" }),
+  visit("Finca Sur", "2026-09-10", { "3.1": "NO", "4.1": "SI", "4.2": "SI", "5.1": "NO" }),
+]);
+const fieldDose = api.chapterKpi(fieldLike.chapters, 2);
+const fieldMix = api.chapterKpi(fieldLike.chapters, 4);
+check(
+  "Campo 3 visitas/2 fincas: Mezclas tiene % y pesaje queda Sin evaluar",
+  /^\d+%$/.test(fieldMix.value) && fieldDose.value === "Sin evaluar" && fieldDose.score == null,
+  JSON.stringify({ mix: fieldMix, dose: fieldDose, visits: fieldLike.visits, farms: fieldLike.farms.length })
 );
 
 const farmHole = api.aggregateFarm(

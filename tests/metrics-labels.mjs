@@ -34,6 +34,11 @@ check(
   /series\.cap\s*\+\s*" %,"/.test(js) && /series\.sub\s*\+\s*" %,/.test(js)
 );
 check("KPI de capítulo 2 se llama Mediciones y pesaje", /KPI_LABEL_DOSE = "Mediciones y pesaje"/.test(js));
+check("KPI vacío dice Sin evaluar", /KPI_EMPTY_VALUE = "Sin evaluar"/.test(js));
+check(
+  "KPI vacío de pesaje explica el capítulo 2",
+  /KPI_EMPTY_DOSE_NOTE = "Este periodo no tiene el capítulo 2"/.test(js)
+);
 check("KPI de capítulo 2 ya no dice Dosis", !/kpiCard\("Dosis"/.test(js) && !/"Dosis"/.test(js));
 check(
   "KPI usa última, luego primera, luego periodo",

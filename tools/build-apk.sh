@@ -21,8 +21,8 @@ if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
   VERSION_NAME="${2:-1.5.0}"
   VERSION_CODE="${3:-48}"
 else
-  VERSION_NAME="${2:-1.5.30}"
-  VERSION_CODE="${3:-78}"
+  VERSION_NAME="${2:-1.5.31}"
+  VERSION_CODE="${3:-79}"
 fi
 BASE_VERSION_NAME="1.1.0-rc.5"
 
