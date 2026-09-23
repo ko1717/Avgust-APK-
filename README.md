@@ -12,14 +12,14 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.27, y las variantes sin marca) están **retiradas**.
+(1.1.0-rc.5 hasta 1.5.29, y las variantes sin marca) están **retiradas**.
 No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.28-Android.apk`](./dist/AVGUST-CARE-360-1.5.28-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.30-Android.apk`](./dist/AVGUST-CARE-360-1.5.30-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.28**. Se instala encima de 1.4.x–1.5.27
+En la cabecera de la app debe verse **v1.5.30**. Se instala encima de 1.4.x–1.5.29
 firmadas con la misma clave (`tools/signing/`).
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
@@ -27,15 +27,15 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.28
+## Qué incluye 1.5.30
 
-- Métricas: **Mediciones y pesaje** (capítulo 2) y **Mezclas** (capítulo 4)
-  muestran un % si hay SI/NO de ese capítulo en el periodo. Usan la última
-  visita de cada finca; si esa visita no lo evaluó, la primera; si tampoco,
-  el % ponderado del periodo. Ya no quedan en raya (—) cuando sí hay datos.
-- Incluye 1.5.27: el recuadro que decía Dosis ahora dice Mediciones y pesaje.
-- Incluye 1.5.26: Primera visita vs Última visita, nombres de capítulo,
-  Word con mediciones junto al ítem y el tablero de 1.5.20.
+- Se revirtió el experimento de 1.5.29: la visita nueva vuelve a nacer con
+  los capítulos **3–5** del formulario compilado. No se fuerzan 1 y 2 vacíos.
+- Si el técnico responde **Mediciones y pesaje** (2.x), esas respuestas y las
+  mediciones de campo se guardan y viajan en el respaldo `.care360`. Si la
+  visita nunca tuvo 2.x, el KPI queda en raya (—); no se inventa un porcentaje.
+- Incluye 1.5.28: KPI de Mediciones y pesaje con % del periodo si hay SI/NO.
+- Incluye 1.5.27–1.5.26: Primera vs Última visita, nombres de capítulo y Word.
 
 ---
 
@@ -63,7 +63,7 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.28-Android.apk y retira cualquier otra
+# Publica dist/AVGUST-CARE-360-1.5.30-Android.apk y retira cualquier otra
 tools/build-apk.sh
 ```
 

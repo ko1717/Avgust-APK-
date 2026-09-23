@@ -89,9 +89,62 @@
     if (!obj || typeof obj !== "object" || Array.isArray(obj)) return out;
     Object.keys(obj).forEach(function (key) {
       if (!/^[a-z0-9.]+$/i.test(key)) return;
-      var val = clampStr(obj[key], 12000);
+      var raw = obj[key];
+      if (raw == null) return;
+      var val = clampStr(typeof raw === "string" ? raw : String(raw), 12000);
       if (val) out[key] = val;
     });
+    return out;
+  }
+
+  function itemChapter(id) {
+    var ch = Number(String(id || "").split(".")[0]);
+    return Number.isInteger(ch) && ch >= 1 && ch <= 5 ? ch : 0;
+  }
+
+  /** Conserva 2.x y mediciones al guardar, sin forzar capítulos 1–5. */
+  function persistVisitPayload(visit) {
+    if (!visit || typeof visit !== "object" || Array.isArray(visit)) return visit;
+    var out = Object.assign({}, visit);
+    var answers = {};
+    var src = visit.answers && typeof visit.answers === "object" && !Array.isArray(visit.answers) ? visit.answers : {};
+    Object.keys(src).forEach(function (id) {
+      if (!ALL_ITEM_IDS[id]) return;
+      var raw = src[id];
+      var value;
+      var observation = "";
+      var recommendation = "";
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        value = normalizeAnswer(raw);
+      } else {
+        value = normalizeAnswer(raw.value);
+        if (!value && ["SI", "NO", "NA", ""].indexOf(raw.value) >= 0) value = raw.value;
+        observation = clampStr(raw.observation, 12000);
+        recommendation = clampStr(raw.recommendation, 12000);
+      }
+      if (["", "SI", "NO", "NA"].indexOf(value) < 0) return;
+      answers[id] = { value: value, observation: observation, recommendation: recommendation };
+    });
+    out.answers = answers;
+
+    var chapters = [];
+    function addChapter(ch) {
+      var n = Number(ch);
+      if (Number.isInteger(n) && n >= 1 && n <= 5 && chapters.indexOf(n) < 0) chapters.push(n);
+    }
+    (Array.isArray(visit.chapters) ? visit.chapters : []).forEach(addChapter);
+    Object.keys(answers).forEach(function (id) {
+      addChapter(itemChapter(id));
+    });
+    chapters.sort(function (a, b) {
+      return a - b;
+    });
+    if (chapters.length) out.chapters = chapters;
+
+    out.measurements = normalizeTextMap(visit.measurements);
+    out.notes = normalizeTextMap(visit.notes);
+    out.recommendations = normalizeTextMap(visit.recommendations);
+    if (!Array.isArray(out.photos)) out.photos = Array.isArray(visit.photos) ? visit.photos.slice() : [];
     return out;
   }
 
@@ -1181,15 +1234,22 @@
     mountFarmsImport();
   }
 
-  // Also ensure farm on native matrix import POSTs.
+  // Ensure farm on native POSTs and keep filled 2.x / measurements valid for saveVisit.
   var nativeFetch = window.fetch.bind(window);
   window.fetch = async function (input, init) {
     try {
       var url = String(input && input.url ? input.url : input || "");
-      if (/\/api\/visits\/?$/.test(url) && init && String(init.method || "GET").toUpperCase() === "POST" && init.body) {
+      var method = String((init && init.method) || "GET").toUpperCase();
+      var isVisit = /\/api\/visits\/?$/.test(url) && method === "POST" && init && init.body;
+      var isDraft = /\/api\/draft\/?$/.test(url) && method === "POST" && init && init.body;
+      if (isVisit || isDraft) {
         var payload = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
-        if (payload && payload.farm) {
-          await ensureFarm(payload.farm, payload.responsible || payload.technician, payload.zone);
+        if (payload && typeof payload === "object" && !Array.isArray(payload) && payload.farm) {
+          payload = persistVisitPayload(payload);
+          init = Object.assign({}, init, { body: JSON.stringify(payload) });
+          if (isVisit) {
+            await ensureFarm(payload.farm, payload.responsible || payload.technician, payload.zone);
+          }
         }
       }
     } catch (err) {
@@ -1205,6 +1265,7 @@
     rowsToVisits: rowsToVisits,
     parseReportText: parseReportText,
     sanitizeVisit: sanitizeVisit,
+    persistVisitPayload: persistVisitPayload,
     CHAPTER_ITEMS: CHAPTER_ITEMS,
   };
 
