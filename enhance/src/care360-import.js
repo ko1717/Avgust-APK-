@@ -89,64 +89,9 @@
     if (!obj || typeof obj !== "object" || Array.isArray(obj)) return out;
     Object.keys(obj).forEach(function (key) {
       if (!/^[a-z0-9.]+$/i.test(key)) return;
-      var raw = obj[key];
-      if (raw == null) return;
-      var val = clampStr(typeof raw === "string" ? raw : String(raw), 12000);
+      var val = clampStr(obj[key], 12000);
       if (val) out[key] = val;
     });
-    return out;
-  }
-
-  function itemChapter(id) {
-    var ch = Number(String(id || "").split(".")[0]);
-    return Number.isInteger(ch) && ch >= 1 && ch <= 5 ? ch : 0;
-  }
-
-  function collectChapters(visit, complete) {
-    var chapters = [];
-    function add(ch) {
-      var n = Number(ch);
-      if (Number.isInteger(n) && n >= 1 && n <= 5 && chapters.indexOf(n) < 0) chapters.push(n);
-    }
-    if (complete) {
-      [1, 2, 3, 4, 5].forEach(add);
-    } else {
-      (Array.isArray(visit.chapters) ? visit.chapters : []).forEach(add);
-    }
-    Object.keys(visit.answers || {}).forEach(function (id) {
-      if (!ALL_ITEM_IDS[id] && !/^\d+\.\d+$/.test(id)) return;
-      add(itemChapter(id));
-    });
-    chapters.sort(function (a, b) {
-      return a - b;
-    });
-    return chapters;
-  }
-
-  /** Keep chapter 2 / measurements when saving or backing up a visit. */
-  function hydrateVisitPayload(visit) {
-    if (!visit || typeof visit !== "object" || Array.isArray(visit)) return visit;
-    var out = Object.assign({}, visit);
-    out.answers = visit.answers && typeof visit.answers === "object" && !Array.isArray(visit.answers) ? Object.assign({}, visit.answers) : {};
-    Object.keys(out.answers).forEach(function (id) {
-      var raw = out.answers[id];
-      if (!raw || typeof raw !== "object") {
-        out.answers[id] = { value: normalizeAnswer(raw) || "NA", observation: "", recommendation: "" };
-        return;
-      }
-      var value = normalizeAnswer(raw.value);
-      if (!value && ["SI", "NO", "NA", ""].indexOf(raw.value) >= 0) value = raw.value;
-      out.answers[id] = {
-        value: value || (typeof raw.value === "string" ? raw.value : ""),
-        observation: clampStr(raw.observation, 12000),
-        recommendation: clampStr(raw.recommendation, 12000),
-      };
-    });
-    out.chapters = collectChapters({ chapters: visit.chapters, answers: out.answers }, false);
-    out.measurements = normalizeTextMap(visit.measurements);
-    out.notes = normalizeTextMap(visit.notes);
-    out.recommendations = normalizeTextMap(visit.recommendations);
-    if (!Array.isArray(out.photos)) out.photos = [];
     return out;
   }
 
@@ -241,22 +186,30 @@
     if (!responsible) throw new Error("Falta el responsable técnico.");
     if (!date) throw new Error("Fecha inválida. Usa formato AAAA-MM-DD.");
 
-    var chapters = collectChapters(visit, complete);
+    var chapters = [];
+    if (complete) {
+      chapters = [1, 2, 3, 4, 5];
+    } else {
+      (Array.isArray(visit.chapters) ? visit.chapters : []).forEach(function (ch) {
+        var n = Number(ch);
+        if (Number.isInteger(n) && n >= 1 && n <= 5 && chapters.indexOf(n) < 0) chapters.push(n);
+      });
+      Object.keys(visit.answers || {}).forEach(function (id) {
+        if (!ALL_ITEM_IDS[id]) return;
+        var ch = Number(String(id).split(".")[0]);
+        if (chapters.indexOf(ch) < 0) chapters.push(ch);
+      });
+      chapters.sort(function (a, b) {
+        return a - b;
+      });
+    }
     if (!chapters.length) throw new Error("No hay capítulos válidos para importar.");
 
     var answers = {};
     Object.keys(visit.answers || {}).forEach(function (id) {
-      if (!ALL_ITEM_IDS[id] && !/^\d+\.\d+$/.test(id)) {
+      if (!ALL_ITEM_IDS[id]) {
         warnings.push("Se omitió el ítem desconocido " + id + ".");
         return;
-      }
-      if (!ALL_ITEM_IDS[id]) {
-        var ch = itemChapter(id);
-        if (!ch) {
-          warnings.push("Se omitió el ítem desconocido " + id + ".");
-          return;
-        }
-        if (chapters.indexOf(ch) < 0) chapters.push(ch);
       }
       var raw = visit.answers[id] || {};
       var value = normalizeAnswer(raw.value);
@@ -271,9 +224,6 @@
       answers[id] = { value: value, observation: observation, recommendation: recommendation };
     });
 
-    chapters.sort(function (a, b) {
-      return a - b;
-    });
     chapters.forEach(function (ch) {
       (CHAPTER_ITEMS[ch] || []).forEach(function (id) {
         if (!answers[id]) {
@@ -283,7 +233,7 @@
     });
 
     Object.keys(answers).forEach(function (id) {
-      var ch = itemChapter(id);
+      var ch = Number(String(id).split(".")[0]);
       if (chapters.indexOf(ch) < 0) delete answers[id];
     });
 
@@ -316,63 +266,6 @@
       out._importPhotos = visit._importPhotos.slice(0, 60);
     }
     return out;
-  }
-
-  function utf8FromBytes(bytes) {
-    var i = 0;
-    if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) i = 3;
-    if (typeof TextDecoder === "function") {
-      return new TextDecoder("utf-8").decode(bytes.subarray ? bytes.subarray(i) : bytes.slice(i));
-    }
-    var out = "";
-    for (; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
-    return out;
-  }
-
-  function looksLikeJsonBackup(bytes) {
-    if (!bytes || !bytes.length) return false;
-    var i = 0;
-    if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) i = 3;
-    while (i < bytes.length && (bytes[i] === 32 || bytes[i] === 9 || bytes[i] === 10 || bytes[i] === 13)) i += 1;
-    return bytes[i] === 123 || bytes[i] === 91;
-  }
-
-  function parseVisitBackup(text) {
-    var data;
-    try {
-      data = JSON.parse(String(text || "").replace(/^\uFEFF/, ""));
-    } catch (err) {
-      throw new Error("El archivo JSON del respaldo está dañado.");
-    }
-    var list = [];
-    if (Array.isArray(data)) list = data;
-    else if (data && Array.isArray(data.visits)) list = data.visits;
-    else if (data && data.visit && typeof data.visit === "object") list = [data.visit];
-    else if (data && data.farm && (data.answers || data.measurements)) list = [data];
-    else throw new Error("El JSON no contiene visitas de CARE 360.");
-    var warnings = [];
-    var visits = list.map(function (raw, idx) {
-      var copy = hydrateVisitPayload(raw);
-      try {
-        return sanitizeVisit(copy, warnings, { complete: true });
-      } catch (err) {
-        throw new Error("Visita " + (idx + 1) + ": " + (err.message || String(err)));
-      }
-    });
-    return { visits: visits, errors: warnings };
-  }
-
-  async function restoreJsonBackup(bytes) {
-    var parsed = parseVisitBackup(utf8FromBytes(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)));
-    if (!parsed.visits.length) throw new Error("El respaldo JSON no tiene visitas.");
-    var saved = await saveVisits(parsed.visits);
-    return {
-      message:
-        saved.length === 1
-          ? "Respaldo JSON restaurado: 1 visita, con mediciones y pesaje."
-          : "Respaldo JSON restaurado: " + saved.length + " visitas, con mediciones y pesaje.",
-      visits: saved,
-    };
   }
 
   function parseCsv(text) {
@@ -1095,8 +988,6 @@
         parsed = parseReportText(docx.text, docx.photoBlobs);
       } else if (name.endsWith(".pdf")) {
         parsed = parseReportText(await pdfToText(file));
-      } else if (name.endsWith(".json")) {
-        parsed = parseVisitBackup(await file.text());
       } else if (name.endsWith(".xlsx")) {
         // Defer to native matrix input when possible.
         var native = q(".matrix-import input[type=file]");
@@ -1107,7 +998,7 @@
         }
         throw new Error("Para Excel .xlsx usa el importador de matriz del panel.");
       } else {
-        throw new Error("Formato no soportado. Usa Excel, CSV, Word (.docx), PDF o JSON de respaldo.");
+        throw new Error("Formato no soportado. Usa Excel, CSV, Word (.docx) o PDF.");
       }
     } catch (err) {
       ui.setStatus(err.message || String(err), true);
@@ -1249,10 +1140,10 @@
       '<div class="c360-import-box">' +
       '<div class="c360-import-head">' +
       "<strong>Importar finca e informes</strong>" +
-      "<p class=\"c360-import-lead\">Sube Excel/CSV, Word, PDF o el JSON de «Respaldar formulario». Se crea la finca si falta; el informe queda editable en Visitas con fotos, mediciones, pesaje y plan de seguimiento.</p>" +
+      "<p class=\"c360-import-lead\">Sube Excel/CSV, Word o PDF. Se crea la finca si falta; el informe queda editable en Visitas con fotos, mediciones y plan de seguimiento.</p>" +
       "</div>" +
       '<label class="c360-import-file"><span>Elegir archivo</span>' +
-      '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,.json,application/pdf,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
+      '<input type="file" class="c360-import-input" accept=".xlsx,.csv,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />' +
       "</label>" +
       '<div class="c360-import-status muted" hidden></div>' +
       '<div class="c360-import-preview" hidden></div>' +
@@ -1298,8 +1189,6 @@
       if (/\/api\/visits\/?$/.test(url) && init && String(init.method || "GET").toUpperCase() === "POST" && init.body) {
         var payload = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
         if (payload && payload.farm) {
-          payload = hydrateVisitPayload(payload);
-          init = Object.assign({}, init, { body: JSON.stringify(payload) });
           await ensureFarm(payload.farm, payload.responsible || payload.technician, payload.zone);
         }
       }
@@ -1316,10 +1205,6 @@
     rowsToVisits: rowsToVisits,
     parseReportText: parseReportText,
     sanitizeVisit: sanitizeVisit,
-    hydrateVisitPayload: hydrateVisitPayload,
-    parseVisitBackup: parseVisitBackup,
-    looksLikeJsonBackup: looksLikeJsonBackup,
-    restoreJsonBackup: restoreJsonBackup,
     CHAPTER_ITEMS: CHAPTER_ITEMS,
   };
 

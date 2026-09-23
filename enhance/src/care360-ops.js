@@ -974,7 +974,6 @@
     refresh();
     var started = Date.now();
     (function poll() {
-      hookDesktopBackup();
       refresh();
       if (Date.now() - started < 10000 || visitEditor() || q(".home-stats") || q(".visit-row")) {
         window.setTimeout(poll, 800);
@@ -982,62 +981,10 @@
     })();
   }
 
-  async function persistDraftVisitForBackup() {
-    var draft = draftVisit;
-    if (!draft || typeof draft !== "object" || !draft.farm) {
-      try {
-        draft = await apiJson("/api/draft");
-      } catch (err) {
-        draft = null;
-      }
-    }
-    if (!draft || typeof draft !== "object" || !String(draft.farm || "").trim()) return null;
-    var hasAnswers = draft.answers && Object.keys(draft.answers).length;
-    var hasMeasures = draft.measurements && Object.keys(draft.measurements).length;
-    if (!hasAnswers && !hasMeasures) return null;
-    var payload = draft;
-    if (window.C360Import && window.C360Import.hydrateVisitPayload) {
-      payload = window.C360Import.hydrateVisitPayload(draft);
-    }
-    if (!payload.notes || typeof payload.notes !== "object") payload.notes = {};
-    if (!payload.recommendations || typeof payload.recommendations !== "object") payload.recommendations = {};
-    if (!payload.measurements || typeof payload.measurements !== "object") payload.measurements = {};
-    if (!Array.isArray(payload.photos)) payload.photos = [];
-    if (typeof payload.reviewed !== "boolean") payload.reviewed = false;
-    if (!Number.isInteger(payload.revision)) payload.revision = 0;
-    if (!payload.responsible) payload.responsible = payload.technician || "Responsable local";
-    return apiJson("/api/visits", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).catch(function () {
-      return null;
-    });
-  }
-
-  function hookDesktopBackup() {
-    if (!window.careDesktop || !window.careDesktop.backup || window.careDesktop.__c360BackupHook) {
-      return !!(window.careDesktop && window.careDesktop.__c360BackupHook);
-    }
-    var api = window.careDesktop;
-    api.__c360BackupHook = true;
-    var origBackup = api.backup.bind(api);
-    api.backup = async function () {
-      try {
-        await persistDraftVisitForBackup();
-      } catch (err) {
-        /* el respaldo del sqlite sigue; no bloquear */
-      }
-      return origBackup();
-    };
-    return true;
-  }
-
   window.Care360Ops = {
     refresh: refresh,
     auditVisit: auditVisitDom,
     backupAgeDays: backupAgeDays,
-    persistDraftVisitForBackup: persistDraftVisitForBackup,
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

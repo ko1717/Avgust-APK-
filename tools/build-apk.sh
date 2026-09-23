@@ -21,8 +21,8 @@ if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
   VERSION_NAME="${2:-1.5.0}"
   VERSION_CODE="${3:-48}"
 else
-  VERSION_NAME="${2:-1.5.29}"
-  VERSION_CODE="${3:-77}"
+  VERSION_NAME="${2:-1.5.28}"
+  VERSION_CODE="${3:-76}"
 fi
 BASE_VERSION_NAME="1.1.0-rc.5"
 
@@ -161,7 +161,6 @@ python3 "$ROOT/tools/patch_measurements.py" "$WORK"
 python3 "$ROOT/tools/patch_report.py" "$WORK"
 python3 "$ROOT/tools/patch_import.py" "$WORK"
 python3 "$ROOT/tools/patch_runtime.py" "$WORK"
-python3 "$ROOT/tools/patch_backup.py" "$WORK"
 python3 "$ROOT/tools/patch_followup.py" "$WORK"
 python3 "$ROOT/tools/patch_draft.py" "$WORK"
 python3 "$ROOT/tools/patch_crop.py" "$WORK"
