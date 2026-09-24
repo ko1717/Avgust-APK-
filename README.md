@@ -63,8 +63,9 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.13-Android.apk y retira cualquier otra
-tools/build-apk.sh
+# Publica dist/AVGUST-CARE-360-1.5.13-Android.apk y retira cualquier otra.
+# Las contraseñas van por entorno; ver tools/signing/README.md.
+CARE360_KEYSTORE_PASS=... CARE360_KEY_PASS=... tools/build-apk.sh
 ```
 
 Parámetros opcionales: `tools/build-apk.sh <apk-semilla> <version-name> <version-code>`.
