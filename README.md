@@ -12,30 +12,36 @@ Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
 ## Una sola APK
 
 Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.12, y las variantes sin marca) están **retiradas**.
-No se instalan ni se vuelven a subir.
+(1.1.0-rc.5 hasta 1.5.31, y las variantes sin marca) están **retiradas**
+de `dist/`. No se instalan ni se vuelven a subir.
 
 | Instalar esto | No instalar esto |
 | --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.13-Android.apk`](./dist/AVGUST-CARE-360-1.5.13-Android.apk) | Cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+| [`dist/AVGUST-CARE-360-1.5.32-Android.apk`](./dist/AVGUST-CARE-360-1.5.32-Android.apk) | 1.5.13, cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.13**. Se instala encima de 1.4.x–1.5.12
+En la cabecera de la app debe verse **v1.5.32**. Se instala encima de 1.4.x–1.5.31
 firmadas con la misma clave (`tools/signing/`).
+
+La 1.5.13 (versionCode 61) **no se puede instalar** sobre un teléfono que ya
+tiene la 1.5.31 (versionCode 79): Android la rechaza como downgrade. Esta
+1.5.32 usa el código y los recursos de esa 1.5.31, con versionCode 80.
 
 `tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
 semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ---
 
-## Qué incluye 1.5.13
+## Qué incluye 1.5.32
 
-- **Borrar visita** (lista y editor): elimina la visita y sus informes.
-- **Borrar versión de informe**.
-- **Borrar solicitud**: desaparece de Agenda y Seguimiento.
-- **Borrar finca**: también elimina visitas, informes y solicitudes de esa finca.
-- Panel **Calidad de la visita** fijo (ya no tapa Departamento / Municipio).
-- Modo oscuro y modo lector (☀).
-- Seguimiento compacto, agenda en vivo y métricas Por finca sin mezclar.
+- El mismo programa que la APK **1.5.31** ya instalada en el teléfono
+  (código y recursos de ese paquete, no el árbol 1.5.13).
+- Interfaz de campo: cromo más bajo en pantalla estrecha, blancos de toque
+  de 44px, un solo color Avgust, estado de guardado encima del teclado y
+  guía solo si no hay una visita abierta.
+- versionCode **80**, mayor que el 79 de la 1.5.31, para que la actualización
+  entre sin desinstalar.
+- Manifiesto de release: `debuggable=false` y `allowBackup=false`.
+- La misma clave de firma que la 1.5.31.
 
 ---
 
@@ -62,7 +68,9 @@ APKs sueltas en la raíz.
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# Publica dist/AVGUST-CARE-360-1.5.13-Android.apk y retira cualquier otra.
+# La APK de campo 1.5.32 no sale de la semilla: se empaquetó desde la
+# 1.5.31 instalada. Este guion recompila el árbol de la semilla (1.5.13)
+# y no debe sustituir dist/AVGUST-CARE-360-1.5.32-Android.apk.
 # Las contraseñas van por entorno; ver tools/signing/README.md.
 CARE360_KEYSTORE_PASS=... CARE360_KEY_PASS=... tools/build-apk.sh
 ```
