@@ -47,7 +47,6 @@ enhance/src/          ← capa de interfaz y experiencia
 tools/
   base/               ← semilla de compilación (no instalar)
   signing/            ← keystore de release
-  demo/               ← CSV/Word de ejemplo + scripts de captura
   build-apk.sh        ← genera la APK y borra las demás de dist/
   patch_*.py          ← parches sobre el bundle compilado
 tests/                ← e2e
@@ -84,7 +83,3 @@ tools/dev-preview.sh                 # http://localhost:8080
 ```bash
 cd tests && npm install && npm test   # requiere la vista previa en :8080
 ```
-
-### Demos de importación
-
-Ver `tools/demo/README.md`.
