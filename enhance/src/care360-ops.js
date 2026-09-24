@@ -981,10 +981,17 @@
     })();
   }
 
+  function focusNextGap() {
+    if (!visitEditor()) return false;
+    goNextGap(auditVisitDom());
+    return true;
+  }
+
   window.Care360Ops = {
     refresh: refresh,
     auditVisit: auditVisitDom,
     backupAgeDays: backupAgeDays,
+    focusNextGap: focusNextGap,
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

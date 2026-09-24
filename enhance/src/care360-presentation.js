@@ -1,8 +1,9 @@
 /*
  * AVGUST CARE 360 — presentacion de bienvenida y guia del programa.
  *
- * Se muestra la primera vez que se abre la aplicacion y queda disponible
- * en cualquier momento desde el boton "Guia" de la barra superior.
+ * Se muestra la primera vez que se abre la aplicacion si no hay una visita
+ * en curso. Si la visita ya está abierta, el primer pantallazo va al
+ * siguiente pendiente del panel de calidad y la guía queda en el botón Guía.
  */
 (function () {
   "use strict";
@@ -464,13 +465,52 @@
     })();
   }
 
+  function visitIsOpen() {
+    var editor = document.querySelector(".editor");
+    var steps = document.querySelector(".steps");
+    if (!editor || !steps) return false;
+    if (editor.hasAttribute("hidden") || editor.getAttribute("aria-hidden") === "true") return false;
+    var rect = editor.getBoundingClientRect();
+    return rect.width > 1 && rect.height > 1;
+  }
+
+  function goToPending() {
+    var tries = 0;
+    (function tick() {
+      var next = document.querySelector("#c360-visit-hud .c360-hud-next");
+      if (next) {
+        next.click();
+        return;
+      }
+      if (tries++ < 30) {
+        window.setTimeout(tick, 120);
+        return;
+      }
+      var ops = window.Care360Ops;
+      if (ops && typeof ops.focusNextGap === "function") ops.focusNextGap();
+    })();
+  }
+
+  function decideFirstRun() {
+    var started = Date.now();
+    (function poll() {
+      if (visitIsOpen()) {
+        goToPending();
+        return;
+      }
+      if (Date.now() - started < 800) {
+        window.setTimeout(poll, 120);
+        return;
+      }
+      open(0);
+    })();
+  }
+
   function boot() {
     whenAppReady(function () {
       watchTopbar();
       if (store(SEEN_KEY) !== SEEN_VALUE) {
-        window.setTimeout(function () {
-          open(0);
-        }, 260);
+        window.setTimeout(decideFirstRun, 260);
       }
     });
   }

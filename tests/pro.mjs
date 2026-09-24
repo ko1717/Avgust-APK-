@@ -1,5 +1,6 @@
 /*
- * Pruebas de la capa profesional CARE 360 1.5.13 (sin marca).
+ * Pruebas de la capa profesional CARE 360 1.5.13.
+ * La edición con marca muestra Avgust. La edición sin marca no.
  *
  * Verificaciones estáticas: no requieren servidor ni navegador.
  *
@@ -55,7 +56,72 @@ check('pro.css oculta el texto de marca original tras el lockup', css.includes('
 
 check('favicon profesional con verde agro', debrandPy.includes('#14532d') && debrandPy.includes('M24 44'));
 check('tema profesional reemplaza el azul legado', debrandPy.includes('PRO_THEME') && debrandPy.includes('#007fa3'));
-check('sin marca visible Avgust en capa pro', !/AVGUST CARE|Avgust Crop|avgust-logo/i.test(css + js), 'limpio');
+
+const debrandStart = js.indexOf('mark.innerHTML = debrand');
+const debrandEnd = js.indexOf(': AVGUST_LOGO', debrandStart);
+const debrandArm = debrandStart >= 0 && debrandEnd > debrandStart ? js.slice(debrandStart, debrandEnd) : '';
+const debrandCss = read('enhance/src/care360-debrand.css');
+const debrandPrint = css.match(/html\.c360-debrand \.workspace::before\s*\{[^}]+\}/);
+check(
+  'sin marca visible Avgust en la edición sin marca',
+  debrandArm.length > 0 &&
+    !/AVGUST CARE|Avgust Crop|avgust-logo/i.test(debrandArm) &&
+    /CARE 360/.test(debrandArm) &&
+    /img\[src\*="avgust-logo"\]/.test(debrandCss) &&
+    /display:\s*none\s*!important/.test(debrandCss) &&
+    !!debrandPrint &&
+    !/AVGUST/i.test(debrandPrint[0]) &&
+    /CARE 360/.test(debrandPrint[0]),
+  debrandArm.replace(/\s+/g, ' ').slice(0, 140)
+);
+check(
+  'la edición con marca muestra el nombre Avgust',
+  /AVGUST CARE 360/.test(js) &&
+    /avgust-logo\.svg/.test(js) &&
+    /is-avgust/.test(js) &&
+    /html\.c360-branded/.test(css) &&
+    /AVGUST CARE 360 · Informe técnico/.test(css)
+);
+
+const printCss = css.slice(css.indexOf('@media print'));
+check('el impreso no fija el verde #14532d', !/#14532d/.test(printCss));
+check(
+  'el impreso usa la identidad activa',
+  /var\(--c360-brand-strong\)/.test(printCss) && /var\(--c360-brand\)/.test(printCss)
+);
+check(
+  'objetivos de 44px en pasos, filas y acciones de informe',
+  /\.steps \[data-slot="tabs-trigger"\][\s\S]{0,600}min-height:\s*44px/.test(css) &&
+    /\.visit-row[\s\S]{0,400}min-height:\s*44px/.test(css) &&
+    /report-version-actions button[\s\S]{0,400}min-height:\s*44px/.test(css)
+);
+check(
+  'el estado de guardado sube con el teclado',
+  /html\.c360-keyboard \.c360-pro-save[\s\S]{0,240}--c360-keyboard-h/.test(css) &&
+    css.includes('c360-pro-sunbtn')
+);
+
+const enhance = read('enhance/src/care360-enhance.css');
+check(
+  'en el teléfono cabecera y módulos forman un bloque más bajo',
+  /--c360-topbar-h:\s*52px/.test(enhance) &&
+    /--c360-nav-h:\s*44px/.test(enhance) &&
+    /--c360-topbar-h:\s*66px/.test(enhance) &&
+    /--c360-nav-h:\s*68px/.test(enhance)
+);
+
+const intro = read('enhance/src/care360-presentation.js');
+const ops = read('enhance/src/care360-ops.js');
+check(
+  'con visita abierta la guía no ocupa la primera sesión',
+  /function visitIsOpen/.test(intro) &&
+    /goToPending/.test(intro) &&
+    /decideFirstRun/.test(intro) &&
+    /c360-hud-next/.test(intro) &&
+    intro.includes('>Guía<')
+);
+check('sin visita se mantiene la guía', /open\(0\)/.test(intro));
+check('el panel de calidad expone el siguiente pendiente', ops.includes('focusNextGap'));
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} pruebas superadas.`);
