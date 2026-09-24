@@ -5,7 +5,7 @@
 #
 #   tools/build-apk.sh [apk-base] [version-name] [version-code]
 #
-# Requiere zipalign y apksigner (Android build-tools) y keytool (JDK).
+# Requiere zipalign y apksigner (Android build-tools).
 # Se puede indicar la ruta de las build-tools con ANDROID_BUILD_TOOLS.
 
 set -euo pipefail
@@ -25,6 +25,10 @@ else
   VERSION_CODE="${3:-61}"
 fi
 BASE_VERSION_NAME="1.1.0-rc.5"
+
+# Sin valor por defecto: la contraseña no vive en el guion ni se imprime.
+: "${CARE360_KEYSTORE_PASS:?Define CARE360_KEYSTORE_PASS (contraseña del almacén).}"
+: "${CARE360_KEY_PASS:?Define CARE360_KEY_PASS (contraseña de la clave).}"
 
 OUT_DIR="$ROOT/dist"
 WORK="$(mktemp -d)"
@@ -166,7 +170,8 @@ python3 "$ROOT/tools/patch_draft.py" "$WORK"
 python3 "$ROOT/tools/patch_crop.py" "$WORK"
 
 # --------------------------------------------------------------------------
-# 5. Actualizar versionName y versionCode del manifiesto binario
+# 5. Manifiesto de la semilla: versión de campo y flags de release.
+#    debuggable y allowBackup se apagan aquí; la semilla original no se toca.
 # --------------------------------------------------------------------------
 python3 "$ROOT/tools/patch_manifest.py" AndroidManifest.xml AndroidManifest.patched.xml \
   --old-version-name "$BASE_VERSION_NAME" \
@@ -209,19 +214,12 @@ ALIGNED="$WORK/aligned.apk"
 # 7. Firmar
 # --------------------------------------------------------------------------
 KEYSTORE="${CARE360_KEYSTORE:-$ROOT/tools/signing/care360-release.keystore}"
-STOREPASS="${CARE360_KEYSTORE_PASS:-care360avgust}"
 ALIAS="${CARE360_KEY_ALIAS:-care360}"
 
 if [[ ! -f "$KEYSTORE" ]]; then
-  echo "==> Creando almacén de claves en $KEYSTORE"
-  mkdir -p "$(dirname "$KEYSTORE")"
-  keytool -genkeypair -v \
-    -keystore "$KEYSTORE" \
-    -alias "$ALIAS" \
-    -keyalg RSA -keysize 2048 -validity 10950 \
-    -storepass "$STOREPASS" -keypass "$STOREPASS" \
-    -dname "CN=AVGUST CARE 360, OU=Acompanamiento en campo, O=Avgust Crop Protection, L=Bogota, C=CO" \
-    >/dev/null
+  echo "No se encontró el almacén de claves: $KEYSTORE" >&2
+  echo "No se genera una clave nueva: otra identidad impediría actualizar sin desinstalar." >&2
+  exit 1
 fi
 
 if [[ "$DEBRAND" == "1" ]]; then
@@ -231,11 +229,12 @@ else
 fi
 "$APKSIGNER" sign \
   --ks "$KEYSTORE" --ks-key-alias "$ALIAS" \
-  --ks-pass "pass:$STOREPASS" --key-pass "pass:$STOREPASS" \
+  --ks-pass env:CARE360_KEYSTORE_PASS --key-pass env:CARE360_KEY_PASS \
   --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
   --out "$FINAL" "$ALIGNED"
 
 "$APKSIGNER" verify --print-certs "$FINAL" | head -n 6
+python3 "$ROOT/tools/patch_manifest.py" --verify "$FINAL"
 
 python3 - "$FINAL" <<'PY'
 import sys

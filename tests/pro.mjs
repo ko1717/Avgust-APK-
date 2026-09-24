@@ -1,5 +1,5 @@
 /*
- * Pruebas de la capa profesional CARE 360 1.5.0 (sin marca).
+ * Pruebas de la capa profesional CARE 360 1.5.13 (sin marca).
  *
  * Verificaciones estáticas: no requieren servidor ni navegador.
  *
@@ -32,8 +32,12 @@ check('build-apk enlaza care360-pro.js', build.includes('care360-pro.js'));
 check('dev-preview enlaza care360-pro.css', preview.includes('care360-pro.css'));
 check('dev-preview enlaza care360-pro.js', preview.includes('care360-pro.js'));
 
-check('versión de edición sin marca es 1.5.0', /VERSION_NAME="\$\{2:-1\.5\.0\}"/.test(build));
-check('código de versión sin marca es 48', /VERSION_CODE="\$\{3:-48\}"/.test(build));
+check('versión de edición sin marca es 1.5.13', /VERSION_NAME="\$\{2:-1\.5\.13\}"/.test(build));
+check('código de versión sin marca es 61', /VERSION_CODE="\$\{3:-61\}"/.test(build));
+check('build-apk exige CARE360_KEYSTORE_PASS', build.includes('CARE360_KEYSTORE_PASS'));
+check('build-apk exige CARE360_KEY_PASS', build.includes('CARE360_KEY_PASS'));
+check('build-apk no asigna contraseña por defecto', !/CARE360_KEYSTORE_PASS:-/.test(build) && !/CARE360_KEY_PASS:-/.test(build));
+check('build-apk no genera un almacén nuevo', !/keytool\s+-genkeypair/.test(build));
 
 for (const feat of ['Care360Pro', 'c360-pro-conn', 'c360-pro-filter', 'c360-sun', 'c360-pro-save', 'c360-pro-report-head', 'MIPE']) {
   check(`pro.js incluye ${feat}`, js.includes(feat));

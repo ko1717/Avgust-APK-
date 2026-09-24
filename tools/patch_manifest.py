@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Ajusta versionCode y versionName dentro de un AndroidManifest.xml binario.
+"""Ajusta el AndroidManifest.xml binario de la semilla Capacitor.
 
-El APK base se distribuye compilado, por lo que la version se actualiza
-reescribiendo el AXML: se sustituye la cadena del pool y el entero tipado del
-atributo versionCode, recalculando desplazamientos y tamanos de chunk.
+El APK base se distribuye compilado. Este guion reescribe el AXML de la copia
+extraída (no el binario de tools/base/): versionName, versionCode, y deja
+android:debuggable y android:allowBackup en false para el paquete de campo.
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ import sys
 RES_STRING_POOL_TYPE = 0x0001
 RES_XML_START_ELEMENT_TYPE = 0x0102
 UTF8_FLAG = 1 << 8
+TYPE_INT_BOOLEAN = 0x12
+TYPE_INT_DEC = 0x10
+TYPE_STRING = 0x03
 
 
 class StringPool:
@@ -127,11 +130,12 @@ class StringPool:
         return chunk
 
 
-def patch_version_code(data: bytearray, pool: StringPool, version_code: int) -> bool:
-    name_index = pool.find("versionCode")
+def attribute_offsets(data: bytes | bytearray, pool: StringPool, attr_name: str) -> list[int]:
+    name_index = pool.find(attr_name)
     if name_index < 0:
-        return False
+        return []
 
+    found: list[int] = []
     cursor = pool.start + pool.size
     total = struct.unpack_from("<I", data, 4)[0]
     while cursor < total - 8:
@@ -145,22 +149,120 @@ def patch_version_code(data: bytearray, pool: StringPool, version_code: int) -> 
             base = cursor + header_size + attribute_start
             for i in range(attribute_count):
                 offset = base + i * attribute_size
-                attr_name = struct.unpack_from("<I", data, offset + 4)[0]
-                if attr_name == name_index:
-                    struct.pack_into("<I", data, offset + 16, version_code)
-                    return True
+                attr_index = struct.unpack_from("<I", data, offset + 4)[0]
+                if attr_index == name_index:
+                    found.append(offset)
         cursor += size
+    return found
+
+
+def patch_version_code(data: bytearray, pool: StringPool, version_code: int) -> bool:
+    offsets = attribute_offsets(data, pool, "versionCode")
+    if not offsets:
+        return False
+    for offset in offsets:
+        struct.pack_into("<I", data, offset + 16, version_code)
+    return True
+
+
+def patch_boolean_attribute(data: bytearray, pool: StringPool, attr_name: str, value: bool) -> bool:
+    offsets = attribute_offsets(data, pool, attr_name)
+    if not offsets:
+        return False
+    packed = 0xFFFFFFFF if value else 0
+    for offset in offsets:
+        if data[offset + 15] != TYPE_INT_BOOLEAN:
+            return False
+        struct.pack_into("<I", data, offset + 16, packed)
+    return True
+
+
+def read_boolean_attribute(data: bytes, pool: StringPool, attr_name: str) -> bool | None:
+    offsets = attribute_offsets(data, pool, attr_name)
+    if not offsets:
+        return None
+    values: list[bool] = []
+    for offset in offsets:
+        if data[offset + 15] != TYPE_INT_BOOLEAN:
+            return None
+        values.append(struct.unpack_from("<I", data, offset + 16)[0] != 0)
+    if any(values):
+        return True
     return False
+
+
+def read_version_code(data: bytes, pool: StringPool) -> int | None:
+    offsets = attribute_offsets(data, pool, "versionCode")
+    if not offsets:
+        return None
+    offset = offsets[0]
+    if data[offset + 15] != TYPE_INT_DEC:
+        return None
+    return struct.unpack_from("<I", data, offset + 16)[0]
+
+
+def read_version_name(data: bytes, pool: StringPool) -> str | None:
+    offsets = attribute_offsets(data, pool, "versionName")
+    if not offsets:
+        return None
+    offset = offsets[0]
+    if data[offset + 15] != TYPE_STRING:
+        return None
+    index = struct.unpack_from("<I", data, offset + 16)[0]
+    if index >= pool.string_count:
+        return None
+    return pool.decode(index)
+
+
+def load_manifest_bytes(path: str) -> bytes:
+    if path.endswith(".apk"):
+        import zipfile
+
+        with zipfile.ZipFile(path) as archive:
+            return archive.read("AndroidManifest.xml")
+    with open(path, "rb") as handle:
+        return handle.read()
+
+
+def verify_release_flags(path: str) -> int:
+    data = load_manifest_bytes(path)
+    pool = StringPool(data, 8)
+    debuggable = read_boolean_attribute(data, pool, "debuggable")
+    allow_backup = read_boolean_attribute(data, pool, "allowBackup")
+    version_name = read_version_name(data, pool)
+    version_code = read_version_code(data, pool)
+    if debuggable is not False or allow_backup is not False:
+        print(
+            "Manifiesto de release inválido: debuggable=%s allowBackup=%s" % (debuggable, allow_backup),
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        "Manifiesto de release: debuggable=false allowBackup=false versionName=%s versionCode=%s"
+        % (version_name or "?", version_code if version_code is not None else "?")
+    )
+    return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("manifest", help="AndroidManifest.xml binario de entrada")
-    parser.add_argument("output", help="ruta del manifiesto resultante")
-    parser.add_argument("--old-version-name", required=True)
-    parser.add_argument("--version-name", required=True)
-    parser.add_argument("--version-code", type=int, required=True)
+    parser.add_argument("manifest", nargs="?", help="AndroidManifest.xml binario de entrada")
+    parser.add_argument("output", nargs="?", help="ruta del manifiesto resultante")
+    parser.add_argument("--old-version-name")
+    parser.add_argument("--version-name")
+    parser.add_argument("--version-code", type=int)
+    parser.add_argument(
+        "--verify",
+        metavar="APK_O_MANIFIESTO",
+        help="comprueba debuggable=false y allowBackup=false y termina",
+    )
     args = parser.parse_args()
+
+    if args.verify:
+        return verify_release_flags(args.verify)
+
+    if not args.manifest or not args.output or not args.old_version_name or not args.version_name or args.version_code is None:
+        parser.error("hacen falta manifest, output, --old-version-name, --version-name y --version-code")
 
     with open(args.manifest, "rb") as handle:
         data = bytearray(handle.read())
@@ -175,6 +277,14 @@ def main() -> int:
         print("No se pudo ajustar versionCode", file=sys.stderr)
         return 1
 
+    if not patch_boolean_attribute(data, pool, "debuggable", False):
+        print("No se pudo poner android:debuggable=false", file=sys.stderr)
+        return 1
+
+    if not patch_boolean_attribute(data, pool, "allowBackup", False):
+        print("No se pudo poner android:allowBackup=false", file=sys.stderr)
+        return 1
+
     new_pool = pool.replace(index, args.version_name)
     patched = bytearray(data[:8] + new_pool + data[pool.start + pool.size :])
     struct.pack_into("<I", patched, 4, len(patched))
@@ -182,8 +292,11 @@ def main() -> int:
     with open(args.output, "wb") as handle:
         handle.write(patched)
 
+    if verify_release_flags(args.output) != 0:
+        return 1
+
     print(
-        "Manifiesto actualizado: versionName %s -> %s, versionCode %d"
+        "Manifiesto actualizado: versionName %s -> %s, versionCode %d, debuggable=false, allowBackup=false"
         % (args.old_version_name, args.version_name, args.version_code)
     )
     return 0
