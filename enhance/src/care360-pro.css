@@ -7,7 +7,7 @@
  * productividad de listas, informe impreso y accesibilidad.
  *
  * El tema verde agro solo aplica con `html.c360-debrand`. Con marca Avgust
- * (`html.c360-branded`) se conservan los azules teal y el lockup con logo.
+ * (`html.c360-branded`) se usa el cian, la lima y la pizarra del logo.
  */
 
 /* ------------------------------------------------------------------ *
@@ -26,10 +26,19 @@
   --c360-pro-save-warn: #8a5a00;
 }
 
+html.c360-branded {
+  --c360-brand: #00b5e2;
+  --c360-brand-strong: #333f48;
+  --c360-accent: #78be20;
+  --c360-on-brand: #1c2b32;
+  --c360-tone-brand-bg: #e5f7fb;
+}
+
 html.c360-debrand {
   --c360-brand: var(--c360-pro-green);
   --c360-brand-strong: var(--c360-pro-green-strong);
   --c360-accent: var(--c360-pro-lime);
+  --c360-on-brand: #fff;
   --c360-tone-brand-bg: var(--c360-pro-green-soft);
   --c360-tone-info-card: #edf5ee;
 }
@@ -76,7 +85,7 @@ html.dark.c360-debrand {
   width: auto;
   max-width: 132px;
   object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgb(0 127 163 / 18%));
+  filter: drop-shadow(0 1px 2px rgb(0 181 226 / 22%));
 }
 
 .c360-pro-lockup {
@@ -89,8 +98,8 @@ html.dark.c360-debrand {
 
 .c360-pro-mark.is-avgust .c360-pro-tag {
   margin-left: 0;
-  background: linear-gradient(90deg, rgb(0 127 163 / 14%), rgb(141 198 63 / 16%));
-  color: #007fa3;
+  background: linear-gradient(90deg, rgb(0 181 226 / 16%), rgb(120 190 32 / 18%));
+  color: var(--c360-brand-strong);
 }
 
 .c360-pro-name {
@@ -104,7 +113,7 @@ html.dark.c360-debrand {
 .c360-pro-mark.is-avgust .c360-pro-name {
   font-size: 15px;
   letter-spacing: 0.04em;
-  color: #007fa3;
+  color: var(--c360-brand-strong);
 }
 
 html.dark .c360-pro-mark.is-avgust .c360-pro-name,
@@ -328,6 +337,16 @@ html.dark .c360-pro-save[data-tone="warn"] {
   color: var(--c360-pro-save-ok);
 }
 
+/* Con el teclado abierto la píldora queda en la zona del pulgar,
+   justo encima del teclado, sin tapar el campo. */
+html.c360-keyboard .c360-pro-save {
+  left: 50%;
+  right: auto;
+  bottom: calc(var(--c360-keyboard-h, 0px) + 12px);
+  transform: translateX(-50%);
+  z-index: 80;
+}
+
 html.dark .c360-pro-save[data-tone="ok"] {
   border-color: #2c5a41;
 }
@@ -407,7 +426,13 @@ html.dark .c360-pro-missing {
 }
 
 html.c360-branded .c360-pro-report-head {
-  background: linear-gradient(135deg, #00647f 0%, #007fa3 55%, #8dc63f 160%);
+  background: #fff;
+  color: #333f48;
+  border-bottom: 3px solid #00b5e2;
+}
+
+html.c360-branded .c360-pro-report-head .c360-pro-logo {
+  filter: none;
 }
 
 html.dark .c360-pro-report-head {
@@ -489,7 +514,7 @@ html.dark.c360-sun {
   --accent: #e7f3ea;
   --accent-foreground: #0c1a12;
   --input: #ffffff;
-  --ring: #14532d;
+  --ring: var(--c360-brand);
   color-scheme: light;
 }
 
@@ -524,7 +549,7 @@ html.dark.c360-sun .module-nav [data-slot="tabs-trigger"] {
 
 html.c360-sun .module-nav [data-slot="tabs-trigger"][data-active],
 html.dark.c360-sun .module-nav [data-slot="tabs-trigger"][data-active] {
-  color: #fff !important;
+  color: var(--c360-on-brand) !important;
 }
 
 html.c360-sun .steps [data-slot="tabs-trigger"],
@@ -743,27 +768,36 @@ html.dark.c360-sun .c360-list li {
     margin: 0 !important;
   }
 
-  /* Membrete impreso generado por CSS aunque el JS no haya inyectado nada */
+  /* Membrete impreso generado por CSS aunque el JS no haya inyectado nada.
+     Con marca usa la identidad Avgust; sin marca, solo CARE 360. */
   .workspace::before {
-    content: "CARE 360 · Informe técnico MIPE  —  Acompañamiento en campo";
+    content: "AVGUST CARE 360 · Informe técnico MIPE  —  Acompañamiento en campo";
     display: block;
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 2.5px solid #14532d;
+    border-bottom: 2.5px solid var(--c360-brand);
     font-size: 11pt;
     font-weight: 800;
     letter-spacing: 0.03em;
-    color: #14532d;
+    color: var(--c360-brand-strong);
+  }
+
+  html.c360-debrand .workspace::before {
+    content: "CARE 360 · Informe técnico MIPE  —  Acompañamiento en campo";
   }
 
   .workspace::after {
-    content: "CARE 360 · Documento generado en campo. Verifica la versión publicada antes de divulgarlo.";
+    content: "AVGUST CARE 360 · Documento generado en campo. Verifica la versión publicada antes de divulgarlo.";
     display: block;
     margin-top: 12px;
     padding-top: 8px;
     border-top: 1px solid #9db3a5;
     font-size: 8pt;
     color: #5b6b70;
+  }
+
+  html.c360-debrand .workspace::after {
+    content: "CARE 360 · Documento generado en campo. Verifica la versión publicada antes de divulgarlo.";
   }
 
   table {
@@ -781,8 +815,8 @@ html.dark.c360-sun .c360-list li {
   }
 
   th {
-    background: #e7f3ea !important;
-    color: #14532d !important;
+    background: var(--c360-tone-brand-bg) !important;
+    color: var(--c360-brand-strong) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -795,7 +829,7 @@ html.dark.c360-sun .c360-list li {
   }
 
   tbody tr:nth-child(even) td {
-    background: #f4f8f4 !important;
+    background: var(--c360-tone-brand-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -818,11 +852,11 @@ html.dark.c360-sun .c360-list li {
   h2,
   h3 {
     break-after: avoid;
-    color: #14532d;
+    color: var(--c360-brand-strong);
   }
 
   a {
-    color: #14532d;
+    color: var(--c360-brand-strong);
     text-decoration: none;
   }
 }
@@ -833,7 +867,16 @@ html.dark.c360-sun .c360-list li {
 
 .c360-pro-filter,
 .c360-pro-sunbtn,
-.c360-pro-save {
+.c360-pro-save,
+.steps [data-slot="tabs-trigger"],
+.steps [role="tab"],
+.visit-row,
+.report-version-actions button,
+.report-version-actions a,
+.report-snapshot .actions button,
+.report-snapshot .actions a,
+.report-lifecycle .actions button,
+.report-lifecycle .actions a {
   min-height: 44px;
 }
 

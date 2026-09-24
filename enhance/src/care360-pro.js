@@ -47,13 +47,16 @@
 
   function markBrandMode() {
     var root = document.documentElement;
-    if (isDebrand()) {
+    var debrand = isDebrand();
+    if (debrand) {
       root.classList.add("c360-debrand");
       root.classList.remove("c360-branded");
     } else {
       root.classList.add("c360-branded");
       root.classList.remove("c360-debrand");
     }
+    var meta = q('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", debrand ? "#14532d" : "#00b5e2");
   }
 
   function brandTopbar() {

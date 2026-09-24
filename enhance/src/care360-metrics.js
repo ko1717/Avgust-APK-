@@ -912,8 +912,8 @@
     var debrand = window.__C360_DEBRAND === true;
     var title = snap.brand + " · Informe de métricas · " + snap.modeLabel;
     var generated = formatDateEs(isoDate(new Date()));
-    var accent = debrand ? "#1e7a3c" : "#007fa3";
-    var accentDeep = debrand ? "#14532d" : "#005f7a";
+    var accent = debrand ? "#1e7a3c" : "#00b5e2";
+    var accentDeep = debrand ? "#14532d" : "#333f48";
     var accentSoft = debrand ? "#e7f3ea" : "#e8f6fa";
 
     function pill(text, tone) {

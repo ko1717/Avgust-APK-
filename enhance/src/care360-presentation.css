@@ -118,7 +118,7 @@
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #007fa3, #00b5e2);
+  background: linear-gradient(90deg, var(--c360-brand), var(--c360-accent));
   border-radius: 0 999px 999px 0;
   transition: width 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
@@ -157,7 +157,7 @@
 .c360-slide-eyebrow {
   display: block;
   margin-bottom: 8px;
-  color: var(--c360-brand, #007fa3);
+  color: var(--c360-brand-strong);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 2.2px;
@@ -244,8 +244,8 @@ html.dark .c360-intro-skip {
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  background: linear-gradient(140deg, #007fa3, #00b5e2);
-  color: #fff;
+  background: linear-gradient(140deg, var(--c360-brand), var(--c360-accent));
+  color: var(--c360-on-brand, #1c2b32);
   font-size: 13px;
   font-weight: 800;
 }
@@ -333,7 +333,7 @@ html.dark .c360-intro-skip {
 
 .c360-dots button[aria-current="true"] {
   width: 24px;
-  background: #007fa3;
+  background: var(--c360-brand);
 }
 
 .c360-nav-btn {
@@ -364,8 +364,8 @@ html.dark .c360-intro-skip {
 }
 
 .c360-nav-btn[data-kind="next"] {
-  background: linear-gradient(135deg, #007fa3 0%, #00b5e2 55%, #8dc63f 140%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--c360-brand) 0%, #00b5e2 55%, #78be20 140%);
+  color: var(--c360-on-brand, #1c2b32);
   box-shadow: 0 8px 22px rgb(0 127 163 / 34%);
 }
 
@@ -381,7 +381,7 @@ html.dark .c360-intro-skip {
 .c360-intro-again input {
   width: 18px;
   height: 18px;
-  accent-color: #007fa3;
+  accent-color: var(--c360-brand);
 }
 
 @media (max-width: 480px) {
