@@ -122,6 +122,31 @@ OLD_DELETE_ROUTE_PARTIAL = (
     "}"
 )
 
+OLD_FETCH = "let t=window.fetch.bind(window);window.fetch=async(n,r)=>"
+NEW_FETCH = (
+    "let t=null;"
+    "try{"
+    "  let _d=Object.getOwnPropertyDescriptor(window,`fetch`);"
+    "  if(_d&&_d.get) t=_d.get.call(window).bind(window);"
+    "  else if(typeof window.fetch===`function`) t=window.fetch.bind(window);"
+    "}catch(_e){}"
+    "let _sf=async(n,r)=>{"
+    "  let i=n instanceof Request?n:new Request(String(n),r);"
+    "  return new URL(i.url,location.origin).pathname.startsWith(`/api/`)?fe(e.store,i):(t?t(n,r):Promise.reject(Error(`No fetch`)))"
+    "};"
+    "let _obj=window, _conf=!0;"
+    "while(_obj){"
+    "  let _d=Object.getOwnPropertyDescriptor(_obj,`fetch`);"
+    "  if(_d){ if(!_d.configurable) _conf=!1; break; }"
+    "  _obj=Object.getPrototypeOf(_obj);"
+    "}"
+    "if(_conf){"
+    "  try{"
+    "    Object.defineProperty(window,`fetch`,{value:_sf,writable:!0,configurable:!0,enumerable:!0});"
+    "  }catch(_e){console.warn(`Could not patch fetch in runtime`,_e);}"
+    "}"
+)
+
 REQUIRED = (
     "crear finca con nombre de responsable",
     "renombrar responsable local",
@@ -129,10 +154,13 @@ REQUIRED = (
     "borrar finca",
     "rutas DELETE de visitas informes y solicitudes",
     "ruta DELETE de fincas",
+    "intercepcion segura de fetch",
 )
 
 
 def already_has(name: str, source: str) -> bool:
+    if name == "intercepcion segura de fetch":
+        return "Object.defineProperty(window,`fetch`" in source or "Object.defineProperty(window,\"fetch\"" in source or "Object.defineProperty(window,'fetch'" in source
     if name == "crear finca con nombre de responsable":
         return "managerName" in source and OLD_CREATE not in source
     if name == "renombrar responsable local":
@@ -161,6 +189,7 @@ PATCHES = (
     ("renombrar responsable local", OLD_REMOVE, NEW_REMOVE),
     ("borrar visitas informes y solicitudes", OLD_CLEAR, NEW_CLEAR),
     ("rutas DELETE de visitas informes y solicitudes", OLD_DELETE_ROUTE, NEW_DELETE_ROUTE),
+    ("intercepcion segura de fetch", OLD_FETCH, NEW_FETCH),
 )
 
 

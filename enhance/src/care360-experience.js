@@ -336,12 +336,19 @@
     }
 
     window.addEventListener("error", function (event) {
+      if (event.message && event.message.indexOf("which has only a getter") !== -1) {
+        return;
+      }
       check(event.message + (event.filename ? " (" + event.filename + ")" : ""));
     });
 
     window.addEventListener("unhandledrejection", function (event) {
       var reason = event.reason;
-      check(reason && reason.message ? reason.message : String(reason));
+      var msg = reason && reason.message ? reason.message : String(reason);
+      if (msg && msg.indexOf("which has only a getter") !== -1) {
+        return;
+      }
+      check(msg);
     });
   }
 
@@ -1296,10 +1303,54 @@
     return input ? String(input.value || "").trim() : "";
   }
 
+  function safeSetFetch(fn) {
+    var obj = window;
+    var configurable = true;
+    while (obj) {
+      var desc = Object.getOwnPropertyDescriptor(obj, 'fetch');
+      if (desc) {
+        if (desc.configurable === false) {
+          configurable = false;
+        }
+        break;
+      }
+      obj = Object.getPrototypeOf(obj);
+    }
+
+    if (!configurable) {
+      console.warn("Cannot patch fetch: not configurable");
+      return;
+    }
+
+    try {
+      Object.defineProperty(window, "fetch", {
+        value: fn,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+    } catch (e) {
+      console.warn("Could not patch window.fetch:", e);
+    }
+  }
+
   function setupTeamFetchHooks() {
     if (window.__C360_TEAM_HOOKS) return;
     window.__C360_TEAM_HOOKS = true;
-    var original = window.fetch.bind(window);
+
+    var original = null;
+    try {
+        var desc = Object.getOwnPropertyDescriptor(window, 'fetch');
+        if (desc && desc.get) {
+            original = desc.get.call(window).bind(window);
+        } else if (typeof window.fetch === 'function') {
+            original = window.fetch.bind(window);
+        }
+    } catch(e) {}
+    
+    if (!original) {
+        original = function () { return Promise.reject(new Error("No fetch")); };
+    }
 
     async function resolveMemberId(farmId, name) {
       if (!name) return "";
@@ -1342,7 +1393,7 @@
       return created.id;
     }
 
-    window.fetch = async function (input, init) {
+    safeSetFetch(async function (input, init) {
       var url = typeof input === "string" ? input : (input && input.url) || "";
       var method = ((init && init.method) || (input && input.method) || "GET").toUpperCase();
       if (method === "POST" && /\/api\/team(?:\?|$)/.test(url) && init && typeof init.body === "string") {

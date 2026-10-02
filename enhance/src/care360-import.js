@@ -1182,8 +1182,20 @@
   }
 
   // Also ensure farm on native matrix import POSTs.
-  var nativeFetch = window.fetch.bind(window);
-  window.fetch = async function (input, init) {
+  var nativeFetch = null;
+  try {
+      var desc = Object.getOwnPropertyDescriptor(window, 'fetch');
+      if (desc && desc.get) {
+          nativeFetch = desc.get.call(window).bind(window);
+      } else if (typeof window.fetch === 'function') {
+          nativeFetch = window.fetch.bind(window);
+      }
+  } catch(e) {}
+  
+  if (!nativeFetch) {
+      nativeFetch = function () { return Promise.reject(new Error("No fetch")); };
+  }
+  var importFetch = async function (input, init) {
     try {
       var url = String(input && input.url ? input.url : input || "");
       if (/\/api\/visits\/?$/.test(url) && init && String(init.method || "GET").toUpperCase() === "POST" && init.body) {
@@ -1193,11 +1205,39 @@
         }
       }
     } catch (err) {
-      // Don't block native flow on ensureFarm preview errors; rethrow only if create failed hard.
       if (err && /No se pudo crear la finca|Contactos inválidos|Completa nombre/i.test(err.message || "")) throw err;
     }
     return nativeFetch(input, init);
   };
+  
+  (function() {
+    var obj = window;
+    var configurable = true;
+    while (obj) {
+      var desc = Object.getOwnPropertyDescriptor(obj, 'fetch');
+      if (desc) {
+        if (desc.configurable === false) {
+          configurable = false;
+        }
+        break;
+      }
+      obj = Object.getPrototypeOf(obj);
+    }
+    if (configurable) {
+        try {
+            Object.defineProperty(window, "fetch", {
+            value: importFetch,
+            writable: true,
+            configurable: true,
+            enumerable: true,
+            });
+        } catch (e) {
+            console.warn("Could not patch window.fetch in import:", e);
+        }
+    } else {
+        console.warn("Cannot patch fetch in import: not configurable");
+    }
+  })();
 
   window.C360Import = {
     handleFile: handleFile,
