@@ -51,6 +51,14 @@ const required = [
 ];
 for (const p of required) check("archivo requerido: " + p, fs.existsSync(path.join(root, p)));
 
+
+check("build.js incluye CSS de presentación existente", build.includes("care360-presentation.css") && fs.existsSync(path.join(root, "enhance/src/care360-presentation.css")));
+check("build.js incluye geografía de Colombia existente", build.includes("colombia-geo.js") && fs.existsSync(path.join(root, "enhance/src/colombia-geo.js")));
+check("build-apk actualiza manifest con versionName/versionCode", apk.includes("patch_manifest.py") && apk.includes("--version-name") && apk.includes("--version-code"));
+check("build-apk alinea antes de firmar", apk.includes("\"$ZIPALIGN\"") && apk.indexOf("ALIGNED=\"$WORK/aligned.apk\"") < apk.indexOf("\"$APKSIGNER\" sign"));
+check("build-apk verifica firma al finalizar", apk.includes("\"$APKSIGNER\" verify --print-certs"));
+check("build-apk conserva resources.arsc sin comprimir", apk.includes("resources.arsc") && apk.includes("ZIP_STORED"));
+
 const failed = checks.filter((x) => !x.ok);
 console.log("\n" + (checks.length - failed.length) + "/" + checks.length + " verificaciones correctas.");
 if (failed.length) process.exit(1);
