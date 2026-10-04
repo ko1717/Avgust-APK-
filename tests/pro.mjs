@@ -33,8 +33,8 @@ check('build-apk enlaza care360-pro.js', build.includes('care360-pro.js'));
 check('dev-preview enlaza care360-pro.css', preview.includes('care360-pro.css'));
 check('dev-preview enlaza care360-pro.js', preview.includes('care360-pro.js'));
 
-check('versión de edición sin marca es 1.5.13', /VERSION_NAME="\$\{2:-1\.5\.13\}"/.test(build));
-check('código de versión sin marca es 61', /VERSION_CODE="\$\{3:-61\}"/.test(build));
+check('versión de edición sin marca sale de version.json', build.includes('DEFAULT_VERSION_NAME') && build.includes('version.json'));
+check('código de versión sale de version.json', build.includes('DEFAULT_VERSION_CODE') && build.includes('version.json'));
 check('build-apk exige CARE360_KEYSTORE_PASS', build.includes('CARE360_KEYSTORE_PASS'));
 check('build-apk exige CARE360_KEY_PASS', build.includes('CARE360_KEY_PASS'));
 check('build-apk no asigna contraseña por defecto', !/CARE360_KEYSTORE_PASS:-/.test(build) && !/CARE360_KEY_PASS:-/.test(build));
