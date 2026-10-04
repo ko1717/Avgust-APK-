@@ -80,155 +80,43 @@ else
 fi
 
 # --------------------------------------------------------------------------
-# 1. Extraer del paquete base solo lo que se va a modificar
+# 1. Construir el artefacto web canónico
+# --------------------------------------------------------------------------
+echo "==> Construyendo artefacto web canónico..."
+node "$ROOT/build.js"
+
+# 2. Preparar el contenedor Android conservando el contenido nativo de la
+#    semilla y reemplazando únicamente assets/public por dist/.
 # --------------------------------------------------------------------------
 cd "$WORK"
-if [[ "$DEBRAND" == "1" ]]; then
-  unzip -q "$BASE_APK" \
-    "assets/public/*" \
-    "assets/capacitor.config.json" \
-    "resources.arsc" \
-    "AndroidManifest.xml"
-else
-  unzip -q "$BASE_APK" \
-    "assets/public/index.html" \
-    "assets/public/sw.js" \
-    "assets/public/assets/index-*.js" \
-    "assets/public/assets/device-runtime-*.js" \
-    "AndroidManifest.xml"
-fi
+unzip -q "$BASE_APK" -d "$WORK/base"
+rm -rf "$WORK/base/assets/public"
+mkdir -p "$WORK/base/assets/public"
+cp -a "$OUT_DIR/." "$WORK/base/assets/public/"
 
+# 3. Actualizar únicamente el manifiesto Android.
 # --------------------------------------------------------------------------
-# 2. Copiar la capa de mejoras y sellar la versión
-# --------------------------------------------------------------------------
-mkdir -p assets/public/enhance
-cp "$ROOT"/enhance/src/*.css assets/public/enhance/
-cp "$ROOT"/enhance/src/*.js assets/public/enhance/
-sed -i "s/__C360_VERSION__/$VERSION_NAME/g" assets/public/enhance/care360-presentation.js
+python3 "$ROOT/tools/patch_manifest.py" "$WORK/base/AndroidManifest.xml" "$WORK/base/AndroidManifest.patched.xml"   --old-version-name "$BASE_VERSION_NAME"   --version-name "$VERSION_NAME"   --version-code "$VERSION_CODE"
+mv "$WORK/base/AndroidManifest.patched.xml" "$WORK/base/AndroidManifest.xml"
 
-# --------------------------------------------------------------------------
-# 3. Enlazar la capa desde index.html
-# --------------------------------------------------------------------------
-python3 - "$VERSION_NAME" <<'PY'
-import sys
-
-version = sys.argv[1]
-path = "assets/public/index.html"
-html = open(path, encoding="utf-8").read()
-
-if "care360-enhance.css" in html:
-    raise SystemExit("index.html ya contiene la capa de mejoras")
-
-head = (
-    '<link rel="icon" href="/favicon.svg">'
-    '<link rel="manifest" href="/manifest.webmanifest">'
-    '<link rel="stylesheet" href="/enhance/care360-enhance.css?v=%s">'
-    '<link rel="stylesheet" href="/enhance/care360-presentation.css?v=%s">'
-    '<link rel="stylesheet" href="/enhance/care360-pro.css?v=%s">' % (version, version, version)
-)
-body = (
-    '<script defer src="/enhance/colombia-geo.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-experience.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-ops.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-import.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-metrics.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-pro.js?v=%s"></script>'
-    '<script defer src="/enhance/care360-presentation.js?v=%s"></script>' % (version, version, version, version, version, version, version)
-)
-if __import__("os").environ.get("C360_DEBRAND") == "1":
-    head += '<link rel="stylesheet" href="/enhance/care360-debrand.css?v=%s">' % version
-    body = (
-        '<script defer src="/enhance/care360-debrand.js?v=%s"></script>' % version
-        + body
-    )
-
-html = html.replace("</head>", head + "</head>", 1)
-html = html.replace("</body>", body + "</body>", 1)
-if "interactive-widget=" not in html:
-    html = html.replace(
-        "viewport-fit=cover",
-        "viewport-fit=cover, interactive-widget=resizes-content",
-        1,
-    )
-open(path, "w", encoding="utf-8").write(html)
-print("index.html actualizado")
-PY
-
-# --------------------------------------------------------------------------
-# 4. Renovar la caché del service worker para que la versión nueva se aplique
-# --------------------------------------------------------------------------
-python3 - "$VERSION_NAME" "${DEBRAND}" "$BUILD_CACHE" <<'PY'
-import re
-import sys
-
-version = sys.argv[1]
-debrand = sys.argv[2] == "1"
-build_cache = sys.argv[3]
-path = "assets/public/sw.js"
-source = open(path, encoding="utf-8").read()
-cache = build_cache if not debrand else "care360-shell-" + version
-source = re.sub(
-    r"const CACHE\s*=\s*['"][^'"]+['"]",
-    "const CACHE='%s'" % cache,
-    source,
-    count=1,
-)
-open(path, "w", encoding="utf-8").write(source)
-print("service worker apuntando a la caché %s" % cache)
-PY
-if [[ "$DEBRAND" == "1" ]]; then
-  python3 "$ROOT/tools/debrand_web.py" "$WORK"
-fi
-python3 "$ROOT/tools/patch_measurements.py" "$WORK"
-python3 "$ROOT/tools/patch_report.py" "$WORK"
-python3 "$ROOT/tools/patch_import.py" "$WORK"
-python3 "$ROOT/tools/patch_runtime.py" "$WORK"
-python3 "$ROOT/tools/patch_followup.py" "$WORK"
-python3 "$ROOT/tools/patch_draft.py" "$WORK"
-python3 "$ROOT/tools/patch_crop.py" "$WORK"
-
-# --------------------------------------------------------------------------
-# 5. Manifiesto de la semilla: versión de campo y flags de release.
-#    debuggable y allowBackup se apagan aquí; la semilla original no se toca.
-# --------------------------------------------------------------------------
-python3 "$ROOT/tools/patch_manifest.py" AndroidManifest.xml AndroidManifest.patched.xml \
-  --old-version-name "$BASE_VERSION_NAME" \
-  --version-name "$VERSION_NAME" \
-  --version-code "$VERSION_CODE"
-mv AndroidManifest.patched.xml AndroidManifest.xml
-
-# --------------------------------------------------------------------------
-# 6. Rearmar el APK
+# 5. Rearmar el APK usando el contenedor Android preparado.
 # --------------------------------------------------------------------------
 mkdir -p "$OUT_DIR"
 STAGED="$WORK/staged.apk"
-cp "$BASE_APK" "$STAGED"
-chmod u+w "$STAGED"
+cd "$WORK/base"
 
-# La firma anterior deja de ser válida en cuanto cambia el contenido.
+# Reempaquetar. Los recursos nativos se preservan desde la semilla extraída;
+# resources.arsc se fuerza a ZIP_STORED por compatibilidad Android/Samsung.
+rm -f "$STAGED"
+zip -q -X -r "$STAGED" . 
+zip -q -X -0 "$STAGED" resources.arsc
+
+# El APK base ya contenía firmas que dejan de ser válidas al modificarlo.
 zip -q -d "$STAGED" 'META-INF/*.RSA' 'META-INF/*.SF' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' >/dev/null 2>&1 || true
-if [[ "$DEBRAND" == "1" ]]; then
-  # resources.arsc tiene que ir SIN comprimir: Samsung (y el instalador de
-  # Android) mapea ese archivo en memoria y rechaza el paquete si va deflate.
-  zip -q -X "$STAGED" \
-    AndroidManifest.xml \
-    assets/capacitor.config.json \
-    assets/public/index.html \
-    assets/public/sw.js \
-    assets/public/avgust-logo.svg \
-    assets/public/favicon.svg \
-    assets/public/manifest.webmanifest \
-    assets/public/assets/* \
-    assets/public/enhance/*
-  zip -q -X -0 "$STAGED" resources.arsc
-else
-  zip -q -X "$STAGED" AndroidManifest.xml assets/public/index.html assets/public/sw.js assets/public/enhance/* assets/public/assets/index-*.js assets/public/assets/device-runtime-*.js
-fi
 
 ALIGNED="$WORK/aligned.apk"
 "$ZIPALIGN" -f -p 4 "$STAGED" "$ALIGNED"
 
-# --------------------------------------------------------------------------
 # 7. Firmar
 # --------------------------------------------------------------------------
 KEYSTORE="${CARE360_KEYSTORE:-$ROOT/tools/signing/care360-release.keystore}"
