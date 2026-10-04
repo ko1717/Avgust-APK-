@@ -1,0 +1,45 @@
+name: CARE 360 build gate
+
+on:
+  push:
+    branches:
+      - main
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Static build verification
+        run: npm run verify:build
+
+      - name: Build web artifact
+        run: npm run build:web
+
+      - name: Verify generated artifact
+        run: test -f dist/index.html && test -f dist/sw.js && test -f dist/enhance/care360-metrics.js
+
+      - name: Check for unexpected APKs
+        run: |
+          count=$(find dist -maxdepth 1 -name '*.apk' | wc -l)
+          if [ "$count" -ne 0 ]; then
+            echo "CI web build must not leave APK files in dist/"
+            find dist -maxdepth 1 -name '*.apk' -print
+            exit 1
+          fi
