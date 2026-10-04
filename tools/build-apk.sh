@@ -30,8 +30,15 @@ PY
 )
 DEFAULT_VERSION_NAME="${VERSION_CONFIG[0]:-}"
 DEFAULT_VERSION_CODE="${VERSION_CONFIG[1]:-}"
+BUILD_CACHE="$(python3 - "$ROOT/version.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    print(str(json.load(f).get("buildCache", "")).strip())
+PY
+)"
 [[ "$DEFAULT_VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version.json: nombre de versión inválido" >&2; exit 1; }
 [[ "$DEFAULT_VERSION_CODE" =~ ^[0-9]+$ ]] || { echo "version.json: version code inválido" >&2; exit 1; }
+[[ "$BUILD_CACHE" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "version.json: buildCache inválido" >&2; exit 1; }
 
 VERSION_NAME="${2:-$DEFAULT_VERSION_NAME}"
 VERSION_CODE="${3:-$DEFAULT_VERSION_CODE}"
