@@ -17,13 +17,24 @@ if [[ "$BASE_APK" != /* ]]; then
   BASE_APK="$(cd "$(dirname "$BASE_APK")" && pwd)/$(basename "$BASE_APK")"
 fi
 DEBRAND="${C360_DEBRAND:-0}"
-if [[ "${C360_DEBRAND:-0}" == "1" ]]; then
-  VERSION_NAME="${2:-1.5.13}"
-  VERSION_CODE="${3:-61}"
-else
-  VERSION_NAME="${2:-1.5.13}"
-  VERSION_CODE="${3:-61}"
-fi
+
+# The release version is centralized in version.json. CLI arguments may override it
+# deliberately for a release build, but the default can no longer drift to 1.5.13.
+readarray -t VERSION_CONFIG < <(python3 - "$ROOT/version.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    cfg = json.load(f)
+print(str(cfg.get("name", "")).strip())
+print(str(cfg.get("code", "")).strip())
+PY
+)
+DEFAULT_VERSION_NAME="${VERSION_CONFIG[0]:-}"
+DEFAULT_VERSION_CODE="${VERSION_CONFIG[1]:-}"
+[[ "$DEFAULT_VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version.json: nombre de versión inválido" >&2; exit 1; }
+[[ "$DEFAULT_VERSION_CODE" =~ ^[0-9]+$ ]] || { echo "version.json: version code inválido" >&2; exit 1; }
+
+VERSION_NAME="${2:-$DEFAULT_VERSION_NAME}"
+VERSION_CODE="${3:-$DEFAULT_VERSION_CODE}"
 BASE_VERSION_NAME="1.1.0-rc.5"
 
 # Sin valor por defecto: la contraseña no vive en el guion ni se imprime.
