@@ -14,12 +14,14 @@ const check = (name, ok, detail = "") => {
 check("version.json existe", !!version.name && Number.isInteger(version.code));
 check("version semver válida", /^\d+\.\d+\.\d+$/.test(String(version.name || "")), String(version.name));
 check("versionCode válido", Number.isInteger(version.code) && version.code > 0, String(version.code));
+const packageJson = JSON.parse(read("package.json"));
+check("package.json coincide con version.json", String(packageJson.version || "") === String(version.name || ""), `${packageJson.version || ""} vs ${version.name || ""}`);
 check("cache definida", typeof version.buildCache === "string" && version.buildCache.length > 0);
 
 const build = read("build.js");
 const apk = read("tools/build-apk.sh");
 const presentation = read("enhance/src/care360-presentation.js");
-const pkg = JSON.parse(read("package.json"));
+const pkg = packageJson;
 
 check("build.js usa version.json", build.includes("version.json"));
 check("build.js valida semver correctamente", build.includes("/^\\d+\\.\\d+\\.\\d+$/"));
