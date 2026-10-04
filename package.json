@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "node server.js",
     "build": "node build.js",
+    "build:web": "node build.js",
+    "build:apk": "bash tools/build-apk.sh",
     "start": "node server.js",
     "lint": "node -e \"console.log('Linting passed')\""
   },
