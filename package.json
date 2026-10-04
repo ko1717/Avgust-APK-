@@ -10,7 +10,9 @@
     "build:web": "node build.js",
     "build:apk": "bash tools/build-apk.sh",
     "start": "node server.js",
-    "lint": "node -e \"console.log('Linting passed')\""
+    "lint": "node -e \"console.log('Linting passed')\"",
+    "verify:build": "node tools/verify-build.mjs",
+    "test:static": "node tools/verify-build.mjs && cd tests && npm test"
   },
   "dependencies": {
     "express": "^4.21.2"
