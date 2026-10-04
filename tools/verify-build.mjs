@@ -30,6 +30,8 @@ check("build.js falla si un patch falla", build.includes("process.exit(res.statu
 check("build.js no fija 1.5.32", !build.includes("'v1.5.32'") && !build.includes('"v1.5.32"'));
 check("build-apk usa version.json", apk.includes("version.json"));
 check("build-apk usa buildCache", apk.includes("BUILD_CACHE") && apk.includes("buildCache"));
+check("build-apk consume build.js", apk.includes('node "$ROOT/build.js"'));
+check("build-apk no duplica patchers", !/patch_(measurements|report|import|runtime|followup|draft|crop)\.py/.test(apk));
 check("build-apk no fija la caché de producción", !apk.includes('prefix = "avgust-care-shell"'));
 check("build-apk no tiene 1.5.13 como default", !/VERSION_NAME="\$\{2:-1\.5\.13\}"/.test(apk));
 check("presentación conserva marcador", presentation.includes("__C360_VERSION__"));
