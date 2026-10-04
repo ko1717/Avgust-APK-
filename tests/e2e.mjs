@@ -18,6 +18,7 @@ const UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, 
 const URL = process.env.CARE360_URL || 'http://localhost:8080/index.html';
 const OUT = process.env.CARE360_TEST_OUT || fs.mkdtempSync(path.join(os.tmpdir(), 'care360-e2e-'));
 fs.mkdirSync(OUT, { recursive: true });
+const VERSION = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'version.json'), 'utf8')).name;
 const results = [];
 function check(name, ok, extra) {
   results.push({ name, ok, extra });
@@ -58,7 +59,7 @@ check('La presentación tiene 7 secciones', slideTitles.filter(Boolean).length =
 const creditText = await p.evaluate(() => document.querySelector('.c360-intro-body').innerText);
 check('Aparece Kevin Villamizar como desarrollador', /Kevin Villamizar/.test(creditText));
 check('Aparece la ayuda de Wilson Castro', /creado con la ayuda de Wilson Castro/i.test(creditText));
-check('La versión mostrada es la del APK', /versión\s+1\.5\.13\b/.test(creditText), creditText.match(/versión[^\n]*/)?.[0]);
+check('La versión mostrada coincide con version.json', creditText.includes(`versión ${VERSION}`), creditText.match(/versión[^\n]*/)?.[0]);
 
 // swipe back
 await p.evaluate(() => {

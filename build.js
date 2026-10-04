@@ -10,6 +10,19 @@ const rootDir = __dirname;
 const distDir = path.join(rootDir, 'dist');
 const baseApk = path.join(rootDir, 'tools', 'base', 'capacitor-seed.apk');
 const enhanceSrcDir = path.join(rootDir, 'enhance', 'src');
+const versionFile = path.join(rootDir, 'version.json');
+
+if (!fs.existsSync(versionFile)) {
+  console.error('Missing version.json');
+  process.exit(1);
+}
+const versionConfig = JSON.parse(fs.readFileSync(versionFile, 'utf-8'));
+const VERSION_NAME = String(versionConfig.name || '').trim();
+const BUILD_CACHE = String(versionConfig.buildCache || '').trim();
+if (!/^\d+\.\d+\.\d+$/.test(VERSION_NAME) || !BUILD_CACHE) {
+  console.error('Invalid version.json');
+  process.exit(1);
+}
 
 console.log('--- Building AVGUST CARE 360 web distribution ---');
 
@@ -72,16 +85,16 @@ if (fs.existsSync(enhanceSrcDir)) {
 const presFile = path.join(distEnhanceDir, 'care360-presentation.js');
 if (fs.existsSync(presFile)) {
   let presCode = fs.readFileSync(presFile, 'utf-8');
-  presCode = presCode.replace(/__C360_VERSION__/g, 'v1.5.32');
+  presCode = presCode.replace(/__C360_VERSION__/g, `v${VERSION_NAME}`);
   fs.writeFileSync(presFile, presCode, 'utf-8');
 }
 
 // 5. Patch index.html to include enhance styles and scripts
 const indexHtmlPath = path.join(distDir, 'index.html');
-const buildVer = '1.5.33';
+const buildVer = VERSION_NAME;
 if (fs.existsSync(indexHtmlPath)) {
   let html = fs.readFileSync(indexHtmlPath, 'utf-8');
-  const cacheBusterScript = '<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){if(k!=="avgust-care-shell-v2")caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>';
+  const cacheBusterScript = `<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){if(k!=="${BUILD_CACHE}")caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>`;
   const headTags = [
     cacheBusterScript,
     '<link rel="icon" href="/favicon.svg">',
@@ -123,7 +136,7 @@ if (fs.existsSync(indexHtmlPath)) {
 
 // 5b. Overwrite sw.js to prevent stale script caching and evict avgust-care-shell-v1
 const swPath = path.join(distDir, 'sw.js');
-const swContent = `const CACHE = 'avgust-care-shell-v2';
+const swContent = `const CACHE = '${BUILD_CACHE}';
 const SHELL = ['/', '/avgust-logo.svg', '/favicon.svg', '/manrope.woff2', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
@@ -194,7 +207,8 @@ for (const patch of patches) {
     console.log(`Applying patch: ${patch}`);
     const res = spawnSync('python3', [patchPath, distDir], { encoding: 'utf-8' });
     if (res.status !== 0) {
-      console.warn(`Patch ${patch} returned non-zero status:`, res.stderr || res.stdout);
+      console.error(`Patch ${patch} failed:`, res.stderr || res.stdout || 'unknown error');
+      process.exit(res.status || 1);
     } else {
       console.log(`  ✓ ${patch} succeeded`);
     }
