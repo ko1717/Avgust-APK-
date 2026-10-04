@@ -42,6 +42,8 @@ PY
 
 VERSION_NAME="${2:-$DEFAULT_VERSION_NAME}"
 VERSION_CODE="${3:-$DEFAULT_VERSION_CODE}"
+[[ "$VERSION_NAME" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]] || { echo "version-name inválido: $VERSION_NAME" >&2; exit 1; }
+[[ "$VERSION_CODE" =~ ^[0-9]+$ ]] && [[ "$VERSION_CODE" -gt 0 ]] || { echo "version-code inválido: $VERSION_CODE" >&2; exit 1; }
 BASE_VERSION_NAME="1.1.0-rc.5"
 
 # Sin valor por defecto: la contraseña no vive en el guion ni se imprime.
