@@ -19,7 +19,7 @@ if (!fs.existsSync(versionFile)) {
 const versionConfig = JSON.parse(fs.readFileSync(versionFile, 'utf-8'));
 const VERSION_NAME = String(versionConfig.name || '').trim();
 const BUILD_CACHE = String(versionConfig.buildCache || '').trim();
-if (!/^\\d+\\.\\d+\\.\\d+$/.test(VERSION_NAME) || !BUILD_CACHE) {
+if (!/^\d+\.\d+\.\d+$/.test(VERSION_NAME) || !BUILD_CACHE) {
   console.error('Invalid version.json');
   process.exit(1);
 }
