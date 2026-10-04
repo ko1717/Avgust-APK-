@@ -19,8 +19,7 @@ de `dist/`. No se instalan ni se vuelven a subir.
 | --- | --- |
 | [`dist/AVGUST-CARE-360-1.5.32-Android.apk`](./dist/AVGUST-CARE-360-1.5.32-Android.apk) | 1.5.13, cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
 
-En la cabecera de la app debe verse **v1.5.32**. Se instala encima de 1.4.x–1.5.31
-firmadas con la misma clave (`tools/signing/`).
+En la cabecera de la app debe verse **v1.5.32**. La actualización está diseñada para conservar la identidad de firma y el versionCode ascendente; la compatibilidad real sobre cada versión instalada debe validarse en un dispositivo antes de distribuirla.
 
 La 1.5.13 (versionCode 61) **no se puede instalar** sobre un teléfono que ya
 tiene la 1.5.31 (versionCode 79): Android la rechaza como downgrade. Esta
@@ -33,8 +32,7 @@ semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
 
 ## Qué incluye 1.5.32
 
-- El mismo programa que la APK **1.5.31** ya instalada en el teléfono
-  (código y recursos de ese paquete, no el árbol 1.5.13).
+- El bundle web generado por la pipeline actual y empaquetado sobre la semilla Capacitor de `tools/base/`. No se debe afirmar que contiene el binario exacto de una APK 1.5.31 sin una prueba de extracción/identidad del artefacto.
 - Interfaz de campo: cromo más bajo en pantalla estrecha, blancos de toque
   de 44px, un solo color Avgust, estado de guardado encima del teclado y
   guía solo si no hay una visita abierta.
@@ -69,9 +67,9 @@ APKs sueltas en la raíz. La versión y el código de Android se declaran en
 Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
 
 ```bash
-# La APK de campo 1.5.32 no sale de la semilla: se empaquetó desde la
-# 1.5.31 instalada. Este guion recompila el árbol de la semilla (1.5.13)
-# y no debe sustituir dist/AVGUST-CARE-360-1.5.32-Android.apk.
+# El build actual recompila desde la semilla Capacitor versionada en tools/base/.
+# No sustituye una APK de campo ya validada hasta completar las pruebas de
+# instalación/actualización y firma sobre un dispositivo real.
 # Las contraseñas van por entorno; ver tools/signing/README.md.
 CARE360_KEYSTORE_PASS=... CARE360_KEY_PASS=... tools/build-apk.sh
 ```
