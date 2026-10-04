@@ -94,7 +94,7 @@ const indexHtmlPath = path.join(distDir, 'index.html');
 const buildVer = VERSION_NAME;
 if (fs.existsSync(indexHtmlPath)) {
   let html = fs.readFileSync(indexHtmlPath, 'utf-8');
-  const cacheBusterScript = '<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){if(k!=="avgust-care-shell-v2")caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>';
+  const cacheBusterScript = `<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){if(k!=="${BUILD_CACHE}")caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>`;
   const headTags = [
     cacheBusterScript,
     '<link rel="icon" href="/favicon.svg">',
