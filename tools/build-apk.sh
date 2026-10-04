@@ -150,25 +150,25 @@ PY
 # --------------------------------------------------------------------------
 # 4. Renovar la caché del service worker para que la versión nueva se aplique
 # --------------------------------------------------------------------------
-python3 - "$VERSION_NAME" "${DEBRAND}" <<'PY'
+python3 - "$VERSION_NAME" "${DEBRAND}" "$BUILD_CACHE" <<'PY'
 import re
 import sys
 
 version = sys.argv[1]
 debrand = sys.argv[2] == "1"
+build_cache = sys.argv[3]
 path = "assets/public/sw.js"
 source = open(path, encoding="utf-8").read()
-prefix = "care360-shell" if debrand else "avgust-care-shell"
+cache = build_cache if not debrand else "care360-shell-" + version
 source = re.sub(
-    r"const CACHE='[^']+'",
-    "const CACHE='%s-%s'" % (prefix, version),
+    r"const CACHE\s*=\s*['"][^'"]+['"]",
+    "const CACHE='%s'" % cache,
     source,
     count=1,
 )
 open(path, "w", encoding="utf-8").write(source)
-print("service worker apuntando a la caché de la versión %s" % version)
+print("service worker apuntando a la caché %s" % cache)
 PY
-
 if [[ "$DEBRAND" == "1" ]]; then
   python3 "$ROOT/tools/debrand_web.py" "$WORK"
 fi
