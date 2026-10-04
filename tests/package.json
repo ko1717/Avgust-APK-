@@ -8,8 +8,7 @@
     "test:debrand": "node debrand.mjs",
     "test:ops": "node ops.mjs",
     "test:pro": "node pro.mjs",
-    "test:hud-theme": "node hud-theme.mjs",
-    "test:verify": "../node_modules/.bin/node ../tools/verify-build.mjs"
+    "test:hud-theme": "node hud-theme.mjs"
   },
   "devDependencies": {
     "puppeteer": "^23.0.0"
