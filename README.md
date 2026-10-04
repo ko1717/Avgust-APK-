@@ -59,7 +59,8 @@ tests/                ← e2e
 ```
 
 `tools/build-apk.sh` deja **exactamente un** `.apk` en `dist/` y no permite
-APKs sueltas en la raíz.
+APKs sueltas en la raíz. La versión y el código de Android se declaran en
+`version.json`; no deben duplicarse como valores por defecto en scripts.
 
 ---
 
@@ -92,3 +93,23 @@ tools/dev-preview.sh                 # http://localhost:8080
 ```bash
 cd tests && npm install && npm test   # requiere la vista previa en :8080
 ```
+
+
+## Reglas de desarrollo controlado
+
+La aplicación está en transición desde un bundle legado hacia una arquitectura
+source-first. Hasta completar esa migración:
+
+1. `version.json` es la fuente única de versión, versionCode y caché.
+2. Un fallo de cualquier transformador detiene el build.
+3. `enhance/src/` es la capa editable principal para experiencia e interfaz.
+4. Los `patch_*.py` solo deben conservar transformaciones que todavía no puedan
+   expresarse de forma segura en código fuente.
+5. No se modifica ni rota la clave de firma sin un plan de migración que preserve
+   las actualizaciones sobre instalaciones existentes.
+6. Una IA de desarrollo debe modificar solo archivos previamente autorizados,
+   ejecutar `npm run verify:build` y ejecutar las pruebas afectadas.
+7. Si necesita tocar otro archivo, debe detenerse y solicitar autorización.
+
+La migración source-first se hará por módulos y con pruebas de regresión; no se
+reemplazará toda la aplicación en una sola operación.
