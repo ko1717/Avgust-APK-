@@ -93,6 +93,9 @@ unzip -q "$BASE_APK" -d "$WORK/base"
 rm -rf "$WORK/base/assets/public"
 mkdir -p "$WORK/base/assets/public"
 cp -a "$OUT_DIR/." "$WORK/base/assets/public/"
+if [[ "$DEBRAND" == "1" ]]; then
+  python3 "$ROOT/tools/debrand_web.py" "$WORK/base"
+fi
 
 # 3. Actualizar únicamente el manifiesto Android.
 # --------------------------------------------------------------------------
@@ -108,7 +111,7 @@ cd "$WORK/base"
 # Reempaquetar. Los recursos nativos se preservan desde la semilla extraída;
 # resources.arsc se fuerza a ZIP_STORED por compatibilidad Android/Samsung.
 rm -f "$STAGED"
-zip -q -X -r "$STAGED" . 
+zip -q -X -r "$STAGED" . -x resources.arsc
 zip -q -X -0 "$STAGED" resources.arsc
 
 # El APK base ya contenía firmas que dejan de ser válidas al modificarlo.
