@@ -12,7 +12,9 @@
     "start": "node server.js",
     "lint": "node -e \"console.log('Linting passed')\"",
     "verify:build": "node tools/verify-build.mjs",
-    "test:static": "node tools/verify-build.mjs && cd tests && npm test"
+    "test:static": "node tools/verify-build.mjs && cd tests && npm test",
+    "preview": "bash tools/dev-preview.sh",
+    "test:verify": "node tools/verify-build.mjs"
   },
   "dependencies": {
     "express": "^4.21.2"
