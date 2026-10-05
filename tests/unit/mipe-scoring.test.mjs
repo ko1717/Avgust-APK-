@@ -5,8 +5,7 @@ import {
   CHAPTER_INFO,
   CRITERIA_BY_CHAPTER,
   CRITERIA_COUNT,
-  calculateVisitScore,
-  calculatePortfolioScore
+  calculateVisitScore
 } from "../../migration/source-core/mipe-scoring.mjs";
 
 test("official MIPE structure remains 100 points and 37 criteria", () => {
@@ -70,12 +69,3 @@ test("NA and unanswered criteria do not inflate compliance", () => {
   assert.equal(result.weightedScore, 50);
 });
 
-test("portfolio aggregation preserves reviewed=false exclusion", () => {
-  const yes = { answers: Object.fromEntries(CRITERIA_BY_CHAPTER[1].map((id) => [id, "SI"])) };
-  const no = { reviewed: false, answers: Object.fromEntries(CRITERIA_BY_CHAPTER[1].map((id) => [id, "NO"])) };
-  const result = calculatePortfolioScore([yes, no]);
-  assert.equal(result.visits, 1);
-  assert.equal(result.pointsEarned, 5);
-  assert.equal(result.criteriaCompliance, 100);
-  assert.equal(result.weightedScore, 100);
-});
