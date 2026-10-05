@@ -49,12 +49,14 @@ export function calculateManagementKpis({
     }
 
     for (const [criterionId, answer] of Object.entries(visit.answers || {})) {
-      if (answerValue(answer) !== "NO") continue;
+      const value = answerValue(answer);
+      if (value !== "SI" && value !== "NO") continue;
       const criterion = criteriaCatalog[criterionId] || {};
       if (criterion.severity === "critical") {
         criticalApplicable++;
-        criticalFindings++;
+        if (value === "NO") criticalFindings++;
       }
+      if (value !== "NO") continue;
 
       const repeat = answer?.repeat ?? answer?.isRepeat ?? answer?.recurrent;
       if (typeof repeat === "boolean") {
