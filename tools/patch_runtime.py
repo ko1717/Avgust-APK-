@@ -122,7 +122,11 @@ OLD_DELETE_ROUTE_PARTIAL = (
     "}"
 )
 
-OLD_FETCH = "let t=window.fetch.bind(window);window.fetch=async(n,r)=>"
+OLD_FETCH = (
+    "let t=window.fetch.bind(window);window.fetch=async(n,r)=>{"
+    "let i=n instanceof Request?n:new Request(String(n),r);"
+    "return new URL(i.url,location.origin).pathname.startsWith(`/api/`)?fe(e.store,i):t(n,r)}"
+)
 NEW_FETCH = (
     "let t=null;"
     "try{"
@@ -134,16 +138,20 @@ NEW_FETCH = (
     "  let i=n instanceof Request?n:new Request(String(n),r);"
     "  return new URL(i.url,location.origin).pathname.startsWith(`/api/`)?fe(e.store,i):(t?t(n,r):Promise.reject(Error(`No fetch`)))"
     "};"
-    "let _obj=window, _conf=!0;"
-    "while(_obj){"
-    "  let _d=Object.getOwnPropertyDescriptor(_obj,`fetch`);"
-    "  if(_d){ if(!_d.configurable) _conf=!1; break; }"
-    "  _obj=Object.getPrototypeOf(_obj);"
-    "}"
-    "if(_conf){"
-    "  try{"
-    "    Object.defineProperty(window,`fetch`,{value:_sf,writable:!0,configurable:!0,enumerable:!0});"
-    "  }catch(_e){console.warn(`Could not patch fetch in runtime`,_e);}"
+    "try{"
+    "  window.fetch=_sf;"
+    "}catch(_e){"
+    "  let _obj=window, _conf=!0;"
+    "  while(_obj){"
+    "    let _d=Object.getOwnPropertyDescriptor(_obj,`fetch`);"
+    "    if(_d){ if(!_d.configurable) _conf=!1; break; }"
+    "    _obj=Object.getPrototypeOf(_obj);"
+    "  }"
+    "  if(_conf){"
+    "    try{"
+    "      Object.defineProperty(window,`fetch`,{value:_sf,writable:!0,configurable:!0,enumerable:!0});"
+    "    }catch(_e2){console.warn(`Could not patch fetch in runtime`,_e2);}"
+    "  }"
     "}"
 )
 

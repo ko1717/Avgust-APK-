@@ -1465,7 +1465,7 @@
         /* no interrumpir la respuesta */
       }
       return response;
-    };
+    });
   }
 
   function enhanceTeamForms() {

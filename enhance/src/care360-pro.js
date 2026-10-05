@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var PRO_VERSION = "1.5.13";
+  var PRO_VERSION = "1.5.32";
   var SUN_KEY = "c360-sun";
 
   var BRAND_SVG =

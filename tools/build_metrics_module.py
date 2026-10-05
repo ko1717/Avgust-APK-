@@ -1,4 +1,10 @@
-/**
+#!/usr/bin/env python3
+"""Build the professional Centro de Inteligencia MIPE Metrics Engine for AVGUST CARE 360."""
+
+import sys
+from pathlib import Path
+
+METRICS_JS = r'''/**
  * Centro de Inteligencia MIPE — AVGUST CARE 360
  * Enterprise Agronomic Intelligence & Quality Assurance Engine
  *
@@ -4164,3 +4170,13 @@
     init();
   }
 })();
+'''
+
+def build():
+    dest = Path("enhance/src/care360-metrics.js")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(METRICS_JS, encoding="utf-8")
+    print(f"✓ Generated {dest} ({len(METRICS_JS)} bytes)")
+
+if __name__ == "__main__":
+    build()

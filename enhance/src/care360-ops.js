@@ -160,12 +160,15 @@
     var findings = 0;
     var answered = 0;
     var incomplete = 0;
+    var evaluatedChapters = {};
     Object.keys(answers).forEach(function (id) {
       var val = answerValue(answers[id]);
       if (val !== "SI" && val !== "NO" && val !== "NA") return;
       answered += 1;
+      var ch = id.indexOf(".") !== -1 ? id.split(".")[0] : null;
       if (val === "SI" || val === "NO") {
         applicable += 1;
+        if (ch) evaluatedChapters[ch] = true;
         if (val === "NO") {
           findings += 1;
           var obs = String((answers[id] && answers[id].observation) || "").trim();
@@ -174,6 +177,8 @@
         }
       }
     });
+    var evalCount = Object.keys(evaluatedChapters).length;
+    var isPartial = evalCount < 5;
     return {
       answered: answered,
       applicable: applicable,
@@ -181,6 +186,8 @@
       incomplete: incomplete,
       score: applicable ? Math.round(((applicable - findings) / applicable) * 100) : null,
       reviewed: !!(v && v.reviewed),
+      evalCount: evalCount,
+      isPartial: isPartial,
     };
   }
 
@@ -543,11 +550,19 @@
       };
     }
     if (audit.status === "ready") {
+      var leadText = "";
+      if (audit.score != null) {
+        leadText = audit.isPartial
+          ? "Indicador " + audit.score + "% (" + (audit.evalCount || 0) + "/5 caps evaluados) · "
+          : "Indicador " + audit.score + "% · ";
+      }
       return {
-        title: "Listo para emitir",
+        title: audit.isPartial ? "Auditoría Parcial Lista" : "Listo para emitir",
         lead:
-          (audit.score != null ? "Indicador " + audit.score + "% · " : "") +
-          "Criterios cubiertos. Revisa el informe y confírmalo.",
+          leadText +
+          (audit.isPartial
+            ? "Criterios evaluados cubiertos. Faltan capítulos por auditar."
+            : "Criterios cubiertos. Revisa el informe y confírmalo."),
       };
     }
     if (audit.unanswered.length) {
@@ -812,12 +827,14 @@
           if (actions) row.insertBefore(badge, actions);
           else row.appendChild(badge);
         }
-        var tone = visit.reviewed ? (audit.score != null && audit.score < META_TARGET ? "warn" : "ok") : "pend";
+        var tone = visit.reviewed ? (audit.score != null && audit.score < META_TARGET ? "warn" : (audit.isPartial ? "warn" : "ok")) : "pend";
         if (audit.incomplete) tone = "crit";
         badge.setAttribute("data-tone", tone);
         badge.textContent = visit.reviewed
           ? audit.score != null
-            ? audit.score + "%"
+            ? audit.isPartial
+              ? audit.score + "% (" + audit.evalCount + "/5 caps)"
+              : audit.score + "%"
             : "Revisado"
           : audit.answered
             ? "Borrador " + audit.answered

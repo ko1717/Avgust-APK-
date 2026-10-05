@@ -78,10 +78,10 @@ if (fs.existsSync(presFile)) {
 
 // 5. Patch index.html to include enhance styles and scripts
 const indexHtmlPath = path.join(distDir, 'index.html');
-const buildVer = '1.5.33';
+const buildVer = '2.0.1';
 if (fs.existsSync(indexHtmlPath)) {
   let html = fs.readFileSync(indexHtmlPath, 'utf-8');
-  const cacheBusterScript = '<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){if(k!=="avgust-care-shell-v2")caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>';
+  const cacheBusterScript = '<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>';
   const headTags = [
     cacheBusterScript,
     '<link rel="icon" href="/favicon.svg">',
@@ -123,7 +123,7 @@ if (fs.existsSync(indexHtmlPath)) {
 
 // 5b. Overwrite sw.js to prevent stale script caching and evict avgust-care-shell-v1
 const swPath = path.join(distDir, 'sw.js');
-const swContent = `const CACHE = 'avgust-care-shell-v2';
+const swContent = `const CACHE = 'avgust-care-shell-v5';
 const SHELL = ['/', '/avgust-logo.svg', '/favicon.svg', '/manrope.woff2', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
@@ -185,7 +185,8 @@ const patches = [
   'patch_runtime.py',
   'patch_followup.py',
   'patch_draft.py',
-  'patch_crop.py'
+  'patch_crop.py',
+  'patch_metrics_center.py'
 ];
 
 for (const patch of patches) {

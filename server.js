@@ -36,13 +36,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static assets
+// Live enhance directory (serve directly from enhance/src during development)
+const enhanceSrcDir = path.join(__dirname, 'enhance', 'src');
+if (fs.existsSync(enhanceSrcDir)) {
+  app.use('/enhance', express.static(enhanceSrcDir, {
+    etag: false,
+    maxAge: 0,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }));
+}
+
+// Serve static assets from dist
 app.use(express.static(distDir, {
   etag: true,
-  maxAge: '1h',
+  maxAge: '0',
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.wasm')) {
       res.setHeader('Content-Type', 'application/wasm');
+    } else if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     }
   }
 }));
@@ -50,6 +66,7 @@ app.use(express.static(distDir, {
 // SPA routing fallback
 app.get('*', (req, res) => {
   if (fs.existsSync(indexHtml)) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.sendFile(indexHtml);
   } else {
     res.status(404).send('Not Found');
