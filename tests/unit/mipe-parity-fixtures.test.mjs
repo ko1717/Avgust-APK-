@@ -58,9 +58,9 @@ test("parity fixture: partial audit normalizes only evaluated chapter weights", 
   assert.equal(score.findingsCount, 2);
   assert.equal(score.chapterScores[2], 50);
   assert.equal(score.chapterScores[5], 66.7);
-  assert.equal(score.pointsEarned, 32.5);
+  assert.equal(score.pointsEarned, 35);
   assert.equal(score.auditedWeight, 0.6);
-  assert.equal(score.weightedScore, 54.2);
+  assert.equal(score.weightedScore, 58.3);
 });
 
 test("chapter weights remain the official 5/30/5/30/30 model", () => {
