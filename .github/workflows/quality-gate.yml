@@ -14,12 +14,42 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install application dependencies
+        run: npm install
+
       - name: Install test dependencies
         working-directory: tests
         run: npm install
+
       - name: Source architecture status
         run: npm run source:check
         continue-on-error: true
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Start application preview
+        run: |
+          npm run dev > /tmp/care360-server.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/index.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/care360-server.log
+          exit 1
+
       - name: Static E2E suite
         working-directory: tests
+        env:
+          CARE360_URL: http://127.0.0.1:3000/index.html
         run: npm test
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: care360-server-log
+          path: /tmp/care360-server.log
