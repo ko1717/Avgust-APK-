@@ -1,0 +1,24 @@
+name: AVGUST CARE 360 — Quality Gate
+
+on:
+  push:
+    branches: [main, "dev/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  static-and-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm install
+      - name: Source architecture guard
+        run: npm run source:check
+      - name: Static E2E suite
+        working-directory: tests
+        run: npm test
