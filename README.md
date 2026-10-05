@@ -92,3 +92,18 @@ tools/dev-preview.sh                 # http://localhost:8080
 ```bash
 cd tests && npm install && npm test   # requiere la vista previa en :8080
 ```
+
+## Estado de arquitectura
+
+La aplicación está en una migración controlada hacia **source-first**. La rama principal conserva la APK de campo y la capa validada de mejoras mientras se recupera el árbol fuente real de la aplicación. El bloqueo restante es disponer del proyecto fuente que originó el bundle Capacitor.
+
+### Windows
+
+```powershell
+npm install
+npm run doctor
+npm run source:check
+npm run dev
+```
+
+`npm run source:check` fallará deliberadamente hasta que exista el árbol fuente principal. Esto evita volver a desarrollar accidentalmente sobre el APK compilado.
