@@ -8,7 +8,10 @@
     "dev": "node server.js",
     "build": "node build.js",
     "start": "node server.js",
-    "lint": "node -e \"console.log('Linting passed')\""
+    "lint": "node -e \"console.log('Linting passed')\"",
+    "doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/doctor.ps1",
+    "source:check": "node tools/source-guard.mjs",
+    "preview:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/dev-preview.ps1"
   },
   "dependencies": {
     "express": "^4.21.2"
