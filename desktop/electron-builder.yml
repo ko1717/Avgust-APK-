@@ -1,0 +1,35 @@
+appId: co.avgust.care360.desktop
+productName: AVGUST CARE 360
+electronVersion: 44.3.0
+electronDist: ../node_modules/electron/dist
+directories:
+  output: ../release
+files:
+  - main.cjs
+  - preload.cjs
+  - store.cjs
+  - generated/**
+  - ui/**
+  - icon.ico
+  - package.json
+asar: true
+npmRebuild: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: icon.ico
+  signAndEditExecutable: false
+portable:
+  artifactName: AVGUST-CARE-360-${version}-Windows-x64-portable.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AVGUST CARE 360
+  deleteAppDataOnUninstall: false
+  runAfterFinish: false
+  artifactName: AVGUST-CARE-360-Instalador-${version}-Windows-x64.${ext}

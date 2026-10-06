@@ -4,50 +4,36 @@ Fecha: 2026-10-05
 
 ## Resultado
 
-La rama principal contiene una aplicación web empaquetada dentro de un APK semilla y una capa de mejoras JavaScript/CSS aplicada posteriormente.
+El proyecto original se encontró en `D:\WILSON\avgust-care`. Contiene el código fuente de AVGUST CARE 360 1.5.35 para web, Electron/Windows y Capacitor/Android, junto con sus migraciones y pruebas.
 
-No se encontró en el historial consultable un árbol fuente convencional de la aplicación (por ejemplo `src/`, `android/`, `capacitor.config.*`, `vite.config.*` o un `package.json` de la aplicación).
+Se integraron en este checkout los archivos fuente y las modificaciones locales presentes en esa carpeta. No se copiaron `node_modules`, builds generados, APKs ni el historial Git externo. La capa previa `enhance/src/` y sus pruebas se conservaron para comparar y migrar mejoras selectivamente.
 
-La evidencia histórica más importante es el commit `0b02554499c1d9bd2d351ec8dc0a92d556807d6c`, donde se documenta explícitamente que:
+La auditoría histórica del commit `0b02554499c1d9bd2d351ec8dc0a92d556807d6c` sigue describiendo correctamente el pipeline antiguo:
 
 - `tools/base/capacitor-seed.apk` es el paquete Capacitor original.
 - `tools/build-apk.sh` extrae `assets/public/*` desde esa semilla.
 - `enhance/src/` se copia sobre el contenido extraído.
 - Los `patch_*.py` modifican el bundle compilado.
 
-Por tanto, el APK compilado no debe declararse como “código fuente” y no se debe convertir silenciosamente un bundle minificado en una falsa aplicación source-first.
+Este pipeline queda como referencia histórica, no como build principal del código recuperado.
 
-## Decisión de ingeniería
+## Estado de validación
 
-La migración source-first queda bloqueada hasta recuperar al menos uno de estos artefactos:
+La fuente se validó en este checkout con Node 22.16:
 
-1. El proyecto fuente original que generó el bundle Capacitor.
-2. Un backup/ZIP del proyecto fuente.
-3. Un repositorio histórico alternativo que contenga ese proyecto.
-4. Como último recurso, autorización explícita para reconstruir manualmente una nueva aplicación source-first a partir del comportamiento observable del bundle. Esa reconstrucción sería una migración nueva, no recuperación del código original.
+- `npm ci`, `npx tsc --noEmit` y `npm run build` pasan.
+- `tests/model.mjs`, `tests/team.mjs` y las 9 pruebas unitarias de scoring/KPIs pasan.
+- La evolución por finca y el documento Word incluyen el puntaje ponderado heredado como complemento; la regresión comprueba que el indicador oficial sigue en 33% cuando el ponderado es 14.3%.
+- Las regresiones de matemáticas MIPE, benchmark, riesgos, acciones y command center pasan.
+- `npm run desktop:test` y `npm run desktop:smoke` pasan.
+- `npm run android:apk` genera correctamente un APK **debug** desde el proyecto fuente.
+- Oxlint pasa para la aplicación TypeScript (`app`, `components`, `lib`, `db`, `desktop`) y las pruebas principales.
 
-## Lo que sí está preservado
+Quedan pendientes antes de afirmar que el programa está listo al 100% o publicar una versión:
 
-- APK de campo actual.
-- Clave de firma y continuidad de versionCode.
-- Capa `enhance/src/`.
-- Reglas y matemáticas MIPE existentes.
-- Pruebas E2E.
-- Scripts de build y parches.
-- Quality gate y herramientas Windows de diagnóstico.
+- El lint completo todavía reporta 145 errores en scripts JS heredados y pruebas antiguas, sobre todo variables sin uso y promesas sin manejar.
+- Las pruebas E2E de la capa antigua no se ejecutaron; requieren instalar Puppeteer y su servidor de vista previa.
+- `npm audit --omit=dev` reporta 18 vulnerabilidades de dependencias de producción (1 crítica, 15 altas y 2 moderadas); no se aplicaron actualizaciones automáticas.
+- Falta comparar la aplicación contra la APK 1.5.32, probar en dispositivos reales y verificar firma/versionCode de release.
 
-## Regla
-
-Mientras este documento esté marcado como bloqueado, ningún cambio de funcionalidad debe afirmar que la aplicación ya es source-first.
-
-La definición de terminado será:
-
-- checkout limpio;
-- fuente de aplicación presente;
-- build web reproducible desde fuente;
-- build Android reproducible desde fuente;
-- sin extracción de `capacitor-seed.apk`;
-- sin parchear el bundle compilado para implementar funcionalidades;
-- APK final firmada y verificable;
-- pruebas de regresión aprobadas.
-
+El build web y el APK Android de depuración son reproducibles; esto no certifica aún equivalencia funcional ni una APK firmada para distribución.

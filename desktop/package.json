@@ -1,0 +1,9 @@
+{
+  "name": "avgust-care-desktop",
+  "productName": "AVGUST CARE 360",
+  "version": "1.5.35",
+  "description": "Visitas e informes técnicos AVGUST CARE 360. Edición local sin inicio de sesión.",
+  "author": "AVGUST CARE 360",
+  "main": "main.cjs",
+  "private": true
+}

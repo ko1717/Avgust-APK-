@@ -1,0 +1,10 @@
+import {db,identity,failure} from '@/lib/server';
+import {access} from '@/lib/team-server';
+import {isReportStatus,type ReportSnapshot,type ReportVersion} from '@/lib/reports';
+
+type Row={id:string;farm_id:string;visit_id:string;version_number:number;status:string;source_visit_revision:number;created_by:string;created_at:string;submitted_by:string|null;submitted_at:string|null;approved_by:string|null;approved_at:string|null;published_by:string|null;published_at:string|null;snapshot_json:string|null;revision:number;updated_at:string};
+function result(row:Row):ReportVersion{
+ if(!isReportStatus(row.status))throw new Error('500:Estado de versión inválido.');let snapshot:ReportSnapshot|undefined;if(row.snapshot_json){try{snapshot=JSON.parse(row.snapshot_json) as ReportSnapshot;if(snapshot.schema!==1)throw new Error();}catch{throw new Error('500:La versión del informe no se puede leer.');}}
+ const version:ReportVersion={id:row.id,farmId:row.farm_id,visitId:row.visit_id,versionNumber:row.version_number,status:row.status,sourceVisitRevision:row.source_visit_revision,createdBy:row.created_by,createdAt:row.created_at,revision:row.revision,updatedAt:row.updated_at,snapshot};if(row.submitted_by)version.submittedBy=row.submitted_by;if(row.submitted_at)version.submittedAt=row.submitted_at;if(row.approved_by)version.approvedBy=row.approved_by;if(row.approved_at)version.approvedAt=row.approved_at;if(row.published_by)version.publishedBy=row.published_by;if(row.published_at)version.publishedAt=row.published_at;return version;
+}
+export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){try{const user=await identity(req),{id}=await params;if(!/^[a-f0-9-]{36}$/.test(id))throw new Error('404:Versión de informe no encontrada.');const row=await db().prepare('SELECT * FROM report_versions WHERE id = ?').bind(id).first<Row>();if(!row)throw new Error('404:Versión de informe no encontrada.');await access(user,row.farm_id);return Response.json(result(row),{headers:{'Cache-Control':'no-store'}});}catch(error){return failure(error);}}

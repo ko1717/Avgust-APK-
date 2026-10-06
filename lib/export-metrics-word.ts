@@ -1,0 +1,19 @@
+import {Document,HeadingLevel,Packer,Paragraph,Table,TableCell,TableRow,TextRun,WidthType} from 'docx';
+import {download} from './export-word';
+import {metricStatusLabels,metricTrendLabels} from './model';
+import type {FarmMetricAnalysis} from './metric-analysis';
+
+export async function exportFarmMetricsWord(data:FarmMetricAnalysis){
+ const children:(Paragraph|Table)[]=[];
+ const text=(value:string)=>children.push(new Paragraph({children:[new TextRun(value)],spacing:{after:120}}));
+ const heading=(value:string,level:typeof HeadingLevel.HEADING_1|typeof HeadingLevel.HEADING_2=HeadingLevel.HEADING_1)=>children.push(new Paragraph({text:value,heading:level,keepNext:true,spacing:{before:240,after:120}}));
+ const table=(rows:string[][])=>children.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:rows.map(row=>new TableRow({children:row.map(value=>new TableCell({children:[new Paragraph(value)],margins:{top:100,bottom:100,left:120,right:120}}))}))}));
+ children.push(new Paragraph({text:'AVGUST CARE 360',heading:HeadingLevel.TITLE}));text('AVGUST Crop Protection · Acompañamiento en campo');heading('Informe de evolución por finca');text(`Finca: ${data.farm}`);text(`Periodo analizado: ${data.first?.date||'Sin mediciones'} a ${data.latest?.date||'Sin mediciones'}`);
+ if(data.latest){text(`Indicador oficial 1.5.35: ${data.latest.score}% · ${metricStatusLabels[data.latest.status]}.`);text(`Desempeño ponderado complementario: ${data.latest.weightedScore===null?'Sin medición':`${data.latest.weightedScore}%`}, con ${data.latest.evaluatedChapters} de 5 capítulos y ${data.latest.weightedCoveragePct}% del peso MIPE.`);text('El desempeño ponderado es un indicador complementario y no reemplaza el indicador oficial.');text(`Comportamiento desde la primera medición: ${metricTrendLabels[data.trend]}${data.delta===null?'':` (${data.delta>0?'+':''}${data.delta} puntos)`}.`);text(`Informes revisados con indicador: ${data.records.length}.`);}
+ heading('Resumen anual');table([['Año','Indicador promedio','Cierre del año','Visitas','Estado'],...data.yearly.map(y=>[y.year,`${y.average}%`,`${y.closing}%`,String(y.visits),metricStatusLabels[y.status]])]);
+ heading('Estado por capítulo en la última visita');table([['Capítulo','Indicador','Hallazgos','Criterios aplicables','Estado'],...data.chapters.map(c=>[`${c.id}. ${c.title}`,c.score===null?'Sin medición':`${c.score}%`,String(c.findings),String(c.applicable),metricStatusLabels[c.status]])]);
+ heading('Problemas actuales');if(data.problems.length)table([['Código','Hallazgo','Comportamiento','Recomendación'],...data.problems.map(p=>[p.id,p.text,p.occurrences>1?`Recurrente en ${p.occurrences} informes`:'Detectado en la última visita',p.recommendation||'Sin registrar'])]);else text('No se identificaron respuestas No en la última evaluación.');
+ heading('Historial de informes');table([['Fecha','Indicador oficial','Ponderado complementario','Capítulos evaluados','Estado','Responsable','Hallazgos'],...data.records.map(r=>[r.date,`${r.score}%`,r.weightedScore===null?'Sin medición':`${r.weightedScore}%`,`${r.evaluatedChapters}/5 · ${r.weightedCoveragePct}%`,metricStatusLabels[r.status],r.responsible||'Sin registrar',String(r.findings)])]);
+ const doc=new Document({creator:'AVGUST CARE 360',title:`Evolución ${data.farm}`,styles:{default:{document:{run:{font:'Arial',size:22,color:'172D31'},paragraph:{spacing:{after:120,line:276}}},title:{run:{font:'Arial',size:36,bold:true,color:'007FA3'}},heading1:{run:{font:'Arial',size:28,bold:true,color:'172D31'}},heading2:{run:{font:'Arial',size:24,bold:true,color:'172D31'}}}},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1020,bottom:1020,left:1020,right:1020}}},children}]});
+ await download(await Packer.toBlob(doc),`AVGUST CARE 360 - Evolución ${data.farm.replace(/[^\p{L}\p{N} -]/gu,'')} - ${data.latest?.date||'sin-fecha'}.docx`);
+}

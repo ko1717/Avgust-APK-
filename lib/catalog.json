@@ -1,0 +1,144 @@
+[
+  {
+    "id": 1,
+    "title": "Almacén e inventarios de PPC",
+    "items": [
+      {"id":"1.1","text":"El producto cuenta con sello de seguridad, lote, fecha de fabricación y vencimiento, y registro ICA o INVIMA."},
+      {"id":"1.2","text":"Las instalaciones del almacén cuentan con ficha técnica y hoja de seguridad de los productos."},
+      {"id":"1.3","text":"El almacenamiento cumple con la matriz de compatibilidad."},
+      {"id":"1.4","text":"Existe información clara sobre entradas, salidas e inventarios actualizados de PPC."}
+    ]
+  },
+  {
+    "id": 2,
+    "title": "Medición y dosificación de PPC",
+    "items": [
+      {"id":"2.1","text":"El almacenista y dosificador cuentan con el programa de fumigación para cumplir las dosificaciones."},
+      {"id":"2.2","text":"La persona que dosifica utiliza todos los elementos de protección personal requeridos."},
+      {"id":"2.3","text":"El almacén cuenta con kit de derrames."},
+      {"id":"2.4","text":"Los instrumentos para dosificación son precisos y están en buen estado."},
+      {"id":"2.5","text":"El sitio de dosificación cuenta con ventilación e iluminación adecuadas."},
+      {"id":"2.6","text":"La dosificación coincide con el programa de aspersión elaborado por el ingeniero MIPE."},
+      {"id":"2.7","text":"El producto sale del almacén identificado con bloque, blanco biológico, dosis y cantidad total."},
+      {"id":"2.8","text":"Cuando el producto se entrega en su envase original, se retira el sello, se tacha la etiqueta y se identifica el envase para minimizar el riesgo de pérdida."}
+    ]
+  },
+  {
+    "id": 3,
+    "title": "Transporte interno de PPC",
+    "items": [
+      {
+        "id": "3.1",
+        "text": "La persona que recibe los productos cuenta con los elementos de protección personal."
+      },
+      {
+        "id": "3.2",
+        "text": "La persona que recibe los productos verifica lo entregado vs el programa de aspersión."
+      },
+      {
+        "id": "3.3",
+        "text": "Los productos son transportados en un vehiculo seguro y señalizado hasta el lugar de preparación de la mezcla."
+      },
+      {
+        "id": "3.4",
+        "text": "El vehiculo de transporte interno cuenta con kit de derrames."
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "title": "Preparación de mezclas",
+    "items": [
+      {
+        "id": "4.1",
+        "text": "Si el producto no se pesa en almacen, se cuenta en campo con los equipos necesarios y en buen estado para la dosificación acorde a la programación."
+      },
+      {
+        "id": "4.2",
+        "text": "El bombero cuenta con el programa de fumigación."
+      },
+      {
+        "id": "4.3",
+        "text": "El bombero cuenta con los elementos de protección personal."
+      },
+      {
+        "id": "4.4",
+        "text": "Los tanques de preparación estan debidamente aforados."
+      },
+      {
+        "id": "4.5",
+        "text": "El tanque cuenta con agitación que permita la homogeneidad de la mezcla al momento de la aplicación"
+      },
+      {
+        "id": "4.6",
+        "text": "La calidad del agua cuenta con los parametros adecuados para la aplicación (dureza <70ppm - pH: 5.5-6-5). **Es probable que se manejen por debajo de este estandar**"
+      },
+      {
+        "id": "4.7",
+        "text": "Se realiza debidamente la premezcla de los ppc´s."
+      },
+      {
+        "id": "4.8",
+        "text": "El orden de mezcla se realiza adecuadamente (Corrector de dureza y pH en caso de requerirse, coadyuvantes, solidos (polvos mojables, granulos dispersables, polvos solubles) y liquidos de mayor a menor densidad (suspensiones concentradas, concentrados emulsionables, liquidos solubles))."
+      },
+      {
+        "id": "4.9",
+        "text": "Se realiza triple lavado a cada contenedor y su contenido es depositado en el tanque de mezcla asegurando que los envases originles se perforen y se lleven a centro de acopio"
+      },
+      {
+        "id": "4.10",
+        "text": "Se verifica dureza y pH de mezcla final para corregir en caso de ser necesario."
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "title": "Aplicación de PPC en campo",
+    "items": [
+      {
+        "id": "5.1",
+        "text": "Se tiene en cuenta la presión de salida de la bomba al momento de la aplicación"
+      },
+      {
+        "id": "5.2",
+        "text": "¿Se realiza aforo de boquillas? ¿Cuál es la frecuencia?"
+      },
+      {
+        "id": "5.3",
+        "text": "Los implemetos de aspersión se encuentran limpios, en buen estado y sin fugas o taponamientos  (bomba, mangueras, mangos filtros, boquillas, aguilones, lanzas etc.)"
+      },
+      {
+        "id": "5.4",
+        "text": "Se tiene en cuenta y se registra temperatura y humedad relativa al momento de realizar la aplicación."
+      },
+      {
+        "id": "5.5",
+        "text": "La cuadrilla de aplicadores cuentan con los epp's requeridos para la labor y se usan adecuadamente"
+      },
+      {
+        "id": "5.6",
+        "text": "Antes de comenzar la aplicación la cuadrilla recibe instrucciones respecto a la misma  (productos a aplicar, blancos biologicos, tiempo por cama, volumen y tecnica de aplicación)."
+      },
+      {
+        "id": "5.7",
+        "text": "La tecnica de aplicación (tiempos por cama, direccionamiento de equipos, presión de salida, cubrimientos etc) esta acorde con lo programado."
+      },
+      {
+        "id": "5.8",
+        "text": "El area tratada esta cerrada y tiene tablero de identificación que contenga la información de los ppc's aplicados y horas de reingreso"
+      },
+      {
+        "id": "5.9",
+        "text": "Si sobra o falta producto en la aplicación se informa al ingeniero MIPE y se hace dosificación del producto faltante para completar la aplicación"
+      },
+      {
+        "id": "5.10",
+        "text": "Se asegura la limpieza de los equipos al finalizar cada aplicación con el fin de que no haya contaminación con la siguiente aplicación."
+      },
+      {
+        "id": "5.11",
+        "text": "La aplicación se registra en el formato de aplicaciones correspondiente al bloque"
+      }
+    ]
+  }
+]
