@@ -396,9 +396,9 @@
     document.documentElement.style.overflow = "hidden";
     overlay.hidden = false;
     overlay.style.display = "";
+    overlay.setAttribute("data-open", "1");
     go(typeof startAt === "number" ? startAt : 0);
     requestAnimationFrame(function () {
-      overlay.setAttribute("data-open", "1");
       overlay.querySelector('[data-act="next"]').focus();
     });
     window.dispatchEvent(new CustomEvent("care360:intro-open"));
