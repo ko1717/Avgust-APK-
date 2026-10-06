@@ -215,6 +215,8 @@ METRICS_JS = r'''/**
       criteriaCompliance: criteriaCompliance,
       weightedScore: weightedScore,
       auditedWeight: Math.round(totalAuditedWeight * 100) / 100,
+      isFullyEvaluated: evaluatedChapters.length === 5 && totalAuditedWeight >= 0.99,
+      evaluatedChaptersCount: evaluatedChapters.length,
       chapterScores: chapterScores,
       chapterPoints: chapterPoints,
       evaluatedChapters: evaluatedChapters,

@@ -10,20 +10,161 @@
  * (`html.c360-branded`) se usa el cian, la lima y la pizarra del logo.
  */
 
-/* ------------------------------------------------------------------ *
- * 1. Tokens profesionales
- * ------------------------------------------------------------------ */
+/* ==========================================================================
+   FASE 7.1: AVGUST CARE 360 ENTERPRISE DESIGN SYSTEM TOKENS & PRIMITIVES
+   ========================================================================== */
 
 :root {
-  --c360-pro-green: #1e7a3c;
-  --c360-pro-green-strong: #14532d;
-  --c360-pro-green-soft: #e7f3ea;
-  --c360-pro-lime: #7cb342;
+  /* Brand & Core Agronomic Intelligence Identity */
+  --c360-brand: #00b5e2;
+  --c360-brand-strong: #0087a8;
+  --c360-brand-dark: #0f172a;
+  --c360-brand-accent: #78be20;
+  --c360-brand-subtle: #e0f7fc;
+  --c360-brand-surface: #f0faff;
+
+  /* Agro Green Palette (Primary Agronomic Engine) */
+  --c360-agro-green: #14532d;
+  --c360-agro-green-mid: #1e7a3c;
+  --c360-agro-lime: #7cb342;
+  --c360-agro-light: #f0fdf4;
+  --c360-agro-border: #bbf7d0;
+
+  /* Surfaces & Structural Neutrals */
+  --c360-bg-app: #f8fafc;
+  --c360-surface: #ffffff;
+  --c360-surface-elevated: #ffffff;
+  --c360-surface-sunken: #f1f5f9;
+  --c360-surface-hover: #f8fafc;
+  --c360-border-hairline: #e2e8f0;
+  --c360-border-subtle: #cbd5e1;
+  --c360-border-strong: #94a3b8;
+  --c360-divider: #f1f5f9;
+
+  /* Text & Typographic Hierarchy */
+  --c360-text-primary: #0f172a;
+  --c360-text-secondary: #334155;
+  --c360-text-muted: #64748b;
+  --c360-text-caption: #94a3b8;
+  --c360-text-inverse: #ffffff;
+
+  /* Functional Status & Operational Risk */
+  --c360-status-success: #16a34a;
+  --c360-status-success-bg: #f0fdf4;
+  --c360-status-success-border: #bbf7d0;
+  --c360-status-success-text: #14532d;
+
+  --c360-status-warning: #d97706;
+  --c360-status-warning-bg: #fffbeb;
+  --c360-status-warning-border: #fde68a;
+  --c360-status-warning-text: #92400e;
+
+  --c360-status-danger: #dc2626;
+  --c360-status-danger-bg: #fef2f2;
+  --c360-status-danger-border: #fecaca;
+  --c360-status-danger-text: #991b1b;
+
+  --c360-status-info: #0284c7;
+  --c360-status-info-bg: #f0f9ff;
+  --c360-status-info-border: #bae6fd;
+  --c360-status-info-text: #075985;
+
+  --c360-status-neutral: #64748b;
+  --c360-status-neutral-bg: #f8fafc;
+  --c360-status-neutral-border: #e2e8f0;
+  --c360-status-neutral-text: #475569;
+
+  /* Spacing System (4px Base Grid) */
+  --c360-sp-1: 4px;
+  --c360-sp-2: 8px;
+  --c360-sp-3: 12px;
+  --c360-sp-4: 16px;
+  --c360-sp-5: 20px;
+  --c360-sp-6: 24px;
+  --c360-sp-8: 32px;
+  --c360-sp-12: 48px;
+  --c360-sp-16: 64px;
+
+  /* Radii */
+  --c360-rad-xs: 3px;
+  --c360-rad-sm: 4px;
+  --c360-rad-md: 6px;
+  --c360-rad-lg: 8px;
+  --c360-rad-xl: 12px;
+  --c360-rad-pill: 9999px;
+
+  /* Elevations */
+  --c360-elev-0: none;
+  --c360-elev-1: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --c360-elev-2: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --c360-elev-3: 0 12px 24px -4px rgba(15, 23, 42, 0.10), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
+
+  /* Transitions */
+  --c360-tr-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --c360-tr-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Backward Compatibility Constants */
+  --c360-pro-green: var(--c360-agro-green-mid);
+  --c360-pro-green-strong: var(--c360-agro-green);
+  --c360-pro-green-soft: var(--c360-agro-light);
+  --c360-pro-lime: var(--c360-agro-lime);
   --c360-pro-amber: #b77900;
-  --c360-pro-ver-fg: #5b6b70;
+  --c360-pro-ver-fg: var(--c360-text-muted);
   --c360-pro-pill-bg: #eef3f5;
   --c360-pro-save-ok: #146b45;
   --c360-pro-save-warn: #8a5a00;
+}
+
+/* Dark Mode Tokens */
+html.dark {
+  --c360-bg-app: #090d16;
+  --c360-surface: #0f172a;
+  --c360-surface-elevated: #1e293b;
+  --c360-surface-sunken: #0b1120;
+  --c360-surface-hover: #1e293b;
+  --c360-border-hairline: #1e293b;
+  --c360-border-subtle: #334155;
+  --c360-border-strong: #475569;
+  --c360-divider: #1e293b;
+
+  --c360-text-primary: #f8fafc;
+  --c360-text-secondary: #cbd5e1;
+  --c360-text-muted: #94a3b8;
+  --c360-text-caption: #64748b;
+  --c360-text-inverse: #0f172a;
+
+  --c360-status-success-bg: rgba(22, 163, 74, 0.16);
+  --c360-status-success-border: rgba(34, 197, 94, 0.35);
+  --c360-status-success-text: #86efac;
+
+  --c360-status-warning-bg: rgba(217, 119, 6, 0.16);
+  --c360-status-warning-border: rgba(245, 158, 11, 0.35);
+  --c360-status-warning-text: #fde047;
+
+  --c360-status-danger-bg: rgba(220, 38, 38, 0.16);
+  --c360-status-danger-border: rgba(239, 68, 68, 0.35);
+  --c360-status-danger-text: #fca5a5;
+
+  --c360-status-info-bg: rgba(2, 132, 199, 0.16);
+  --c360-status-info-border: rgba(14, 165, 233, 0.35);
+  --c360-status-info-text: #7dd3fc;
+
+  --c360-status-neutral-bg: rgba(100, 116, 139, 0.16);
+  --c360-status-neutral-border: rgba(148, 163, 184, 0.25);
+  --c360-status-neutral-text: #cbd5e1;
+}
+
+/* Outdoor High-Contrast Sun Mode */
+html.c360-sun {
+  --c360-bg-app: #ffffff;
+  --c360-surface: #ffffff;
+  --c360-surface-elevated: #ffffff;
+  --c360-surface-sunken: #f8fafc;
+  --c360-border-hairline: #000000;
+  --c360-border-subtle: #000000;
+  --c360-text-primary: #000000;
+  --c360-text-secondary: #111111;
+  --c360-text-muted: #333333;
 }
 
 html.c360-branded {
