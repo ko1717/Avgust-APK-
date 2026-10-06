@@ -1,12 +1,13 @@
 import {serviceLabels} from './team';
 import {Document,Packer,Paragraph,TextRun,HeadingLevel,Table,TableRow,TableCell,WidthType,ImageRun} from 'docx';
-import {measurementLabels,actionLabels,metricStatusLabels,type Visit} from './model';
+import {measurementGroupsFor,ungroupedMeasurements,actionLabels,metricStatusLabels,type Visit} from './model';
 import {reportFindings,reportSections,type ReportSnapshot} from './reports';
 import {nativeFiles,saveThroughBridge} from './native';
 import template from './template.json';
 export async function download(blob:Blob,name:string){const bridge=nativeFiles();if(bridge)return saveThroughBridge(bridge,blob,name);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);}
 export async function exportWord(v:Visit,snapshot?:ReportSnapshot){
  const sections=snapshot?.sections||reportSections(),m=snapshot?.indicator||(()=>{const items=sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items),applicable=items.filter(q=>['SI','NO'].includes(v.answers[q.id]?.value)),positive=applicable.filter(q=>v.answers[q.id]?.value==='SI').length;return {total:items.length,answered:items.filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value)).length,applicable:applicable.length,positive,findings:applicable.filter(q=>v.answers[q.id]?.value==='NO').length,score:applicable.length?Math.round(positive/applicable.length*100):null,status:applicable.length?(positive/applicable.length>=.8?'healthy':positive/applicable.length>=.5?'acceptable':'critical'):'pending' as const};})(),reportFindingsForVersion=reportFindings(v,sections);
+ const groupedMeasurements=measurementGroupsFor(v.measurements),unplacedGroups=groupedMeasurements.filter(group=>!v.chapters.includes(Number(group.criterionId.split('.')[0]))),otherMeasurements=ungroupedMeasurements(v.measurements);
  const children:(Paragraph|Table)[]=[];
  const text=(s:string)=>children.push(new Paragraph({children:[new TextRun(s)],spacing:{after:120}}));
  const heading=(s:string,level:typeof HeadingLevel.HEADING_1|typeof HeadingLevel.HEADING_2=HeadingLevel.HEADING_1)=>children.push(new Paragraph({text:s,heading:level,keepNext:true,spacing:{before:240,after:120}}));
@@ -16,8 +17,28 @@ export async function exportWord(v:Visit,snapshot?:ReportSnapshot){
  for(const s of template){heading(s.title);for(const p of s.paragraphs)text(p);}
  heading('Cronograma de actividades');table([['Visita y aseguramiento',v.date],['Entrega del informe',v.delivery||'No programado'],['Seguimiento',v.followup||'No programado']]);
  heading('Indicador de la visita');text(m.score===null?'Sin medición: no hay respuestas aplicables para calcular el indicador.':`${metricStatusLabels[m.status]} · ${m.score}%. ${m.positive} respuestas “Sí” de ${m.applicable} criterios aplicables; ${m.findings} hallazgos por corregir.`);heading('Alcance de la evaluación');text(`${m.answered} de ${m.total} criterios respondidos. ${m.findings} respuestas “No” en los capítulos con cuestionario.`);text(`Capítulos no evaluados: ${sections.filter(c=>!v.chapters.includes(c.id)).map(c=>`${c.id}. ${c.title}`).join('; ')||'Ninguno'}.`);
- for(const c of sections.filter(c=>v.chapters.includes(c.id))){heading(`Capítulo ${c.id}. ${c.title}`);for(const q of c.items){const a=v.answers[q.id];heading(`${q.id} · ${a?.value==='SI'?'Sí':a?.value==='NO'?'No':a?.value==='NA'?'No aplica':'Sin evaluar'}`,HeadingLevel.HEADING_2);text(q.text);if(a?.observation)text(`Hallazgo / observación: ${a.observation}`);if(a?.recommendation)text(`Recomendación: ${a.recommendation}`);}if(v.notes[c.id]){heading('Observaciones del capítulo',HeadingLevel.HEADING_2);text(v.notes[c.id]);}if(v.recommendations[c.id]){heading('Recomendaciones del capítulo',HeadingLevel.HEADING_2);text(v.recommendations[c.id]);}}
- const rows=Object.entries(measurementLabels).filter(([k])=>v.measurements[k]).map(([k,label])=>[label,v.measurements[k]]);if(rows.length){heading('Mediciones de campo');table(rows);}if(v.conclusion){heading('Conclusiones y seguimiento');text(v.conclusion);}
+ for(const c of sections.filter(c=>v.chapters.includes(c.id))){
+  heading(`Capítulo ${c.id}. ${c.title}`);
+  for(const q of c.items){
+   const a=v.answers[q.id];
+   heading(`${q.id} · ${a?.value==='SI'?'Sí':a?.value==='NO'?'No':a?.value==='NA'?'No aplica':'Sin evaluar'}`,HeadingLevel.HEADING_2);
+   text(q.text);
+   if(a?.observation)text(`Hallazgo / observación: ${a.observation}`);
+   if(a?.recommendation)text(`Recomendación: ${a.recommendation}`);
+   for(const group of groupedMeasurements.filter(item=>item.criterionId===q.id)){
+    heading(group.title,HeadingLevel.HEADING_2);
+    table(group.rows.map(row=>[row.label,row.value]));
+   }
+  }
+  if(v.notes[c.id]){heading('Observaciones del capítulo',HeadingLevel.HEADING_2);text(v.notes[c.id]);}
+  if(v.recommendations[c.id]){heading('Recomendaciones del capítulo',HeadingLevel.HEADING_2);text(v.recommendations[c.id]);}
+ }
+ if(unplacedGroups.length||otherMeasurements.length){
+  heading('Mediciones de capítulos no evaluados');
+  for(const group of unplacedGroups){heading(group.title,HeadingLevel.HEADING_2);table(group.rows.map(row=>[row.label,row.value]));}
+  if(otherMeasurements.length)table(otherMeasurements.map(row=>[row.label,row.value]));
+ }
+ if(v.conclusion){heading('Conclusiones y seguimiento');text(v.conclusion);}
  heading('Plan de acción');
  for(const f of reportFindingsForVersion){const action=f.action||{owner:'',due:'',status:'proposed' as const,closure:'',photoId:''};heading('Hallazgo '+f.id+' · '+actionLabels[action.status],HeadingLevel.HEADING_2);text(f.answer.observation||f.text);text('Acción: '+(f.answer.recommendation||'Sin registrar'));text('Responsable: '+(action.owner||'Sin asignar')+' · Fecha límite: '+(action.due||'Sin fecha'));if(action.closure)text('Seguimiento / cierre: '+action.closure);if(action.photoId)text('Evidencia: fotografía '+(v.photos.findIndex(p=>p.id===action.photoId)+1)+' del registro fotográfico.');}
  if(!reportFindingsForVersion.length)text('No hay hallazgos en los capítulos evaluados.');
