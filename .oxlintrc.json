@@ -1,0 +1,124 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "import",
+    "jsx-a11y",
+    "nextjs"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": true
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "ignorePatterns": [
+    ".next/**",
+    ".vinext/**",
+    "out/**",
+    "build/**",
+    "dist/**",
+    "coverage/**",
+    "next-env.d.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["desktop/**/*.cjs", "tests/desktop-store.cjs"],
+      "rules": {
+        "typescript/no-require-imports": "off"
+      }
+    },
+    {
+      "files": ["app/**/*.tsx"],
+      "rules": {
+        "nextjs/no-assign-module-variable": "off",
+        "nextjs/no-html-link-for-pages": "off",
+        "nextjs/no-img-element": "off"
+      }
+    },
+    {
+      "files": ["tests/model.mjs"],
+      "rules": {
+        "typescript/no-deprecated": "off"
+      }
+    },
+    {
+      "files": ["enhance/src/**/*.js", "public/enhance/**/*.js"],
+      "rules": {
+        "no-var": "off"
+      }
+    },
+    {
+      "files": ["app/metrics-panel.tsx"],
+      "rules": {
+        "jsx-a11y/control-has-associated-label": "off",
+        "jsx-a11y/label-has-associated-control": "off",
+        "jsx-a11y/prefer-tag-over-role": "off",
+        "typescript/restrict-template-expressions": "off"
+      }
+    },
+    {
+      "files": ["app/consolidated-metrics.tsx"],
+      "rules": {
+        "jsx-a11y/prefer-tag-over-role": "off",
+        "typescript/restrict-template-expressions": "off"
+      }
+    },
+    {
+      "files": ["app/followup.tsx"],
+      "rules": {
+        "jsx-a11y/label-has-associated-control": "off",
+        "jsx-a11y/prefer-tag-over-role": "off"
+      }
+    },
+    {
+      "files": ["app/team-panel.tsx"],
+      "rules": {
+        "react-hooks/exhaustive-deps": "off"
+      }
+    },
+    {
+      "files": ["app/workspace.tsx"],
+      "rules": {
+        "jsx-a11y/label-has-associated-control": "off",
+        "jsx-a11y/prefer-tag-over-role": "off",
+        "react/react-compiler": "off",
+        "react-hooks/exhaustive-deps": "off",
+        "typescript/no-base-to-string": "off",
+        "typescript/require-array-sort-compare": "off"
+      }
+    }
+  ],
+  "rules": {
+    "no-array-constructor": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "import/no-anonymous-default-export": "warn",
+    "react/display-name": "error",
+    "react/jsx-no-comment-textnodes": "error",
+    "react/no-unescaped-entities": "error",
+    "react/react-compiler": "error",
+    "react/require-render-return": "error",
+    "react/rules-of-hooks": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-deprecated": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-function-type": "error"
+  }
+}

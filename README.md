@@ -1,109 +1,70 @@
 # AVGUST CARE 360
 
-Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en
-fincas de flores. Registra la visita técnica, evalúa criterios por capítulo,
-documenta hallazgos con fotos, emite el informe (Word/PDF/Excel) y hace
-seguimiento a los compromisos.
+Aplicación para registrar visitas y preparar informes técnicos por finca. Permite completar los 37 criterios de los cinco capítulos, adjuntar fotos, consultar métricas históricas por finca y descargar Word editable o imprimir a PDF.
 
-Desarrollado por **Kevin Villamizar**. Creado con la ayuda de **Wilson Castro**.
+Los objetivos y la metodología provienen del protocolo Word suministrado. Las preguntas se extrajeron de las listas de chequeo sin cambiar sus criterios técnicos. El indicador usa respuestas “Sí” sobre criterios aplicables (“Sí” + “No”), excluye “No aplica” y clasifica cada visita como Saludable (80–100), Aceptable (50–79) o Crítico (menos de 50). El diseño del Word es nuevo, conserva la estructura y el contenido institucional pero no reproduce exactamente la diagramación del original.
 
----
+Este repositorio ya incluye el proyecto fuente recuperado de `D:\WILSON\avgust-care` (versión 1.5.35), con sus aplicaciones web, Windows y Android. La APK 1.5.32 y la antigua capa `enhance/src` se conservan como referencias; no son la fuente principal ni se debe generar un release de producción con el flujo de APK semilla.
 
-## Una sola APK
+## Datos y acceso
 
-Este repositorio publica **una única APK**. Las versiones anteriores
-(1.1.0-rc.5 hasta 1.5.31, y las variantes sin marca) están **retiradas**
-de `dist/`. No se instalan ni se vuelven a subir.
+Las visitas se guardan en D1 y las fotografías en R2. Todas las operaciones requieren autenticación. Las visitas personales se restringen a su autor; las compartidas se autorizan por pertenencia a la finca. La publicación inicial es privada para su propietario. El uso desde varios dispositivos requiere iniciar sesión con la misma cuenta. La aplicación incluye fincas compartidas con permisos por participante. La política de acceso del sitio sigue siendo privada: incorporar empleados requiere habilitar su acceso al sitio y después asignarlos a una finca.
 
-| Instalar esto | No instalar esto |
-| --- | --- |
-| [`dist/AVGUST-CARE-360-1.5.32-Android.apk`](./dist/AVGUST-CARE-360-1.5.32-Android.apk) | 1.5.13, cualquier APK suelta en la raíz, `tools/base/`, u otra rama |
+Guardar es una acción explícita. Los cambios sin guardar muestran un aviso al salir. Al abrir otra visita se intenta guardar primero. La revisión técnica exige los campos principales, las respuestas de los capítulos seleccionados y hallazgo y recomendación para cada respuesta No. Un cambio posterior retira el estado revisado. La versión de cada registro evita sobrescrituras entre dispositivos.
 
-En la cabecera de la app debe verse **v1.5.32**. Se instala encima de 1.4.x–1.5.31
-firmadas con la misma clave (`tools/signing/`).
+El respaldo JSON conserva campos y referencias a fotos, no los bytes de las fotos. El Word sí incorpora las fotos. La vista de impresión permite guardar PDF a través del navegador. Requiere conexión para guardar, recuperar fotos y generar exportaciones desde visitas guardadas.
 
-La 1.5.13 (versionCode 61) **no se puede instalar** sobre un teléfono que ya
-tiene la 1.5.31 (versionCode 79): Android la rechaza como downgrade. Esta
-1.5.32 usa el código y los recursos de esa 1.5.31, con versionCode 80.
+## Desarrollo
 
-`tools/base/capacitor-seed.apk` **no es una versión para campo**: es solo la
-semilla Capacitor con la que se recompila. Nadie del equipo debe instalarla.
+Node 22.16 o posterior. Se requiere esta versión para la API de respaldo de SQLite que usa la edición Windows. `npm ci`, `npm run dev`, `npm run build`. `npm run db:generate` genera migraciones de Drizzle; no se crean tablas desde rutas de aplicación. El entorno local simula el inicio de sesión mediante `/signin-with-chatgpt`.
 
----
+Para preparar una base local nueva tras generar y construir, ejecutar las migraciones de `drizzle/` en orden numérico. Si la base local ya existía, aplicar solamente cada migración pendiente antes de iniciar `npm run dev`; por ejemplo: `npx wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_farm_dossier_indexes.sql`. Utilizar una ruta absoluta para `persist-to` si Wrangler resuelve la ruta desde `dist/server`. Nunca añadir `--remote` a este procedimiento sin una autorización y un entorno de prueba explícitos.
 
-## Qué incluye 1.5.32
+Validación: `npx tsc --noEmit`, `node tests/model.mjs`, `node tests/team.mjs` y `tests/integration.ps1`. Para la integración, iniciar primero `npm run dev` y ejecutar el script con PowerShell 7 (`pwsh -File tests/integration.ps1`); este modo proporciona la identidad local simulada de Sites. `wrangler dev --config dist/server/wrangler.json` sirve el Worker compilado, pero no expone `/signin-with-chatgpt` y por tanto no sirve para ese script. Las pruebas de integración crean registros de prueba en la base local. El archivo `.wrangler/cleanup-test.sql` elimina los metadatos de la última ejecución. Nunca ejecutar estas pruebas contra producción.
 
-- El mismo programa que la APK **1.5.31** ya instalada en el teléfono
-  (código y recursos de ese paquete, no el árbol 1.5.13).
-- Interfaz de campo: cromo más bajo en pantalla estrecha, blancos de toque
-  de 44px, un solo color Avgust, estado de guardado encima del teclado y
-  guía solo si no hay una visita abierta.
-- versionCode **80**, mayor que el 79 de la 1.5.31, para que la actualización
-  entre sin desinstalar.
-- Manifiesto de release: `debuggable=false` y `allowBackup=false`.
-- La misma clave de firma que la 1.5.31.
+Se expone la herramienta WebMCP de solo lectura `read_current_visit` cuando el navegador la soporta. Su contrato no se verificó en un contexto WebMCP compatible. Se verificaron las reglas, el guardado, los conflictos de edición, el rechazo de acceso anónimo, la carga/lectura de fotos y la generación de Word. No se realizó una prueba visual interactiva de navegador ni una revisión visual en Word.
 
----
+## Seguimiento de hallazgos
 
-## Estructura
+Cada respuesta No en un capítulo seleccionado puede originar un plan de acción con responsable, fecha límite, estado, nota y evidencia opcional. El cierre exige responsable, fecha objetivo y comentario; la fotografía, si existe, debe pertenecer a la misma visita y capítulo. Los planes se conservan en el payload de D1 con control de revisión existente, sin migración de esquema. Los hallazgos sin plan se interpretan como recomendaciones propuestas, sin asignación. Un estado `pending` guardado previamente mantiene su significado operativo y se presenta como Aceptada.
 
-```
-dist/                 ← única APK instalable (versión actual)
-enhance/src/          ← capa de interfaz y experiencia
-tools/
-  base/               ← semilla de compilación (no instalar)
-  signing/            ← keystore de release
-  build-apk.sh        ← genera la APK y borra las demás de dist/
-  patch_*.py          ← parches sobre el bundle compilado
-tests/                ← e2e
-```
+El historial agrupa las visitas de una finca por su nombre normalizado, ignorando mayúsculas y espacios repetidos, para conservar juntas las visitas antiguas y las nuevas aunque no compartan un identificador interno. Cada informe revisado con criterios aplicables es una medición independiente. El indicador compara la primera y la última medición, muestra el cierre y promedio de cada año, el estado de cada capítulo en la última visita y los problemas abiertos. Un problema se marca como recurrente cuando sigue apareciendo en dos o más informes. La reevaluación no cierra compromisos anteriores. Las fechas de seguimiento pasadas son fechas programadas, no confirmaciones de una visita incumplida. El panel no envía notificaciones.
 
-`tools/build-apk.sh` deja **exactamente un** `.apk` en `dist/` y no permite
-APKs sueltas en la raíz.
+Consulta de finca incluye **Evolución** para revisar una métrica a la vez con su rango de fechas, puntos reales, historial tabular y comparación de dos visitas revisadas. El sistema conserva el valor original y solo calcula cuando la lectura es numérica estricta. Las variaciones son descriptivas: aumentó, disminuyó, estable o datos insuficientes; no interpretan una dirección como favorable ni producen diagnósticos. El cumplimiento se compara en puntos porcentuales y los cambios relativos no se calculan cuando el valor anterior es cero. El contrato técnico está en `docs/PHASE6_METRICS_AND_COMPARISON.md`.
 
----
+El consolidado toma únicamente aseguramientos revisados: incluye visitas sin tipo de servicio y las marcadas como `assurance`; excluye capacitaciones, aforos y seguimientos que no aplican el cuestionario. Calcula el indicador global sobre todos los criterios aplicables, organiza el resultado por periodo, capítulo e ítem, y muestra los ítems con más respuestas No. La descarga de matriz crea un archivo `.xlsx` con cuatro hojas: resumen, capítulo, ítems críticos y matriz histórica por finca, fecha e informe.
 
-## Generar la APK
+Cada finca puede guardar hasta doce contactos con nombre, cargo, teléfono, correo y la marca de destinatario de informes. El botón Preparar correo abre el cliente de correo del dispositivo con esos destinatarios, asunto y texto del informe; el profesional adjunta el Word o PDF descargado y confirma el envío. No existe envío automático ni una cuenta de correo corporativa configurada dentro del programa.
 
-Requisitos: `zipalign`, `apksigner`, `keytool`, `python3`, `zip`, `unzip`.
+Word y la impresión incluyen el plan de acción y la referencia a su fotografía de cierre. Cada foto puede clasificarse como evidencia general del capítulo o asociarse a un subcapítulo concreto; esa referencia se conserva al guardar y aparece en el informe y en Word. Las pruebas de modelo cubren compatibilidad, vencimientos, evidencia y comparación; las de integración verifican que estado y fotografía sobreviven al guardado y lectura. No se realizó una prueba visual interactiva del navegador en esta ampliación.
 
-```bash
-# La APK de campo 1.5.32 no sale de la semilla: se empaquetó desde la
-# 1.5.31 instalada. Este guion recompila el árbol de la semilla (1.5.13)
-# y no debe sustituir dist/AVGUST-CARE-360-1.5.32-Android.apk.
-# Las contraseñas van por entorno; ver tools/signing/README.md.
-CARE360_KEYSTORE_PASS=... CARE360_KEY_PASS=... tools/build-apk.sh
-```
 
-Parámetros opcionales: `tools/build-apk.sh <apk-semilla> <version-name> <version-code>`.
+## Fincas, participantes y solicitudes
 
-La variante sin marca (`C360_DEBRAND=1`) solo se usa si hace falta un paquete
-neutro; en ese caso **esa** queda como la única APK en `dist/`. El flujo normal
-de campo es la APK Avgust.
+Cada finca tiene un creador con coordinación permanente. Coordinación administra participantes, genera códigos y asigna RTC y profesional ejecutor. Trabajo de campo crea y edita visitas y solicitudes de sus fincas. Consulta solo lee y descarga informes. La autorización se aplica a las rutas del servidor y a las fotografías; el creador de una visita compartida pierde acceso si es retirado de la finca, salvo que siga autorizado por otra pertenencia válida a esa misma finca. No hay administrador global ni acceso automático por dominio de correo.
 
-### Vista previa sin instalar
+Los códigos de invitación son secretos de un uso, expiran en 24 horas y se comparten manualmente. Quien tenga acceso al sitio y el código puede reclamarlo con su identidad autenticada. No se envían correos ni se modifica el acceso de Sites desde la aplicación. El creador de una finca no puede ser retirado ni degradado; los coordinadores no pueden cambiar sus propios permisos. Los permisos se aplican por finca.
 
-```bash
-tools/dev-preview.sh                 # http://localhost:8080
-```
+Las solicitudes separan tipo de servicio, motivo, fecha, RTC, profesional y estado. Se pueden convertir en informes vinculados sin marcarlas realizadas automáticamente. Capacitaciones, aforos y seguimientos pueden documentarse con resultados y mediciones sin checklist; el aseguramiento mantiene sus criterios. La coordinación puede actualizar las asignaciones. Los conflictos de revisión de solicitudes y visitas se rechazan.
 
-### Pruebas
+Vincular una visita personal comparte su contenido y sus fotos con la finca seleccionada. Una visita compartida no puede moverse a otra finca ni convertirse en personal. Los registros previos no se vinculan automáticamente. La migración 0001 agrega tablas de fincas, participantes, invitaciones y solicitudes, y columnas farm_id opcionales a visitas y fotos, sin backfill ni borrado de registros.
 
-```bash
-cd tests && npm install && npm test   # requiere la vista previa en :8080
-```
+Validación adicional: node tests/team.mjs ejecuta las rutas contra SQLite en memoria con identidades confiables simuladas y las migraciones reales. Cubre invitaciones, permisos por finca, asignaciones, fotos compartidas, revocación y conflictos de versión. Requiere Node 22.16 o superior con node:sqlite disponible. No reemplaza la validación del acceso de Sites para los empleados reales.
 
-## Estado de arquitectura
+## Navegación e identidad visual
 
-La aplicación está en una migración controlada hacia **source-first**. La rama principal conserva la APK de campo y la capa validada de mejoras mientras se recupera el árbol fuente real de la aplicación. El bloqueo restante es disponer del proyecto fuente que originó el bundle Capacitor.
+La interfaz se organiza en Inicio, Fincas y equipo, Solicitudes, Visitas e informes, Métricas y Seguimiento. Las pantallas conservan su estado durante la navegación; cambiar de función no equivale a guardar. Métricas ofrece dos vistas: **Por finca**, con filtro anual, gráfica por fecha, tendencia, estado, problemas recurrentes y estado por capítulo; y **Consolidado de aseguramientos**, con tendencia global, hallazgos por capítulo, priorización de ítems y matriz Excel. Desde Métricas se genera un informe Word por finca o PDF con la gráfica mediante la impresión del sistema. El listado de visitas se separa del editor, y Seguimiento incluye pestañas para compromisos, agenda e historial. Las listas de visitas, solicitudes y compromisos usan páginas de ocho registros.
 
-### Windows
+Para revisar una entrega sin instalarla ni afectar los datos operativos, el ejecutable admite `--preview`. Esta modalidad usa una carpeta local separada y se identifica como Vista previa.
 
-```powershell
-npm install
-npm run doctor
-npm run source:check
-npm run dev
-```
+El logo y la tipografía Manrope se obtuvieron de https://avgust.com.co/ (logo: /wp-content/uploads/2020/02/Logotipo.svg; fuente: /wp-content/uploads/elementor/google-fonts/fonts/manrope-xn7gyhe41ni1adirggexsg.woff2). La paleta toma las variables del tema oficial: celeste #00B5E2, verde #78BE20, amarillo #F2A900 y gris #333F48; los botones usan un azul más oscuro para mantener legibilidad. Ambos recursos se sirven localmente desde public. Validación: TypeScript, build y respuesta HTTP local correctos; sin prueba visual interactiva solicitada.
 
-`npm run source:check` fallará deliberadamente hasta que exista el árbol fuente principal. Esto evita volver a desarrollar accidentalmente sobre el APK compilado.
+## Compromisos y seguimiento
+
+La web muestra compromisos por finca en las secciones Hoy, Próximos siete días, Vencidos y Completados. Los filtros incluyen finca, responsable, técnico, estado y rango de fechas; la respuesta se pagina desde backend. Un compromiso proviene del hallazgo de una visita y abre ese registro original. Completar, reabrir o cancelar conserva el plan dentro de la visita, registra fecha y actor de cierre cuando existen cuentas centrales, y deja un evento de auditoría no sensible. La evidencia fotográfica sigue disponible, pero no bloquea un cierre cuando no corresponde. La edición Windows conserva el mismo historial local y marca los cierres con el responsable local. El detalle del contrato está en `docs/PHASE4_COMMITMENTS_AND_FOLLOWUP.md`.
+
+## Aplicación de Android
+
+El APK es la misma edición local que Windows: sin cuentas, sin ChatGPT y sin conexión. Fincas, visitas y fotografías se guardan en el teléfono. El respaldo `.care360` está en Inicio, igual que en el computador. Word, Excel y CSV se entregan al menú del sistema para guardarlos o compartirlos. La impresión a PDF no está disponible en el teléfono.
+
+`npm run android:apk` construye la interfaz local, la empaqueta y genera `android/app/build/outputs/apk/debug/app-debug.apk`.

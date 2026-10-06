@@ -1,9 +1,8 @@
 /**
- * AVGUST CARE 360 — MIPE scoring core (source migration)
+ * AVGUST CARE 360 — supplemental chapter-weighted MIPE analysis
  *
- * Transitional, DOM-free extraction of the official MIPE scoring arithmetic.
- * This module intentionally does not render UI and does not alter production
- * enhance/src behavior until parity tests are accepted.
+ * This DOM-free comparison is complementary; lib/model.ts remains the official
+ * 1.5.35 indicator and is not changed by these chapter weights.
  */
 
 export const CHAPTER_WEIGHTS = Object.freeze({
@@ -124,7 +123,7 @@ export function calculateVisitScore(visit) {
     pointsEarned: round1(totalPointsEarned),
     criteriaCompliance: totalApplicable > 0 ? round1((totalPositive / totalApplicable) * 100) : null,
     weightedScore: totalAuditedWeight > 0
-      ? round1((totalPointsEarned / totalAuditedWeight) * 100)
+      ? round1(totalPointsEarned / totalAuditedWeight)
       : null,
     auditedWeight: round2(totalAuditedWeight),
     chapterScores,
@@ -135,4 +134,3 @@ export function calculateVisitScore(visit) {
     positiveCount: totalPositive
   };
 }
-

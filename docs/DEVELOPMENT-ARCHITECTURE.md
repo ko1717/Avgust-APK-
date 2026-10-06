@@ -2,21 +2,11 @@
 
 ## Estado real al 05-10-2026
 
-La rama `main` contiene una capa de experiencia amplia y un Centro de Inteligencia MIPE, pero **no contiene el árbol fuente principal de la aplicación** (`src/`, `android/` o un proyecto Capacitor completo).
+Se recuperó e integró el proyecto fuente de `D:\WILSON\avgust-care`, versión 1.5.35. Este checkout contiene ahora `app/`, `lib/`, `db/`, `android/`, `desktop/`, `public/`, `tests/` y el pipeline de Capacitor/Electron.
 
-La aplicación actual se recompone mediante:
+La integración recupera la fuente y ya se validó con build web, pruebas principales, smoke de Windows y APK Android debug desde este checkout. Todavía no certifica un release: faltan resolver avisos de dependencias y lint, comparar con la APK 1.5.32 y verificar una firma/versionCode de producción.
 
-```
-tools/base/capacitor-seed.apk
-        ↓
-build.js / tools/build-apk.sh
-        ↓
-enhance/src/*
-        ↓
-APK final
-```
-
-Esto es válido como mecanismo de compatibilidad/release, pero **no debe seguir siendo la arquitectura de desarrollo**.
+El flujo anterior (`tools/base/capacitor-seed.apk`, `build.js`, `tools/build-apk.sh` y `enhance/src/`) se conserva por compatibilidad y comparación. No es la arquitectura principal ni debe usarse para desarrollar nuevas funcionalidades.
 
 ## Regla de ingeniería
 
@@ -25,33 +15,20 @@ Esto es válido como mecanismo de compatibilidad/release, pero **no debe seguir 
 Por tanto:
 
 - No implementar nuevas funcionalidades editando un APK.
-- No usar `tools/base/capacitor-seed.apk` como sustituto del código fuente.
-- Mantener `enhance/src` temporalmente como capa de transición.
-- Recuperar/importar el proyecto fuente real que produjo la aplicación 1.5.x.
-- Migrar progresivamente las funcionalidades de `enhance/src` al árbol fuente.
+- Usar `app/`, `lib/` y los adaptadores de `android/` y `desktop/` como fuente principal.
+- Mantener `enhance/src` como referencia hasta comparar y migrar sus mejoras relevantes a la aplicación fuente.
 - Mantener la APK 1.5.32 como referencia de regresión hasta que la nueva compilación sea equivalente.
 - No tocar claves de firma ni versionCode de producción sin una decisión explícita de release.
 
-## Objetivo de arquitectura
+## Arquitectura actual
 
 ```
-app/
-  src/
-    core/
-    features/
-      visits/
-      farms/
-      metrics/
-      followup/
-      reports/
-      import/
-    ui/
-    services/
-    storage/
-    platform/
-  android/                 # proyecto nativo Capacitor
-  public/
-
+app/                       # UI, features y rutas web
+lib/                       # modelo, validación, persistencia y exportación
+db/ drizzle/               # esquema y migraciones
+android/                   # wrapper Capacitor
+desktop/                   # aplicación Electron para Windows
+public/                    # recursos locales y enhancements cargados por la UI
 tests/
 tools/
 docs/
@@ -84,23 +61,24 @@ La capa ejecutiva debe priorizar:
 
 ## Windows como estación principal
 
-El desarrollo diario debe poder ejecutarse desde PowerShell con:
+El proyecto fuente requiere Node 22.16 o posterior, versión necesaria para la API de respaldo SQLite de la edición Windows. Los comandos documentados son:
 
 ```powershell
-npm install
-npm run doctor
+npm ci
+npm run desktop:build
 npm run dev
 ```
 
-El APK se genera únicamente después de pasar pruebas y desde una fuente reproducible.
+La APK se genera con `npm run android:apk`, únicamente después de ejecutar las pruebas y verificar la identidad de firma y el versionCode de release.
 
 ## Criterio de finalización de la migración
 
-La arquitectura no se considera fuente-first hasta que:
+La fuente principal ya está presente. La migración se considera completa para release cuando:
 
-- exista el árbol fuente principal;
-- una instalación limpia pueda compilar sin depender de un APK seed;
-- los tests E2E funcionen contra esa compilación;
-- la APK resultante conserve identidad/firma cuando corresponda;
-- se compare funcionalmente contra 1.5.32;
-- se retire la dependencia de parches sobre bundle compilado.
+- una instalación limpia compila desde este checkout sin depender de un APK seed;
+- las pruebas unitarias, integración y smoke pasan contra esa compilación;
+- se compara funcionalmente contra 1.5.32;
+- se verifica la firma, el versionCode y el artefacto Android;
+- las mejoras relevantes de `enhance/src` están portadas o descartadas con justificación.
+
+La validación se ejecuta con un Node 22.16 aislado en este entorno. El resultado y los pendientes de calidad están detallados en `SOURCE-RECOVERY-AUDIT.md`.
