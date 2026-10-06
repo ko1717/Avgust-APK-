@@ -13,18 +13,15 @@ const enhanceSrcDir = path.join(rootDir, 'enhance', 'src');
 
 console.log('--- Building AVGUST CARE 360 web distribution ---');
 
-// 1. Clean dist directory
 if (fs.existsSync(distDir)) {
   fs.rmSync(distDir, { recursive: true, force: true });
 }
 fs.mkdirSync(distDir, { recursive: true });
 
-// 2. Extract assets/public from capacitor-seed.apk
 if (fs.existsSync(baseApk)) {
   console.log('Extracting web assets from base APK...');
   const tempExtract = path.join(distDir, '.apk_temp');
   fs.mkdirSync(tempExtract, { recursive: true });
-  
   try {
     execFileSync('unzip', ['-q', baseApk, 'assets/public/*', '-d', tempExtract]);
     const publicExtracted = path.join(tempExtract, 'assets', 'public');
@@ -61,14 +58,12 @@ with zipfile.ZipFile(apk) as z:
   process.exit(1);
 }
 
-// 3. Copy enhance files
 const distEnhanceDir = path.join(distDir, 'enhance');
 fs.mkdirSync(distEnhanceDir, { recursive: true });
 if (fs.existsSync(enhanceSrcDir)) {
   fs.cpSync(enhanceSrcDir, distEnhanceDir, { recursive: true });
 }
 
-// 4. Update version in care360-presentation.js
 const presFile = path.join(distEnhanceDir, 'care360-presentation.js');
 if (fs.existsSync(presFile)) {
   let presCode = fs.readFileSync(presFile, 'utf-8');
@@ -76,9 +71,8 @@ if (fs.existsSync(presFile)) {
   fs.writeFileSync(presFile, presCode, 'utf-8');
 }
 
-// 5. Patch index.html to include enhance styles and scripts
 const indexHtmlPath = path.join(distDir, 'index.html');
-const buildVer = '2.0.1';
+const buildVer = '2.1.0';
 if (fs.existsSync(indexHtmlPath)) {
   let html = fs.readFileSync(indexHtmlPath, 'utf-8');
   const cacheBusterScript = '<script>if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k);});});}if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});}</script>';
@@ -87,7 +81,8 @@ if (fs.existsSync(indexHtmlPath)) {
     '<link rel="icon" href="/favicon.svg">',
     `<link rel="stylesheet" href="/enhance/care360-enhance.css?v=${buildVer}">`,
     `<link rel="stylesheet" href="/enhance/care360-presentation.css?v=${buildVer}">`,
-    `<link rel="stylesheet" href="/enhance/care360-pro.css?v=${buildVer}">`
+    `<link rel="stylesheet" href="/enhance/care360-pro.css?v=${buildVer}">`,
+    `<link rel="stylesheet" href="/enhance/care360-enterprise-visual.css?v=${buildVer}">`
   ].join('');
 
   const bodyTags = [
@@ -100,20 +95,27 @@ if (fs.existsSync(indexHtmlPath)) {
     `<script defer src="/enhance/care360-presentation.js?v=${buildVer}"></script>`
   ].join('');
 
-  // Relax CSP for dev environment / web preview
   html = html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/i, '<meta http-equiv="Content-Security-Policy" content="default-src \'self\' blob: data:; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' \'wasm-unsafe-eval\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' blob: data:; font-src \'self\' data:; connect-src \'self\' blob: data:; object-src \'none\';">');
-  
-  // Add meta description and OpenGraph tags
+
   if (!html.includes('<meta name="description"')) {
     const metaTags = '<meta name="description" content="Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en fincas de flores con registro de visitas técnicas, auditoría, mediciones y generación de informes."><meta property="og:title" content="AVGUST CARE 360"><meta property="og:description" content="Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en fincas de flores">';
     html = html.replace('<title>', `${metaTags}<title>`);
   }
 
-  if (!html.includes('/enhance/care360-enhance.css')) {
-    html = html.replace('</head>', `${headTags}</head>`);
+  const headTagList = headTags.split(/(?=<(?:link|script)\\b)/);
+  for (const tag of headTagList) {
+    const match = tag.match(/(?:href|src)=\"([^\"]+)\"/);
+    if (match && !html.includes(match[1].split('?')[0])) {
+      html = html.replace('</head>', tag + '</head>');
+    }
   }
-  if (!html.includes('/enhance/care360-experience.js')) {
-    html = html.replace('</body>', `${bodyTags}</body>`);
+
+  const bodyTagList = bodyTags.split(/(?=<script\\b)/);
+  for (const tag of bodyTagList) {
+    const match = tag.match(/src=\"([^\"]+)\"/);
+    if (match && !html.includes(match[1].split('?')[0])) {
+      html = html.replace('</body>', tag + '</body>');
+    }
   }
   if (!html.includes('interactive-widget=')) {
     html = html.replace('viewport-fit=cover', 'viewport-fit=cover, interactive-widget=resizes-content');
@@ -121,9 +123,8 @@ if (fs.existsSync(indexHtmlPath)) {
   fs.writeFileSync(indexHtmlPath, html, 'utf-8');
 }
 
-// 5b. Overwrite sw.js to prevent stale script caching and evict avgust-care-shell-v1
 const swPath = path.join(distDir, 'sw.js');
-const swContent = `const CACHE = 'avgust-care-shell-v5';
+const swContent = `const CACHE = 'avgust-care-shell-v6';
 const SHELL = ['/', '/avgust-logo.svg', '/favicon.svg', '/manrope.woff2', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
@@ -145,7 +146,6 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
-  // Never serve stale enhancement scripts or dynamic scripts from cache
   if (url.pathname.startsWith('/enhance/') || request.destination === 'script') {
     event.respondWith(
       fetch(request).then(response => {
@@ -177,7 +177,6 @@ self.addEventListener('fetch', event => {
 `;
 fs.writeFileSync(swPath, swContent, 'utf-8');
 
-// 6. Run python patchers
 const patches = [
   'patch_measurements.py',
   'patch_report.py',
