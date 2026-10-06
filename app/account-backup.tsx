@@ -6,7 +6,7 @@ import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 type Result={farmsCreated:number;visitsImported:number;requestsImported:number;reportsImported:number;photosImported:number;skipped:number;message:string};
 const MAX_BYTES=16*1024*1024;
 
-export default function AccountBackup({dirty}:{dirty:boolean}){
+export default function AccountBackup({dirty,onRestored}:{dirty:boolean;onRestored?:()=>void}){
  const input=useRef<HTMLInputElement>(null);
  const [busy,setBusy]=useState<'download'|'import'|null>(null),[message,setMessage]=useState(''),[reloadReady,setReloadReady]=useState(false);
  async function downloadBackup(){
@@ -27,33 +27,55 @@ export default function AccountBackup({dirty}:{dirty:boolean}){
  }
  async function restore(file?:File){
   if(!file)return;
-  setBusy('import');setMessage('');setReloadReady(false);
+  setBusy('import');setMessage('Leyendo archivo de respaldo…');setReloadReady(false);
   try{
    if(file.size>MAX_BYTES)throw new Error('El respaldo supera el límite de 16 MB.');
    const fileBytes=new Uint8Array(await file.arrayBuffer());
    let bundle:unknown,unassignedRequests=0;
-   if(new TextDecoder().decode(fileBytes.subarray(0,16))==='SQLite format 3\u0000'){
-    const identityResponse=await fetch('/api/team',{cache:'no-store'}),identityData=await identityResponse.json() as {userId?:string;error?:string};
-    if(!identityResponse.ok||!identityData.userId)throw new Error(identityData.error||'No se pudo verificar la cuenta.');
+   const isSqlite=fileBytes.length>=16&&new TextDecoder().decode(fileBytes.subarray(0,16))==='SQLite format 3\u0000';
+   if(isSqlite){
+    let userId='care360-local';
+    try{
+     const identityResponse=await fetch('/api/team',{cache:'no-store'});
+     const identityData=await identityResponse.json() as {userId?:string};
+     if(identityData?.userId)userId=identityData.userId;
+    }catch{}
     const {readCare360Backup}=await import('@/lib/account-backup-file');
-    const imported=await readCare360Backup(fileBytes,identityData.userId,()=>sqlWasmUrl);
+    const imported=await readCare360Backup(fileBytes,userId,()=>sqlWasmUrl);
     bundle=imported.bundle;unassignedRequests=imported.unassignedRequests;
    }else{
-    try{bundle=JSON.parse(new TextDecoder().decode(fileBytes));}catch{throw new Error('El archivo no es un respaldo .care360 o JSON compatible.');}
+    let parsed:unknown;
+    try{parsed=JSON.parse(new TextDecoder().decode(fileBytes));}catch{throw new Error('El archivo no es un respaldo .care360 o JSON compatible.');}
+    if(Array.isArray(parsed)){
+     bundle={format:'avgust-care-360-account-backup',version:1,accountId:'care360-local',createdAt:new Date().toISOString(),farms:[],visits:parsed,requests:[],reports:[],photos:[]};
+    }else if(parsed&&typeof parsed==='object'){
+     const obj=parsed as Record<string,unknown>;
+     if(obj.format==='avgust-care-360-account-backup'){
+      bundle=obj;
+     }else if(typeof obj.farm==='string'&&typeof obj.date==='string'){
+      bundle={format:'avgust-care-360-account-backup',version:1,accountId:'care360-local',createdAt:new Date().toISOString(),farms:[],visits:[obj],requests:[],reports:[],photos:[]};
+     }else if(Array.isArray(obj.visits)||Array.isArray(obj.farms)){
+      bundle={format:'avgust-care-360-account-backup',version:1,accountId:'care360-local',createdAt:new Date().toISOString(),farms:Array.isArray(obj.farms)?obj.farms:[],visits:Array.isArray(obj.visits)?obj.visits:[],requests:Array.isArray(obj.requests)?obj.requests:[],reports:Array.isArray(obj.reports)?obj.reports:[],photos:Array.isArray(obj.photos)?obj.photos:[]};
+     }else{
+      throw new Error('El archivo JSON no contiene fincas o visitas reconocibles.');
+     }
+    }
    }
-   if(!bundle||typeof bundle!=='object'||Array.isArray(bundle))throw new Error('El archivo no es un respaldo AVGUST CARE 360.');
-   const counts=bundle as Record<string,unknown>;
-   const count=(key:string)=>Array.isArray(counts[key])?counts[key].length:0;
-   const warning=unassignedRequests?` ${unassignedRequests} solicitudes con asignaciones locales se importarán sin responsable; tendrás que asignar miembros de la cuenta.`:'';
-   if(!window.confirm(`Se combinarán ${count('farms')} fincas, ${count('visits')} visitas, ${count('reports')} informes y ${count('photos')} fotografías. Los registros existentes no se reemplazarán.${warning} ¿Continuar?`))return;
+   if(!bundle||typeof bundle!=='object'||Array.isArray(bundle))throw new Error('El archivo no es un respaldo AVGUST CARE 360 reconocible.');
    const content=JSON.stringify(bundle);
    if(new TextEncoder().encode(content).byteLength>MAX_BYTES)throw new Error('El contenido del respaldo supera 16 MB al prepararlo para el servidor.');
    const response=await fetch('/api/backup',{method:'POST',headers:{'Content-Type':'application/json'},body:content});
    const result=await response.json() as Result|{error?:string};
    if(!response.ok)throw new Error('error'in result&&result.error?result.error:'No se pudo importar el respaldo.');
    const summary=result as Result;
-   setMessage(`Fusión completada: ${summary.farmsCreated} fincas, ${summary.visitsImported} visitas, ${summary.requestsImported} solicitudes, ${summary.reportsImported} informes y ${summary.photosImported} fotos restauradas; ${summary.skipped} registros omitidos por conflictos o permisos.${unassignedRequests?` ${unassignedRequests} solicitudes quedaron sin asignar y deben revisarse.`:''}`);
+   const totalRestored=summary.farmsCreated+summary.visitsImported+summary.requestsImported+summary.reportsImported+summary.photosImported;
+   if(totalRestored===0&&summary.skipped>0){
+    setMessage(`Todos los registros del archivo ya estaban guardados en la aplicación (${summary.skipped} registros existentes).`);
+   }else{
+    setMessage(`Respaldo importado correctamente: ${summary.farmsCreated} fincas, ${summary.visitsImported} visitas, ${summary.requestsImported} solicitudes, ${summary.reportsImported} informes y ${summary.photosImported} fotos restauradas.${summary.skipped?` (${summary.skipped} ya existían)`:''}${unassignedRequests?` ${unassignedRequests} solicitudes quedaron pendientes de asignar.`:''}`);
+   }
    setReloadReady(true);
+   if(onRestored)onRestored();
   }catch(error){setMessage(error instanceof Error?error.message:'No se pudo importar el respaldo.');}
   finally{setBusy(null);if(input.current)input.current.value='';}
  }

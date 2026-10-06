@@ -30,15 +30,68 @@ export function ungroupedMeasurements(measurements:Record<string,string>){
  const grouped=new Set<string>(measurementGroups.flatMap(group=>group.keys));
  return Object.entries(measurementLabels).filter(([key])=>!grouped.has(key)&&!!measurements[key]?.trim()).map(([key,label])=>({key,label,value:measurements[key]}));
 }
+export const CHAPTER_WEIGHTS:Record<number,number> = {1:0.05, 2:0.30, 3:0.05, 4:0.30, 5:0.30};
+export const CHAPTER_MAX_POINTS:Record<number,number> = {1:5, 2:30, 3:5, 4:30, 5:30};
+
 export function blankVisit():Visit {const d=new Date();return {id:'',revision:0,farm:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,city:'',zone:'',technician:'',responsible:'Wilson Castro',rtc:'',chapters:[2,3,4,5],answers:{},notes:{},recommendations:{},measurements:{},delivery:'',followup:'',conclusion:'',photos:[],reviewed:false};}
 export function metrics(v:Visit) {
- const items=catalog.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items);
+ const selected = new Set(v.chapters && v.chapters.length ? v.chapters : [1, 2, 3, 4, 5]);
+ const items=catalog.filter(c=>selected.has(c.id)).flatMap(c=>c.items);
  const answered=items.filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value));
  const applicable=items.filter(q=>['SI','NO'].includes(v.answers[q.id]?.value));
  const positive=applicable.filter(q=>v.answers[q.id]?.value==='SI').length;
- const findings=items.filter(q=>v.answers[q.id]?.value==='NO').length;
- const score=applicable.length?Math.round(positive/applicable.length*100):null;
- return {total:items.length,answered:answered.length,applicable:applicable.length,positive,findings,score,status:metricStatus(score)};
+ const findings=applicable.filter(q=>v.answers[q.id]?.value==='NO').length;
+
+ let totalPointsEarned = 0;
+ let totalAuditedWeight = 0;
+ const chapterScores: Record<number, number | null> = {};
+ const chapterPoints: Record<number, number> = {};
+ const evaluatedChapters: number[] = [];
+
+ for (const c of catalog) {
+  if (!selected.has(c.id)) {
+   chapterScores[c.id] = null;
+   chapterPoints[c.id] = 0;
+   continue;
+  }
+  const cApplicable = c.items.filter(q => ['SI', 'NO'].includes(v.answers[q.id]?.value));
+  const cPositive = cApplicable.filter(q => v.answers[q.id]?.value === 'SI').length;
+  if (cApplicable.length > 0) {
+   const cCompliance = (cPositive / cApplicable.length) * 100;
+   const weight = CHAPTER_WEIGHTS[c.id] ?? 0.2;
+   const points = (cCompliance / 100) * (weight * 100);
+   chapterScores[c.id] = Math.round(cCompliance * 10) / 10;
+   chapterPoints[c.id] = Math.round(points * 10) / 10;
+   evaluatedChapters.push(c.id);
+   totalPointsEarned += points;
+   totalAuditedWeight += weight;
+  } else {
+   chapterScores[c.id] = null;
+   chapterPoints[c.id] = 0;
+  }
+ }
+
+ const weightedScore = totalAuditedWeight > 0 ? Math.round((totalPointsEarned / totalAuditedWeight) * 10) / 10 : null;
+ const pointsEarned = Math.round(totalPointsEarned * 10) / 10;
+ const criteriaCompliance = applicable.length ? Math.round((positive / applicable.length) * 100) : null;
+ const score = weightedScore !== null ? Math.round(weightedScore) : null;
+
+ return {
+  total: items.length,
+  answered: answered.length,
+  applicable: applicable.length,
+  positive,
+  findings,
+  score,
+  weightedScore,
+  pointsEarned,
+  criteriaCompliance,
+  auditedWeight: Math.round(totalAuditedWeight * 100) / 100,
+  evaluatedChapters,
+  chapterScores,
+  chapterPoints,
+  status: metricStatus(score)
+ };
 }
 export function metricStatus(score:number|null):MetricStatus{return score===null?'pending':score>=80?'healthy':score>=50?'acceptable':'critical';}
 export const metricStatusLabels:Record<MetricStatus,string>={healthy:'Saludable',acceptable:'Aceptable',critical:'Crítico',pending:'Sin medición'};

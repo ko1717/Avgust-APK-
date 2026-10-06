@@ -10,13 +10,13 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
  return <div className="chapter-details">
   {chapters.map(chapter=><details className="chapter-detail" key={chapter.id}>
    <summary>
-    <span><strong>{chapter.id}. {chapter.title}</strong><small>{chapter.findings} hallazgo{chapter.findings===1?'':'s'} · {chapter.applicable} criterios aplicables · primera visita {chapter.firstScore===null?'sin medición':`${chapter.firstScore}%`}</small></span>
+    <span><strong>{chapter.id}. {chapter.title}</strong><small><span style={{background:'#e0f2fe',color:'#0369a1',padding:'2px 7px',borderRadius:4,fontWeight:700,marginRight:6}}>Peso {chapter.weightPct}% ({chapter.maxPoints} pts)</span>{chapter.score!==null?`${chapter.pointsEarned} / ${chapter.maxPoints} pts · `:''}{chapter.findings} hallazgo{chapter.findings===1?'':'s'} en {chapter.applicable} criterios · primera visita: {chapter.firstScore===null?'sin medición':`${chapter.firstScore}%`}</small></span>
     <b>{chapter.score===null?'—':`${chapter.score}%`}</b>
     <Status value={chapter.status}/>
    </summary>
    <div className="chapter-detail-body">
     <div className="metric-chart">
-     <div><h4>Primera visita vs última visita</h4><p>Indicador por subcapítulo en este periodo.</p></div>
+     <div><h4>Primera visita vs última visita (Capítulo {chapter.id} · {chapter.weightPct}% del MIPE)</h4><p>Cumplimiento por subcapítulo entre la primera y la última evaluación.</p></div>
      <div className="chart-scroll"><div className="chapter-detail-chart">
       <ResponsiveContainer width="100%" height={260}>
        <BarChart data={chapter.items} margin={{top:10,right:12,left:-16,bottom:4}}>

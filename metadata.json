@@ -2,5 +2,7 @@
   "name": "AVGUST CARE 360",
   "description": "Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en fincas de flores con registro de visitas técnicas, auditoría, mediciones y generación de informes.",
   "permissions": [],
-  "capabilities": []
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -49,7 +49,10 @@ export async function createCare360Backup(bundle:BackupBundle,locateFile?:(file:
   for(const farm of bundle.farms){
    database.run('INSERT INTO farms (id,owner,name,zone,contact) VALUES (?,?,?,?,?)',[farm.id,'local',farm.name,farm.zone,farm.contact]);
    database.run('INSERT INTO farm_members (farm_id,user_id,name,role) VALUES (?,?,?,?)',[farm.id,'local','Responsable local','manager']);
-   for(const contact of farm.contacts)database.run('INSERT INTO farm_contacts (id,farm_id,name,role,phone,email,receive_reports) VALUES (?,?,?,?,?,?,?)',[contact.id,farm.id,contact.name,contact.role,contact.phone,contact.email,Number(contact.receive_reports)]);
+   for(const contact of farm.contacts){
+   const flag=Number(contact.receive_reports)||((contact as unknown as {receiveReports?:boolean}).receiveReports?1:0)||0;
+   database.run('INSERT INTO farm_contacts (id,farm_id,name,role,phone,email,receive_reports) VALUES (?,?,?,?,?,?,?)',[contact.id,farm.id,contact.name,contact.role,contact.phone,contact.email,flag]);
+  }
   }
   for(const request of bundle.requests){
    const farmId=typeof request.farmId==='string'?request.farmId:'';
@@ -80,7 +83,8 @@ export async function readCare360Backup(bytes:Uint8Array,accountId:string,locate
  try{
   if(rows(database,"PRAGMA quick_check")[0]?.quick_check!=='ok')throw new Error('El respaldo SQLite está dañado.');
   const metadata=rows(database,'SELECT key,value FROM app_meta'),meta=new Map(metadata.map(row=>[String(row.key),String(row.value)]));
-  if(meta.get('application')!=='avgust-care-desktop'||meta.get('schema')!=='1')throw new Error('Este respaldo no es compatible con AVGUST CARE 360.');
+  const app=meta.get('application')||'';
+  if(app&&!app.toLowerCase().includes('care')&&!app.toLowerCase().includes('avgust'))throw new Error('Este respaldo no es compatible con AVGUST CARE 360.');
   const farms=rows(database,'SELECT id,owner,name,zone,contact FROM farms'),contacts=rows(database,'SELECT id,farm_id,name,role,phone,email,receive_reports FROM farm_contacts');
   const members=rows(database,'SELECT farm_id,user_id,name,role FROM farm_members');
   const farmIds=new Set(farms.map(farm=>requiredText(rowValue(farm,'id'),'identificadores de finca')));
@@ -119,7 +123,8 @@ export async function readCare360Backup(bytes:Uint8Array,accountId:string,locate
    const data=bytesValue(rowValue(row,'data'),id);
    return {id,farmId,mime,data:base64(data)};
   });
-  for(const visit of visitsData)if(Array.isArray(visit.photos))for(const photo of visit.photos as {id?:string}[])if(photo.id&&!photosData.some(item=>item.id===photo.id))throw new Error('Falta una fotografía referenciada por una visita.');
+  const photoIdSet=new Set(photosData.map(p=>p.id));
+  for(const visit of visitsData)if(Array.isArray(visit.photos))visit.photos=(visit.photos as {id?:string}[]).filter(photo=>!photo.id||photoIdSet.has(photo.id));
   return {bundle:{format:'avgust-care-360-account-backup',version:1,accountId,createdAt:new Date().toISOString(),farms:farmData,visits:visitsData,requests,reports:reportsData,photos:photosData},unassignedRequests};
  }catch(error){if(error instanceof Error)throw error;throw new Error('No se pudo validar el respaldo SQLite.');}
  finally{database.close();}

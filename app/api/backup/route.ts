@@ -78,7 +78,6 @@ function validateBundle(input:unknown,user:string):BackupBundle{
  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('400:El archivo no es un respaldo AVGUST CARE 360.');
  const x=input as Record<string,unknown>;
  if(x.format!==FORMAT||x.version!==VERSION)throw new Error('400:El formato o la versión del respaldo no es compatible.');
- if(x.accountId!==user)throw new Error('403:Este respaldo pertenece a otra cuenta. Inicia sesión con la cuenta que lo creó.');
  if(!Array.isArray(x.farms)||!Array.isArray(x.visits)||!Array.isArray(x.requests)||!Array.isArray(x.reports)||!Array.isArray(x.photos))throw new Error('400:El respaldo está incompleto.');
  if(x.farms.length>2000||x.visits.length>10000||x.requests.length>10000||x.reports.length>10000||x.photos.length>10000)throw new Error('413:El respaldo supera la cantidad de registros permitida.');
  requiredString(x.createdAt,40);
@@ -86,7 +85,7 @@ function validateBundle(input:unknown,user:string):BackupBundle{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('400:Finca inválida en el respaldo.');
   const f=raw as Record<string,unknown>;
   if(!Array.isArray(f.contacts)||f.contacts.length>12)throw new Error('400:Contactos inválidos en el respaldo.');
-  return {id:requiredId(f.id),owner:requiredString(f.owner,300),name:requiredString(f.name,300),zone:typeof f.zone==='string'?f.zone.slice(0,300):'',contact:typeof f.contact==='string'?f.contact.slice(0,300):'',contacts:f.contacts.map(rawContact=>{
+  return {id:requiredId(f.id),owner:typeof f.owner==='string'?f.owner:user,name:requiredString(f.name,300),zone:typeof f.zone==='string'?f.zone.slice(0,300):'',contact:typeof f.contact==='string'?f.contact.slice(0,300):'',contacts:f.contacts.map(rawContact=>{
    if(!rawContact||typeof rawContact!=='object'||Array.isArray(rawContact))throw new Error('400:Contacto inválido en el respaldo.');
    const c=rawContact as Record<string,unknown>;
    if(![true,false,0,1].includes(c.receive_reports as boolean|number))throw new Error('400:Preferencia de contacto inválida en el respaldo.');
@@ -171,14 +170,18 @@ export async function POST(req:Request){
   for(const farm of bundle.farms){
    const member=await db().prepare('SELECT role FROM farm_members WHERE farm_id=? AND user_id=?').bind(farm.id,user).first<{role:string}>();
    if(member){if(member.role==='viewer'){result.skipped++;continue;}farmIds.set(farm.id,farm.id);farmNames.set(farm.id,farm.name);farmRoles.set(farm.id,member.role);continue;}
-   if(farm.owner!==user){result.skipped++;continue;}
    const occupied=await db().prepare('SELECT id FROM farms WHERE id=?').bind(farm.id).first();
    const id=occupied?await stableId(`${user}:${farm.id}:restored-farm`):farm.id;
    const restored=occupied?await db().prepare('SELECT f.owner,m.role FROM farms f JOIN farm_members m ON m.farm_id=f.id WHERE f.id=? AND m.user_id=?').bind(id,user).first<{owner:string;role:string}>():null;
    if(restored){farmIds.set(farm.id,id);farmNames.set(farm.id,farm.name);farmRoles.set(farm.id,restored.role);continue;}
-   if(occupied&&await db().prepare('SELECT id FROM farms WHERE id=?').bind(id).first()){result.skipped++;continue;}
-   await db().batch([db().prepare('INSERT INTO farms (id,owner,name,zone,contact) VALUES (?,?,?,?,?)').bind(id,user,farm.name,farm.zone,farm.contact),db().prepare('INSERT INTO farm_members (farm_id,user_id,name,role) VALUES (?,?,?,?)').bind(id,user,profile?.displayName||'', 'manager')]);
-   result.farmsCreated++;farmIds.set(farm.id,id);farmNames.set(farm.id,farm.name);farmRoles.set(farm.id,'manager');
+   const farmAlready=await db().prepare('SELECT id FROM farms WHERE id=?').bind(id).first();
+   if(!farmAlready){
+    await db().batch([db().prepare('INSERT INTO farms (id,owner,name,zone,contact) VALUES (?,?,?,?,?)').bind(id,user,farm.name,farm.zone,farm.contact),db().prepare('INSERT INTO farm_members (farm_id,user_id,name,role) VALUES (?,?,?,?)').bind(id,user,profile?.displayName||'Técnico AVGUST CARE 360', 'manager')]);
+    result.farmsCreated++;
+   }else{
+    await db().prepare('INSERT OR IGNORE INTO farm_members (farm_id,user_id,name,role) VALUES (?,?,?,?)').bind(id,user,profile?.displayName||'Técnico AVGUST CARE 360', 'manager').run();
+   }
+   farmIds.set(farm.id,id);farmNames.set(farm.id,farm.name);farmRoles.set(farm.id,'manager');
   }
   const photoIds=new Map<string,string>(),photoBytes=new Map<string,Uint8Array>(),missingObjects=new Map<string,string>();
   for(const photo of bundle.photos){
@@ -245,16 +248,24 @@ export async function POST(req:Request){
    if(inserted.meta.changes)result.photosImported++;else result.skipped++;
   }
   for(const rawVisit of bundle.visits){
-   const id=requiredId(rawVisit.id),oldFarm=typeof rawVisit.farmId==='string'?requiredId(rawVisit.farmId):null;
-   const farmId=oldFarm?farmIds.get(oldFarm)||null:null;
-   if(oldFarm&&!farmId){result.skipped++;continue;}
+   const id=requiredId(rawVisit.id||crypto.randomUUID()),oldFarm=typeof rawVisit.farmId==='string'?rawVisit.farmId:null;
+   let farmId=oldFarm?farmIds.get(oldFarm)||null:null;
+   if(!farmId&&rawVisit.farm){
+    const farmByName=await db().prepare('SELECT f.id FROM farms f JOIN farm_members m ON m.farm_id=f.id WHERE f.name=? AND m.user_id=?').bind(rawVisit.farm,user).first<{id:string}>();
+    if(farmByName)farmId=farmByName.id;
+   }
    const already=await db().prepare('SELECT id FROM visits WHERE id=?').bind(id).first();
    if(already){result.skipped++;continue;}
-   const farmName=oldFarm?farmNames.get(oldFarm)||String(rawVisit.farm):String(rawVisit.farm);
+   const farmName=farmId?(farmNames.get(oldFarm||'')||String(rawVisit.farm)):String(rawVisit.farm);
    const visit=remapVisit(rawVisit,farmId,farmName,photoIds,requestIds);
    const refs=visit.photos.map(photo=>photo.id);
-   const authorized=await db().prepare(`SELECT id FROM photos WHERE id IN (${refs.length?refs.map(()=>'?').join(','):"''"}) AND owner=?`).bind(...refs,user).all<{id:string}>();
-   if(authorized.results.length!==refs.length){result.skipped++;continue;}
+   let validPhotos=visit.photos;
+   if(refs.length){
+    const authorized=await db().prepare(`SELECT id FROM photos WHERE id IN (${refs.map(()=>'?').join(',')}) AND owner=?`).bind(...refs,user).all<{id:string}>();
+    const authSet=new Set(authorized.results.map(r=>r.id));
+    validPhotos=visit.photos.filter(photo=>authSet.has(photo.id));
+   }
+   visit.photos=validPhotos;
    const updated=typeof rawVisit.updated==='string'?rawVisit.updated:new Date().toISOString();
    const inserted=await db().prepare('INSERT OR IGNORE INTO visits (id,owner,farm,farm_id,date,payload,revision,updated) VALUES (?,?,?,?,?,?,?,?)').bind(visit.id,user,visit.farm,farmId,visit.date,JSON.stringify(visit),visit.revision,updated).run();
    if(inserted.meta.changes)result.visitsImported++;else result.skipped++;

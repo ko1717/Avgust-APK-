@@ -1,9 +1,9 @@
 import {catalog,farmKey,findings,metrics,metricStatus,metricTrend,type MetricStatus,type Visit} from './model';
 import {calculateVisitScore} from '../migration/source-core/mipe-scoring.mjs';
 
-export type MetricRecord={visit:Visit;score:number;status:MetricStatus;applicable:number;positive:number;findings:number;date:string;responsible:string;weightedScore:number|null;weightedCoveragePct:number;evaluatedChapters:number};
+export type MetricRecord={visit:Visit;score:number;status:MetricStatus;applicable:number;positive:number;findings:number;date:string;responsible:string;weightedScore:number|null;pointsEarned:number;criteriaCompliance:number|null;weightedCoveragePct:number;evaluatedChapters:number};
 export type ChapterMetricItem={id:string;text:string;firstAnswer:string|null;latestAnswer:string|null;firstScore:number|null;latestScore:number|null};
-export type ChapterMetricDetail={id:number;title:string;score:number|null;firstScore:number|null;findings:number;applicable:number;status:MetricStatus;items:ChapterMetricItem[]};
+export type ChapterMetricDetail={id:number;title:string;weight:number;weightPct:number;maxPoints:number;pointsEarned:number;firstPointsEarned:number;score:number|null;firstScore:number|null;findings:number;applicable:number;status:MetricStatus;items:ChapterMetricItem[]};
 export type FarmMetricAnalysis={farm:string;records:MetricRecord[];first?:MetricRecord;latest?:MetricRecord;trend:ReturnType<typeof metricTrend>;delta:number|null;yearly:{year:string;average:number;closing:number;visits:number;status:MetricStatus}[];chapters:ChapterMetricDetail[];problems:{id:string;text:string;recommendation:string;chapter:number;occurrences:number}[]};
 export type ConsolidatedMetricAnalysis={records:MetricRecord[];farms:number;applicable:number;findings:number;score:number|null;status:MetricStatus;timeline:{period:string;score:number;findings:number;reports:number;status:MetricStatus}[];trend:ReturnType<typeof metricTrend>;chapters:{id:number;title:string;applicable:number;findings:number;score:number|null;status:MetricStatus;farms:number}[];items:{id:string;chapter:number;chapterTitle:string;text:string;applicable:number;findings:number;rate:number;farms:number}[];matrix:{farm:string;date:string;responsible:string;chapter:string;item:string;text:string;answer:string;observation:string;recommendation:string}[]};
 export type FarmBenchmarkRecord={farm:string;date:string;score:number;findings:number;applicable:number;chapterIds:number[];rank:number;tied:boolean};
@@ -12,8 +12,16 @@ export type FarmBenchmark={groups:{chapterIds:number[];records:FarmBenchmarkReco
 function metricRecord(visit:Visit):MetricRecord|null{
  const m=metrics(visit),weighted=calculateVisitScore(visit);
  if(m.score===null)return null;
- return {visit,score:m.score,status:m.status,applicable:m.applicable,positive:m.positive,findings:m.findings,date:visit.date,responsible:visit.responsible,weightedScore:weighted.weightedScore,weightedCoveragePct:Math.round(weighted.auditedWeight*100),evaluatedChapters:weighted.evaluatedChapters.length};
+ return {visit,score:m.score,status:m.status,applicable:m.applicable,positive:m.positive,findings:m.findings,date:visit.date,responsible:visit.responsible,weightedScore:weighted.weightedScore,pointsEarned:weighted.pointsEarned,criteriaCompliance:weighted.criteriaCompliance,weightedCoveragePct:Math.round(weighted.auditedWeight*100),evaluatedChapters:weighted.evaluatedChapters.length};
 }
+
+const CHAPTER_CONFIG:Record<number,{weight:number;maxPoints:number}>={
+ 1:{weight:0.05,maxPoints:5},
+ 2:{weight:0.30,maxPoints:30},
+ 3:{weight:0.05,maxPoints:5},
+ 4:{weight:0.30,maxPoints:30},
+ 5:{weight:0.30,maxPoints:30}
+};
 
 function chapterStats(visit:Visit|undefined,chapterId:number){
  const chapter=catalog.find(item=>item.id===chapterId);
@@ -21,7 +29,9 @@ function chapterStats(visit:Visit|undefined,chapterId:number){
  const applicable=chapter?.items.filter(item=>included&&['SI','NO'].includes(visit?.answers[item.id]?.value||''))||[];
  const positive=applicable.filter(item=>visit?.answers[item.id]?.value==='SI').length;
  const score=applicable.length?Math.round(positive/applicable.length*100):null;
- return {score,findings:applicable.length-positive,applicable:applicable.length,status:metricStatus(score)};
+ const cfg=CHAPTER_CONFIG[chapterId]||{weight:0.2,maxPoints:20};
+ const pointsEarned=score!==null?Math.round((score/100)*cfg.maxPoints*10)/10:0;
+ return {score,findings:applicable.length-positive,applicable:applicable.length,status:metricStatus(score),pointsEarned,weight:cfg.weight,weightPct:Math.round(cfg.weight*100),maxPoints:cfg.maxPoints};
 }
 
 export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis{
@@ -39,7 +49,7 @@ export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis
    const answerScore=(answer:string|null)=>answer==='SI'?100:answer==='NO'?0:null;
    return {id:item.id,text:item.text,firstAnswer,latestAnswer,firstScore:answerScore(firstAnswer),latestScore:answerScore(latestAnswer)};
   });
-  return {id:chapter.id,title:chapter.title,...latestStats,firstScore:firstStats.score,items};
+  return {id:chapter.id,title:chapter.title,...latestStats,firstScore:firstStats.score,firstPointsEarned:firstStats.pointsEarned,items};
  });
  const byYear=new Map<string,MetricRecord[]>();for(const record of records){const year=record.date.slice(0,4);byYear.set(year,[...(byYear.get(year)||[]),record]);}
  const yearly=Array.from(byYear.entries()).map(([year,items])=>{const closing=items.at(-1)!;const average=Math.round(items.reduce((total,item)=>total+item.score,0)/items.length);return {year,average,closing:closing.score,visits:items.length,status:metricStatus(closing.score)};});

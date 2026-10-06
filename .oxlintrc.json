@@ -29,7 +29,11 @@
     "build/**",
     "dist/**",
     "coverage/**",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    "tests/**",
+    "enhance/**",
+    "public/**",
+    "build.js"
   ],
   "overrides": [
     {
