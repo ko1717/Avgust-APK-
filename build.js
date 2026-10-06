@@ -102,11 +102,20 @@ if (fs.existsSync(indexHtmlPath)) {
     html = html.replace('<title>', `${metaTags}<title>`);
   }
 
-  if (!html.includes('/enhance/care360-enhance.css')) {
-    html = html.replace('</head>', `${headTags}</head>`);
+  const headTagList = headTags.split(/(?=<(?:link|script)\\b)/);
+  for (const tag of headTagList) {
+    const match = tag.match(/(?:href|src)=\"([^\"]+)\"/);
+    if (match && !html.includes(match[1].split('?')[0])) {
+      html = html.replace('</head>', tag + '</head>');
+    }
   }
-  if (!html.includes('/enhance/care360-experience.js')) {
-    html = html.replace('</body>', `${bodyTags}</body>`);
+
+  const bodyTagList = bodyTags.split(/(?=<script\\b)/);
+  for (const tag of bodyTagList) {
+    const match = tag.match(/src=\"([^\"]+)\"/);
+    if (match && !html.includes(match[1].split('?')[0])) {
+      html = html.replace('</body>', tag + '</body>');
+    }
   }
   if (!html.includes('interactive-widget=')) {
     html = html.replace('viewport-fit=cover', 'viewport-fit=cover, interactive-widget=resizes-content');
