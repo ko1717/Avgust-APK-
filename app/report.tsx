@@ -1,21 +1,61 @@
 import {serviceLabels} from '@/lib/team';
-import {measurementLabels,actionLabels,metricStatusLabels,type Visit} from '@/lib/model';
+import {measurementGroupsFor,ungroupedMeasurements,actionLabels,metricStatusLabels,type Visit} from '@/lib/model';
 import {reportFindings,reportSections,type ReportSnapshot} from '@/lib/reports';
 import ReportLifecycle from './report-lifecycle';
 import template from '@/lib/template.json';
 
 export default function Report({v,snapshot}:{v:Visit;snapshot?:ReportSnapshot}){
- const sections=snapshot?.sections||reportSections(),m=snapshot?.indicator||(() => {const applicable=sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO'].includes(v.answers[q.id]?.value));const positive=applicable.filter(q=>v.answers[q.id]?.value==='SI').length,findings=applicable.filter(q=>v.answers[q.id]?.value==='NO').length;return {total:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).length,answered:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value)).length,applicable:applicable.length,positive,findings,score:applicable.length?Math.round(positive/applicable.length*100):null,status:applicable.length?(positive/applicable.length>=.8?'healthy':positive/applicable.length>=.5?'acceptable':'critical'):'pending' as const};})(),reportFindingsForVersion=reportFindings(v,sections);
- return <article className="report-paper"><div className="report-logo">AVGUST CARE 360</div><p>Programa de aseguramiento del proceso MIPE</p><h1>Informe técnico de visita</h1>{v.serviceKind&&<p>Servicio: {serviceLabels[v.serviceKind as keyof typeof serviceLabels]}</p>}<p><strong>{v.farm||'Finca pendiente'}</strong> · {v.date}</p><p>{v.reviewed?'Revisado por el responsable técnico':'BORRADOR · Pendiente de revisión técnica'}</p>
- <table><tbody>{[['Finca',v.farm],['Fecha',v.date],['Ciudad / departamento',v.city],['Municipio / zona',v.zone],['Representante de la finca',v.technician],['Responsable AVGUST',v.responsible],['Representante técnico comercial',v.rtc]].map(([k,a])=><tr key={k}><th>{k}</th><td>{a||'No registrado'}</td></tr>)}</tbody></table>
- {template.map(s=><section key={s.title}><h2>{s.title}</h2>{s.paragraphs.map((p,i)=><p key={i}>{p}</p>)}</section>)}
- <h2>Cronograma de actividades</h2><table><tbody>{[['Visita y aseguramiento',v.date],['Entrega del informe',v.delivery],['Seguimiento',v.followup]].map(([k,a])=><tr key={k}><th>{k}</th><td>{a||'No programado'}</td></tr>)}</tbody></table>
- <h2>Indicador de la visita</h2>{m.score===null?<p>Sin medición: no hay respuestas aplicables para calcular el indicador.</p>:<p><strong>{metricStatusLabels[m.status]} · {m.score}%</strong>. {m.positive} respuestas “Sí” de {m.applicable} criterios aplicables; {m.findings} hallazgos por corregir.</p>}
- <h2>Plan de acción</h2>{reportFindingsForVersion.length?reportFindingsForVersion.map(f=>{const action=f.action||{owner:'',due:'',status:'proposed' as const,closure:'',photoId:''};return <section key={f.id}><h3>Hallazgo {f.id} · {actionLabels[action.status]}</h3><p>{f.answer.observation||f.text}</p><p>Acción: {f.answer.recommendation||'Sin registrar'}</p><p>Responsable: {action.owner||'Sin asignar'} · Fecha límite: {action.due||'Sin fecha'}</p>{action.closure&&<p>Seguimiento / cierre: {action.closure}</p>}{action.photoId&&<p>Evidencia: fotografía {v.photos.findIndex(p=>p.id===action.photoId)+1} del registro fotográfico.</p>}</section>}):<p>No hay hallazgos en los capítulos evaluados.</p>}
- <h2>Alcance de la evaluación</h2><p>{m.answered} de {m.total} criterios respondidos. {m.findings} respuestas “No” en los capítulos con cuestionario.</p><p>Capítulos no evaluados: {sections.filter(c=>!v.chapters.includes(c.id)).map(c=>`${c.id}. ${c.title}`).join('; ')||'Ninguno'}.</p>
- {sections.filter(c=>v.chapters.includes(c.id)).map(c=><section key={c.id}><h2>Capítulo {c.id}. {c.title}</h2>{c.items.map(q=>{const a=v.answers[q.id];return <div key={q.id}><h3>{q.id} · {a?.value==='SI'?'Sí':a?.value==='NO'?'No':a?.value==='NA'?'No aplica':'Sin evaluar'}</h3><p>{q.text}</p>{a?.observation&&<p><strong>Hallazgo / observación: </strong>{a.observation}</p>}{a?.recommendation&&<p><strong>Recomendación: </strong>{a.recommendation}</p>}</div>})}{v.notes[c.id]&&<><h3>Observaciones del capítulo</h3><p>{v.notes[c.id]}</p></>}{v.recommendations[c.id]&&<><h3>Recomendaciones del capítulo</h3><p>{v.recommendations[c.id]}</p></>}</section>)}
- {Object.values(v.measurements).some(Boolean)&&<><h2>Mediciones de campo</h2><table><tbody>{Object.entries(measurementLabels).filter(([k])=>v.measurements[k]).map(([k,label])=><tr key={k}><th>{label}</th><td>{v.measurements[k]}</td></tr>)}</tbody></table></>}
- {v.conclusion&&<><h2>Conclusiones y seguimiento</h2><p>{v.conclusion}</p></>}
- <h2>Registro fotográfico</h2>{v.photos.length?v.photos.map((p,i)=><figure key={p.id}><img src={`/api/photos/${p.id}`} alt={p.caption||`Fotografía ${i+1}`}/><figcaption>Fotografía {i+1} · Capítulo {p.chapter}{p.criterionId?` · Subcapítulo ${p.criterionId}`:''}. {p.caption||'Sin descripción'}</figcaption></figure>):<p>No se adjuntaron fotografías.</p>}
- <h2>Responsables</h2><p>{v.responsible} · AVGUST</p>{v.rtc&&<p>{v.rtc} · Representante técnico comercial</p>}<p>{v.technician||'Pendiente'} · Representante de la finca</p><ReportLifecycle visit={v}/></article>;
+ const sections=snapshot?.sections||reportSections();
+ const m=snapshot?.indicator||(()=>{const applicable=sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO'].includes(v.answers[q.id]?.value));const positive=applicable.filter(q=>v.answers[q.id]?.value==='SI').length,findings=applicable.filter(q=>v.answers[q.id]?.value==='NO').length;return {total:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).length,answered:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value)).length,applicable:applicable.length,positive,findings,score:applicable.length?Math.round(positive/applicable.length*100):null,status:applicable.length?(positive/applicable.length>=.8?'healthy':positive/applicable.length>=.5?'acceptable':'critical'):'pending' as const};})();
+ const reportFindingsForVersion=reportFindings(v,sections);
+ const groupedMeasurements=measurementGroupsFor(v.measurements);
+ const unplacedGroups=groupedMeasurements.filter(group=>!v.chapters.includes(Number(group.criterionId.split('.')[0])));
+ const otherMeasurements=ungroupedMeasurements(v.measurements);
+ return <article className="report-paper">
+  <div className="report-logo">AVGUST CARE 360</div>
+  <p>Programa de aseguramiento del proceso MIPE</p>
+  <h1>Informe técnico de visita</h1>
+  {v.serviceKind&&<p>Servicio: {serviceLabels[v.serviceKind as keyof typeof serviceLabels]}</p>}
+  <p><strong>{v.farm||'Finca pendiente'}</strong> · {v.date}</p>
+  <p>{v.reviewed?'Revisado por el responsable técnico':'BORRADOR · Pendiente de revisión técnica'}</p>
+  <table><tbody>{[['Finca',v.farm],['Fecha',v.date],['Ciudad / departamento',v.city],['Municipio / zona',v.zone],['Representante de la finca',v.technician],['Responsable AVGUST',v.responsible],['Representante técnico comercial',v.rtc]].map(([k,a])=><tr key={k}><th>{k}</th><td>{a||'No registrado'}</td></tr>)}</tbody></table>
+  {template.map(s=><section key={s.title}><h2>{s.title}</h2>{s.paragraphs.map((p,i)=><p key={i}>{p}</p>)}</section>)}
+  <h2>Cronograma de actividades</h2>
+  <table><tbody>{[['Visita y aseguramiento',v.date],['Entrega del informe',v.delivery],['Seguimiento',v.followup]].map(([k,a])=><tr key={k}><th>{k}</th><td>{a||'No programado'}</td></tr>)}</tbody></table>
+  <h2>Indicador de la visita</h2>
+  {m.score===null?<p>Sin medición: no hay respuestas aplicables para calcular el indicador.</p>:<p><strong>{metricStatusLabels[m.status]} · {m.score}%</strong>. {m.positive} respuestas “Sí” de {m.applicable} criterios aplicables; {m.findings} hallazgos por corregir.</p>}
+  <h2>Plan de acción</h2>
+  {reportFindingsForVersion.length?reportFindingsForVersion.map(f=>{const action=f.action||{owner:'',due:'',status:'proposed' as const,closure:'',photoId:''};return <section key={f.id}><h3>Hallazgo {f.id} · {actionLabels[action.status]}</h3><p>{f.answer.observation||f.text}</p><p>Acción: {f.answer.recommendation||'Sin registrar'}</p><p>Responsable: {action.owner||'Sin asignar'} · Fecha límite: {action.due||'Sin fecha'}</p>{action.closure&&<p>Seguimiento / cierre: {action.closure}</p>}{action.photoId&&<p>Evidencia: fotografía {v.photos.findIndex(p=>p.id===action.photoId)+1} del registro fotográfico.</p>}</section>}):<p>No hay hallazgos en los capítulos evaluados.</p>}
+  <h2>Alcance de la evaluación</h2>
+  <p>{m.answered} de {m.total} criterios respondidos. {m.findings} respuestas “No” en los capítulos evaluados.</p>
+  <p>Capítulos no evaluados: {sections.filter(c=>!v.chapters.includes(c.id)).map(c=>`${c.id}. ${c.title}`).join('; ')||'Ninguno'}.</p>
+  {sections.filter(c=>v.chapters.includes(c.id)).map(c=><section key={c.id}>
+   <h2>Capítulo {c.id}. {c.title}</h2>
+   {c.items.map(q=>{const a=v.answers[q.id];return <div key={q.id}>
+    <h3>{q.id} · {a?.value==='SI'?'Sí':a?.value==='NO'?'No':a?.value==='NA'?'No aplica':'Sin evaluar'}</h3>
+    <p>{q.text}</p>
+    {a?.observation&&<p><strong>Hallazgo / observación: </strong>{a.observation}</p>}
+    {a?.recommendation&&<p><strong>Recomendación: </strong>{a.recommendation}</p>}
+    {measurementGroupsFor(v.measurements,q.id).map(group=><div className="report-measurement-group" key={group.title}>
+     <h4>{group.title}</h4>
+     <table><tbody>{group.rows.map(row=><tr key={row.key}><th>{row.label}</th><td>{row.value}</td></tr>)}</tbody></table>
+    </div>)}
+   </div>})}
+   {v.notes[c.id]&&<><h3>Observaciones del capítulo</h3><p>{v.notes[c.id]}</p></>}
+   {v.recommendations[c.id]&&<><h3>Recomendaciones del capítulo</h3><p>{v.recommendations[c.id]}</p></>}
+  </section>)}
+  {(unplacedGroups.length>0||otherMeasurements.length>0)&&<section>
+   <h2>Mediciones de capítulos no evaluados</h2>
+   {unplacedGroups.map(group=><div className="report-measurement-group" key={group.title}><h4>{group.title}</h4><table><tbody>{group.rows.map(row=><tr key={row.key}><th>{row.label}</th><td>{row.value}</td></tr>)}</tbody></table></div>)}
+   {otherMeasurements.length>0&&<table><tbody>{otherMeasurements.map(row=><tr key={row.key}><th>{row.label}</th><td>{row.value}</td></tr>)}</tbody></table>}
+  </section>}
+  {v.conclusion&&<><h2>Conclusiones y seguimiento</h2><p>{v.conclusion}</p></>}
+  <h2>Registro fotográfico</h2>
+  {v.photos.length?v.photos.map((p,i)=><figure key={p.id}><img src={`/api/photos/${p.id}`} alt={p.caption||`Fotografía ${i+1}`}/><figcaption>Fotografía {i+1} · Capítulo {p.chapter}{p.criterionId?` · Subcapítulo ${p.criterionId}`:''}. {p.caption||'Sin descripción'}</figcaption></figure>):<p>No se adjuntaron fotografías.</p>}
+  <h2>Responsables</h2>
+  <p>{v.responsible} · AVGUST</p>
+  {v.rtc&&<p>{v.rtc} · Representante técnico comercial</p>}
+  <p>{v.technician||'Pendiente'} · Representante de la finca</p>
+  <ReportLifecycle visit={v}/>
+ </article>;
 }

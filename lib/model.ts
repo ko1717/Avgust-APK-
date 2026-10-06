@@ -15,8 +15,22 @@ export type Visit = {
  chapters:number[]; answers:Record<string,Answer>; notes:Record<string,string>; recommendations:Record<string,string>;
  measurements:Record<string,string>; delivery:string; followup:string; conclusion:string; photos:Photo[]; reviewed:boolean; actions?:Record<string,Action>;
 };
-export const measurementLabels:Record<string,string>={ph:'pH del agua',hardness:'Dureza (ppm)',pressure:'Presión (PSI)',volume:'Volumen por cama (L)',time:'Tiempo por cama (s)',equipment:'Equipo de aplicación'};
-export function blankVisit():Visit {const d=new Date();return {id:'',revision:0,farm:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,city:'',zone:'',technician:'',responsible:'Wilson Castro',rtc:'',chapters:[3,4,5],answers:{},notes:{},recommendations:{},measurements:{},delivery:'',followup:'',conclusion:'',photos:[],reviewed:false};}
+export const measurementLabels:Record<string,string>={ph:'pH del agua',hardness:'Dureza del agua (ppm)',conductivity:'Conductividad del agua (mS/cm)',mixPh:'pH mezcla final',mixConductivity:'Conductividad mezcla final (mS/cm)',pressure:'Presión de la bomba (PSI)',implementPressure:'Presión del implemento (PSI)',volume:'Volumen por cama (L)',time:'Tiempo por cama (s)',equipment:'Equipo de aplicación',implement:'Implementos de aplicación'};
+export const measurementGroups=[
+ {criterionId:'4.6',title:'4.6 Calidad del agua',keys:['ph','hardness','conductivity']},
+ {criterionId:'4.6',title:'4.6 Mezcla final',keys:['mixPh','mixConductivity']},
+ {criterionId:'5.1',title:'5.1 Presión',keys:['pressure','implementPressure']},
+ {criterionId:'5.3',title:'5.3 Equipo de aplicación',keys:['equipment','implement']},
+ {criterionId:'5.6',title:'5.6 Volumen y tiempo por cama',keys:['volume','time']}
+] as const;
+export function measurementGroupsFor(measurements:Record<string,string>,criterionId?:string){
+ return measurementGroups.filter(group=>!criterionId||group.criterionId===criterionId).map(group=>({criterionId:group.criterionId,title:group.title,rows:group.keys.filter(key=>!!measurements[key]?.trim()).map(key=>({key,label:measurementLabels[key],value:measurements[key]}))})).filter(group=>group.rows.length);
+}
+export function ungroupedMeasurements(measurements:Record<string,string>){
+ const grouped=new Set<string>(measurementGroups.flatMap(group=>group.keys));
+ return Object.entries(measurementLabels).filter(([key])=>!grouped.has(key)&&!!measurements[key]?.trim()).map(([key,label])=>({key,label,value:measurements[key]}));
+}
+export function blankVisit():Visit {const d=new Date();return {id:'',revision:0,farm:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,city:'',zone:'',technician:'',responsible:'Wilson Castro',rtc:'',chapters:[2,3,4,5],answers:{},notes:{},recommendations:{},measurements:{},delivery:'',followup:'',conclusion:'',photos:[],reviewed:false};}
 export function metrics(v:Visit) {
  const items=catalog.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items);
  const answered=items.filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value));
