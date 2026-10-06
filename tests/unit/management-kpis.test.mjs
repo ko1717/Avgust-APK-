@@ -31,7 +31,7 @@ test("management KPIs are complementary and deterministic", () => {
         }
       },
       {
-        date: "2026-09-01",
+        date: "2026-09-10",
         points: 100,
         full: false,
         applicable: 5,
