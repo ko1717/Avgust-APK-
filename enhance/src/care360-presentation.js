@@ -225,7 +225,7 @@
         '<p class="c360-version">' +
         appName() +
         " · versión " +
-        (VERSION.indexOf("__C360") === 0 ? "de desarrollo" : VERSION) +
+        (VERSION.indexOf("__C360") === 0 ? "1.5.32" : VERSION) +
         "<br>Si quieres volver a esta guía, usa el botón “Guía” de la barra superior.</p>",
     },
   ];
