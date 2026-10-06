@@ -124,7 +124,7 @@ export function calculateVisitScore(visit) {
     pointsEarned: round1(totalPointsEarned),
     criteriaCompliance: totalApplicable > 0 ? round1((totalPositive / totalApplicable) * 100) : null,
     weightedScore: totalAuditedWeight > 0
-      ? round1((totalPointsEarned / totalAuditedWeight) * 100)
+      ? round1(totalPointsEarned / totalAuditedWeight)
       : null,
     auditedWeight: round2(totalAuditedWeight),
     chapterScores,
