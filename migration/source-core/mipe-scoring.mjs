@@ -122,6 +122,8 @@ export function calculateVisitScore(visit) {
   return {
     pointsEarned: round1(totalPointsEarned),
     criteriaCompliance: totalApplicable > 0 ? round1((totalPositive / totalApplicable) * 100) : null,
+    // pointsEarned is already expressed on the official 0–100 point scale.
+    // Divide by the audited weight to normalize a partial audit back to 0–100.
     weightedScore: totalAuditedWeight > 0
       ? round1(totalPointsEarned / totalAuditedWeight)
       : null,
