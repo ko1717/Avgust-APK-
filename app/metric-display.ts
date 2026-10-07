@@ -1,0 +1,1 @@
+export const AVGUST_COMPLIANCE_TARGET=95;

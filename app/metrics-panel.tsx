@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {farmKey,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {AVGUST_COMPLIANCE_TARGET} from './metric-display';
 import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import {FarmChapterDetails} from './metric-chapter-details';
@@ -256,7 +257,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <KpiSparkline data={scoreSparkline} color="#007fa3" fillGradientId="sparkMipe" unit="%" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
-                Puntuación oficial ponderada según matriz de 5 procesos normativos.
+                Puntuación oficial ponderada según matriz de 5 procesos normativos. Meta AVGUST {AVGUST_COMPLIANCE_TARGET}%:
+                {' '}{current.score>=AVGUST_COMPLIANCE_TARGET?'alcanzada':`faltan ${AVGUST_COMPLIANCE_TARGET-current.score} puntos porcentuales`}.
               </div>
               <div className="b2b-kpi-progress">
                 <div className={`b2b-kpi-progress-fill ${current.status}`} style={{width:`${Math.min(100,Math.max(0,current.score))}%`}}/>
@@ -413,10 +415,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} tick={{fontSize:11,fill:'#64748b'}}/>
                     <YAxis domain={chartView==='findings'?[0,'auto']:[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>chartView==='findings'?String(v):`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
                     <Tooltip content={<CustomTooltip/>}/>
-                    {chartView!=='findings' && (
+                    {chartView!=='findings' && chartView!=='coverage' && (
                       <>
-                        <ReferenceLine y={80} stroke="#10b981" strokeDasharray="4 4" label={{value:'Meta Saludable (80%)',fill:'#059669',fontSize:10,position:'insideTopRight'}}/>
-                        <ReferenceLine y={50} stroke="#ef4444" strokeDasharray="4 4" label={{value:'Límite Crítico (50%)',fill:'#dc2626',fontSize:10,position:'insideBottomRight'}}/>
+                        <ReferenceLine y={AVGUST_COMPLIANCE_TARGET} stroke="#78be20" strokeDasharray="5 4" label={{value:`Meta AVGUST (${AVGUST_COMPLIANCE_TARGET}%)`,fill:'#4b7413',fontSize:10,position:'insideTopRight'}}/>
+                        <ReferenceLine y={80} stroke="#007fa3" strokeDasharray="4 4" label={{value:'Umbral saludable MIPE (80%)',fill:'#007fa3',fontSize:10,position:'insideTopRight'}}/>
+                        <ReferenceLine y={50} stroke="#b83a32" strokeDasharray="4 4" label={{value:'Umbral crítico MIPE (50%)',fill:'#9d3028',fontSize:10,position:'insideBottomRight'}}/>
                       </>
                     )}
                     
@@ -458,10 +461,10 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                   <span>Cobertura Normativa (% Peso)</span>
                 </div>
               )}
-              {chartView!=='findings' && (
+              {chartView!=='findings' && chartView!=='coverage' && (
                 <div className="b2b-legend-item">
-                  <span className="b2b-legend-dot bg-[#10b981]"/>
-                  <span>Umbral Saludable ≥ 80%</span>
+                  <span className="b2b-legend-dot bg-[#78be20]"/>
+                  <span>Meta AVGUST ≥ {AVGUST_COMPLIANCE_TARGET}%</span>
                 </div>
               )}
             </div>
@@ -515,10 +518,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                         <span className="b2b-alert-tag">Capítulo {problem.chapter}</span>
                       </div>
                       <h4>{problem.text}</h4>
+                      <p><strong>Observación registrada:</strong> {data.latest?.visit.answers[problem.id]?.observation || 'No se registró una observación para este hallazgo.'}</p>
                       <p><strong>Recomendación:</strong> {problem.recommendation || 'Pendiente de registrar recomendación técnica.'}</p>
                     </div>
                     <div className={`b2b-alert-footer ${problem.occurrences>1?'recurrent':''}`}>
-                      <span>{problem.occurrences>1 ? `Recurrente en ${problem.occurrences} informes consecutivos` : 'Detectado en la última evaluación'}</span>
+                      <span>{problem.occurrences>1 ? `Registrado en ${problem.occurrences} informes del periodo` : 'Detectado en la última evaluación'}</span>
                       {problem.occurrences>1 && <ShieldAlert size={14}/>}
                     </div>
                   </div>

@@ -1,6 +1,7 @@
 'use client';
-import {Bar,BarChart,CartesianGrid,Legend,Rectangle,ResponsiveContainer,Tooltip,XAxis,YAxis} from 'recharts';
+import {Bar,BarChart,CartesianGrid,Legend,Rectangle,ReferenceLine,ResponsiveContainer,Tooltip,XAxis,YAxis} from 'recharts';
 import {metricStatusLabels,type MetricStatus} from '@/lib/model';
+import {AVGUST_COMPLIANCE_TARGET} from './metric-display';
 import type {ChapterMetricDetail,ConsolidatedMetricAnalysis} from '@/lib/metric-analysis';
 
 function Status({value}:{value:MetricStatus}){
@@ -38,6 +39,7 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
                 <span>{chapter.findings} hallazgo{chapter.findings===1?'':'s'} en {chapter.applicable} criterios</span>
                 <span className="mx-1 text-slate-300">|</span>
                 <span>Primera visita: {chapter.firstScore===null?'sin medición':`${chapter.firstScore}%`}</span>
+                <span className={`b2b-target-status ${chapter.score===null?'':chapter.score>=AVGUST_COMPLIANCE_TARGET?'met':'below'}`}>{chapter.score===null?`Meta ${AVGUST_COMPLIANCE_TARGET}% · sin medición`:chapter.score>=AVGUST_COMPLIANCE_TARGET?`Meta ${AVGUST_COMPLIANCE_TARGET}% alcanzada`:`Meta ${AVGUST_COMPLIANCE_TARGET}% · faltan ${AVGUST_COMPLIANCE_TARGET-chapter.score} pp`}</span>
               </div>
             </div>
 
@@ -67,6 +69,7 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
                       <CartesianGrid vertical={false} stroke="#f1f5f9" strokeDasharray="3 3"/>
                       <XAxis dataKey="id" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
                       <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={value=>`${value}%`} tick={{fontSize:11,fill:'#64748b'}}/>
+                      <ReferenceLine y={AVGUST_COMPLIANCE_TARGET} stroke="#78be20" strokeDasharray="5 4" label={{value:`Meta AVGUST ${AVGUST_COMPLIANCE_TARGET}%`,fill:'#4b7413',fontSize:10,position:'insideTopRight'}}/>
                       <Tooltip formatter={(value,name)=>[typeof value==='number'?`${value}%`:'Sin evaluar',name==='firstScore'?'Primera visita':'Última visita']}/>
                       <Legend formatter={value=>value==='firstScore'?'Primera visita':'Última visita'} wrapperStyle={{fontSize:'12px'}}/>
                       <Bar dataKey="firstScore" name="firstScore" fill="#0284c7" radius={[4,4,0,0]} isAnimationActive={false}/>
@@ -157,6 +160,7 @@ export function ConsolidatedChapterDetails({chapters,items}:{chapters:Consolidat
                             <XAxis dataKey="id" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
                             <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={value=>`${value}%`} tick={{fontSize:11,fill:'#64748b'}}/>
                             <Tooltip formatter={(value,_name,entry)=>[entry.payload.applicable&&typeof value==='number'?`${value}%`:'Sin medición','Frecuencia de Hallazgos (“No”)']} labelFormatter={label=>`Subcriterio ${label}`}/>
+                            <ReferenceLine y={100-AVGUST_COMPLIANCE_TARGET} stroke="#78be20" strokeDasharray="5 4" label={{value:`Máx. ${100-AVGUST_COMPLIANCE_TARGET}% de “No”`,fill:'#4b7413',fontSize:10,position:'insideTopRight'}}/>
                             <Bar dataKey="rate" name="Respuestas “No”" isAnimationActive={false} shape={props=>{
                               const measured=chapterItems[props.originalDataIndex]?.applicable;
                               return <Rectangle x={props.x} y={measured?props.y:props.y-2} width={props.width} height={measured?props.height:4} radius={[4,4,0,0]} fill={measured?'#f59e0b':'#94a3b8'}/>;
