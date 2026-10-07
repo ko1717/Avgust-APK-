@@ -15,7 +15,7 @@ Estoy trabajando en **AVGUST CARE 360**, una aplicación web B2B de auditoría a
 He actualizado la rama `feat/avgust-metrics-95` con estos cambios **solo de interfaz** (sin alterar fórmulas MIPE ni estados):
 
 ### 1. **Meta Visual AVGUST: 95%**
-   - Constante visual en `app/metric-display.ts`: `АВГУСТ_COMPLIANCE_TARGET = 95`
+   - Constante visual en `app/metric-display.ts`: `AVGUST_COMPLIANCE_TARGET = 95`
    - Aparece en 3 dashboards:
      - **Métricas por finca** (`app/metrics-panel.tsx`): meta en KPI, línea de referencia en gráfica
      - **Consolidado** (`app/consolidated-metrics.tsx`): meta en KPI, línea en línea temporal
@@ -45,6 +45,14 @@ He actualizado la rama `feat/avgust-metrics-95` con estos cambios **solo de inte
    - Muestra observación registrada: `data.latest?.visit.answers[problem.id]?.observation`
    - Muestra recomendación: `problem.recommendation`
 
+### 6. **Accesibilidad y lectura visual**
+   - Ayuda con foco de teclado explica que el 95% es una referencia y no altera MIPE.
+   - Descripciones ARIA para gráficos, criterios expandibles y tarjetas de filtro.
+   - Lista de las últimas seis visitas con texto e icono para indicar meta alcanzada o pendiente.
+   - La tabla separa con claridad frecuencia de “No” y porcentaje de conformidad.
+   - El total de criterios con hallazgos se anuncia al actualizar el periodo.
+   - Foco visible, animación de expansión con soporte `prefers-reduced-motion`, tema oscuro y ajustes para móvil.
+
 ---
 
 ## Cambios Técnicos Clave
@@ -52,52 +60,40 @@ He actualizado la rama `feat/avgust-metrics-95` con estos cambios **solo de inte
 | Archivo | Cambios | Razón |
 |---------|---------|-------|
 | `app/metric-display.ts` | ✨ NUEVO | Constante visual `АВГУСТ_COMPLIANCE_TARGET` (separada de lógica MIPE) |
-| `app/metrics-panel.tsx` | + meta en KPI, línea 95%, refs en leyenda | Dashboard por finca |
-| `app/consolidated-metrics.tsx` | + meta en KPI, línea 95%, evidencia expandible, badges | Dashboard consolidado |
-| `app/metric-chapter-details.tsx` | + meta en tarjeta, línea 95%, línea 5% "No" | Detalles por capítulo |
-| `app/b2b-metrics.css` | + 166 líneas estilos | Colores АВГУСТ, badges, evidencia, modo oscuro |
+| `app/metrics-panel.tsx` | + meta en KPI, línea 95%, tendencia última 6 visitas, etiquetas accesibles | Dashboard por finca |
+| `app/consolidated-metrics.tsx` | + meta en KPI, línea 95%, evidencia expandible, conteo y accesibilidad | Dashboard consolidado |
+| `app/metric-chapter-details.tsx` | + meta en tarjeta, línea 95%, línea 5% "No", ARIA | Detalles por capítulo |
+| `app/b2b-metrics.css` | Estilos visuales adicionales | Colores AVGUST, estados, ayudas, evidencia, móvil y modo oscuro |
 | `lib/model.ts` | ⛔ NO tocado | Las fórmulas MIPE quedan intactas |
 | `lib/metric-analysis.ts` | ⛔ NO tocado | El análisis matemático sin cambios |
 
 ---
 
-## Cómo Proseguir en Google AI Studio
+## Estado de las mejoras de interfaz
 
-### Tarea 1: Validación Multiplataforma
-**Objetivo:** Asegurar que la UI funciona en desktop, tablet y móvil, y en modo claro/oscuro.
+Se completó el alcance visual y de accesibilidad en la rama `feat/avgust-metrics-95`:
 
-**Pasos:**
-1. Revisar `app/b2b-metrics.css` para media queries (max-width: 768px, 480px)
-2. Verificar que los colores АВГУСТ contrastan según WCAG AA (razón 4.5:1 para texto)
-3. Probar `.b2b-evidence-list` en viewport móvil: ancho máximo 70vw
-4. Comprobar que modo oscuro (`html.dark .b2b-*`) invierte colores correctamente
+- Se añadieron ayudas accesibles con teclado para explicar que la meta es visual y no altera la fórmula o clasificación MIPE.
+- Los gráficos tienen descripciones accesibles; las líneas de referencia siguen identificando la meta AVGUST y los umbrales MIPE.
+- La tarjeta de finca resume visualmente el índice de sus últimas seis visitas, con texto además de color para indicar si alcanzó la meta.
+- El consolidado informa cuántos criterios tienen hallazgos; la tabla distingue la frecuencia de respuestas “No” de la conformidad y su meta.
+- Los detalles expandibles incluyen nombres accesibles, foco visible y una animación que respeta `prefers-reduced-motion`.
+- El diseño incluye soporte para modo oscuro y tamaños estrechos.
+- No se cambió el cálculo MIPE, la clasificación oficial, la persistencia ni el contenido de las exportaciones Word/PDF.
 
-### Tarea 2: Mejoras de Accesibilidad
-**Objetivo:** Hacer navegable con teclado y lector de pantalla.
+### Validación ejecutada y pendiente
 
-**Puntos:**
-- Los `<details>` expandibles son nativamente accesibles (`<summary>` + `<ul>`)
-- Verificar que los colores en badges no dependen solo de color (incluir símbolo ✓/✗ o icono)
-- Etiquetas ARIA en ReferenceLine (Recharts), o tooltip accesible
-- Orden de tabulación en tabla consolidada
+- Build de producción: aprobado.
+- TypeScript (`tsc --noEmit`): aprobado.
+- Oxlint de los tres componentes modificados: aprobado.
+- Tests unitarios: 22/22 aprobados.
+- Contraste WCAG AA calculado para texto de estado: 5.65:1 (verde claro), 5.50:1 (ámbar claro), 8.77:1 (verde oscuro) y 8.65:1 (ámbar oscuro).
+- `git diff --check`: aprobado.
+- Se abrió el programa en escritorio y móvil, pero en ese entorno no hay datos de visitas para revisar los nuevos gráficos de métricas. Falta una revisión visual del dashboard de métricas con datos en los distintos tamaños y temas, y probar con lector de pantalla.
 
-### Tarea 3: Perfeccionamiento de Detalles
-**Objetivo:** Pulir la experiencia final.
+### Fuera de este alcance
 
-**Sugerencias:**
-1. Añadir animación al expandir/cerrar evidencia (`transition: max-height 0.2s`)
-2. Mostrar total de hallazgos en encabezado consolidado (ej: "12 criterios con "No" en últimas visitas")
-3. Botón "Exportar evidencia a CSV" con columnas: finca, fecha, criterio, observación, recomendación
-4. Gráfico de tendencia de meta 95%: línea adicional que muestre si la finca ha estado arriba/abajo del 95% en últimas 6 visitas
-
-### Tarea 4: Documentación y Entrenamiento
-**Objetivo:** Hacer clara la meta visual para usuarios finales.
-
-**Incluir:**
-1. Tooltip al pasar sobre "Meta АВГУСТ 95%": explicar qué significa
-2. Pequeño ícono (info `ℹ`) junto a "Meta АВГУСТ" en KPI
-3. Guía de lectura en encabezado del dashboard: "Los números verdes indican conformidad ≥95%; los naranjas muestran deficiencias."
-4. En exportación Word, incluir página de introducción que explique la meta y los umbrales MIPE (80% saludable, 50% crítico)
+La exportación específica de evidencia a CSV y la inclusión de la meta AVGUST en documentos Word/PDF no se implementaron. Requieren cambios funcionales en exportaciones y fueron excluidas del alcance visual solicitado.
 
 ---
 
@@ -137,27 +133,27 @@ type ConsolidatedMetricAnalysis = {
 - Es una meta comercial АВГУСТ. No cambia los umbrales MIPE (80% saludable, 50% crítico) ni las fórmulas de puntuación. Es solo visual.
 
 **¿Qué pasa si una finca nunca ha sido evaluada?**
-- `score === null`. Los badges y referencias muestran "Sin medición", no comparación contra 95%.
+- No se muestra una tendencia vacía; el panel de finca requiere una visita revisada para presentar los KPI.
+- En el consolidado, los criterios sin respuestas aplicables muestran “Sin medición”.
 
 **¿Se exporta la meta 95% a Word/PDF?**
-- Sí, en pie de página o encabezado de reporte. Incluir: "Meta АВГУСТ de conformidad: 95%".
+- No. La meta está disponible solamente en la interfaz; las exportaciones no se modificaron.
 
 **¿Puedo cambiar el 95% a otro valor?**
 - Sí, edita `app/metric-display.ts` en un lugar, se propaga a toda la UI.
 
 ---
 
-## Checklist Final Antes de Merge
+## Checklist antes de integrar
 
-- [ ] Compilación sin errores TypeScript
-- [ ] Lint limpio (oxlint) en archivos modificados
-- [ ] Tests unitarios pasan (sin cambios en lógica MIPE)
-- [ ] Responsive: probado en 1920×1080, 768×1024, 375×667
-- [ ] Modo oscuro: verifica `html.dark` en CSS
-- [ ] Contrastes accesibles: herramientas como WebAIM Contrast Checker
-- [ ] Datos reales: prueba con backup `.care360` que incluya hallazgos
-- [ ] Exportación Word actualizada (incluir meta 95% en portada)
-- [ ] PR description clara: "Mejoras visuales АВГУСТ: meta 95%, colores B2B, evidencia expandible"
+- [x] Fórmulas MIPE, clasificación, persistencia y exportaciones sin cambios en esta fase
+- [x] Soporte CSS para móvil y tema oscuro
+- [x] Lectura de estado no dependiente solo del color y controles con foco visible
+- [x] Respeto a la preferencia de movimiento reducido
+- [x] Build, comprobación TypeScript, lint y tests unitarios
+- [ ] Revisar visualmente en escritorio, tablet y móvil, con tema claro y oscuro
+- [x] Calcular contraste WCAG AA para los estados de meta añadidos
+- [ ] Probar navegación con lector de pantalla y revisar métricas con datos de visitas reales
 
 ---
 

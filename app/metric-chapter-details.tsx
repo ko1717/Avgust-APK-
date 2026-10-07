@@ -26,7 +26,7 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
     <div className="b2b-process-list">
       {chapters.map(chapter=>(
         <details className="b2b-process-card" key={chapter.id}>
-          <summary className="b2b-process-summary">
+          <summary className="b2b-process-summary" aria-label={`Capítulo ${chapter.id}: ${chapter.title}. ${chapter.findings} hallazgos, ${chapter.score===null?'sin medición':`${chapter.score}% de conformidad`}. Mostrar desglose.`}>
             <div className="b2b-process-info">
               <div className="b2b-process-title">
                 <span>{chapter.id}. {chapter.title}</span>
@@ -62,7 +62,7 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
                 <span className="text-xs text-slate-500 font-medium">Primera Visita vs Última Visita</span>
               </div>
 
-              <div className="w-full overflow-x-auto">
+              <figure className="b2b-chart-figure w-full overflow-x-auto" aria-label={`Comparación de conformidad por subcriterio del capítulo ${chapter.id}. La línea verde indica la meta AVGUST del ${AVGUST_COMPLIANCE_TARGET} por ciento.`}>
                 <div style={{minWidth:Math.max(500,chapter.items.length*55)}}>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={chapter.items} margin={{top:10,right:12,left:-20,bottom:4}}>
@@ -76,8 +76,8 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
                       <Bar dataKey="latestScore" name="latestScore" fill="#f59e0b" radius={[4,4,0,0]} isAnimationActive={false}/>
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
               </div>
+              </figure>
             </div>
 
             <div className="b2b-table-container">
@@ -118,8 +118,8 @@ export function ConsolidatedChapterDetails({chapters,items}:{chapters:Consolidat
       {chapters.map(chapter=>{
         const chapterItems=items.filter(item=>item.chapter===chapter.id);
         return (
-          <details className="b2b-process-card" key={chapter.id}>
-            <summary className="b2b-process-summary">
+            <details className="b2b-process-card" key={chapter.id}>
+              <summary className="b2b-process-summary" aria-label={`Capítulo ${chapter.id}: ${chapter.title}. ${chapter.findings} hallazgos acumulados en ${chapter.farms} fincas. Mostrar desglose.`}>
               <div className="b2b-process-info">
                 <div className="b2b-process-title">
                   <span>{chapter.id}. {chapter.title}</span>
@@ -152,7 +152,7 @@ export function ConsolidatedChapterDetails({chapters,items}:{chapters:Consolidat
                       <span className="text-xs text-slate-500 font-medium">Porcentaje de respuestas “No” sobre criterios evaluados</span>
                     </div>
 
-                    <div className="w-full overflow-x-auto">
+                    <figure className="b2b-chart-figure w-full overflow-x-auto" aria-label={`Frecuencia de respuestas No por subcriterio del capítulo ${chapter.id}. La línea verde marca el máximo de ${100-AVGUST_COMPLIANCE_TARGET} por ciento de hallazgos equivalente a la meta de conformidad.`}>
                       <div style={{minWidth:Math.max(500,chapterItems.length*55)}}>
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={chapterItems} margin={{top:10,right:12,left:-20,bottom:4}}>
@@ -167,8 +167,8 @@ export function ConsolidatedChapterDetails({chapters,items}:{chapters:Consolidat
                             }}/>
                           </BarChart>
                         </ResponsiveContainer>
-                      </div>
                     </div>
+                    </figure>
                   </div>
 
                   <div className="b2b-table-container">
