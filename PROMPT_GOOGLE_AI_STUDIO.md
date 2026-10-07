@@ -59,7 +59,7 @@ He actualizado la rama `feat/avgust-metrics-95` con estos cambios **solo de inte
 
 | Archivo | Cambios | Razón |
 |---------|---------|-------|
-| `app/metric-display.ts` | ✨ NUEVO | Constante visual `АВГУСТ_COMPLIANCE_TARGET` (separada de lógica MIPE) |
+| `app/metric-display.ts` | ✨ NUEVO | Constante visual `AVGUST_COMPLIANCE_TARGET` (separada de lógica MIPE) |
 | `app/metrics-panel.tsx` | + meta en KPI, línea 95%, tendencia última 6 visitas, etiquetas accesibles | Dashboard por finca |
 | `app/consolidated-metrics.tsx` | + meta en KPI, línea 95%, evidencia expandible, conteo y accesibilidad | Dashboard consolidado |
 | `app/metric-chapter-details.tsx` | + meta en tarjeta, línea 95%, línea 5% "No", ARIA | Detalles por capítulo |
