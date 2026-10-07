@@ -3,6 +3,7 @@ import {useMemo,useState} from 'react';
 import {
   FileDown,
   FileSpreadsheet,
+  Info,
   Layers,
   Printer,
   ShieldAlert,
@@ -17,12 +18,14 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from 'recharts';
 import {catalog,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {AVGUST_COMPLIANCE_TARGET} from './metric-display';
 import {compareFarmBenchmarks,consolidatedMetricAnalysis} from '@/lib/metric-analysis';
 import {exportConsolidatedMatrixExcel} from '@/lib/export-matrix-excel';
 import {exportConsolidatedMatrixCsv} from '@/lib/export-matrix-csv';
@@ -55,6 +58,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
   
   const chart=data.timeline.map(row=>({...row,label:monthLabel(row.period)}));
   const chapterChart=data.chapters.map(row=>({chapter:`Cap ${row.id}`,hallazgos:row.findings,title:row.title}));
+  const findingCriteriaCount=data.items.filter(item=>item.findings>0).length;
 
   const scoreSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
     date:t.period,
@@ -157,7 +161,12 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                 <KpiSparkline data={scoreSparkline} color="#007fa3" fillGradientId="sparkConsolidatedScore" unit="%" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
-                Promedio ponderado global entre todos los aseguramientos revisados.
+                Promedio de conformidad de los criterios revisados. Meta AVGUST {AVGUST_COMPLIANCE_TARGET}%:
+                <span className="b2b-target-help" title="La meta es visual; no modifica la puntuación ni la clasificación oficial MIPE." role="img" aria-label={`La meta AVGUST es una referencia visual de conformidad de ${AVGUST_COMPLIANCE_TARGET} por ciento. No modifica la puntuación ni la clasificación MIPE.`}>
+                  <Info size={13} aria-hidden="true"/>
+                  <span className="b2b-target-tooltip" role="tooltip">Referencia visual de conformidad. No modifica la puntuación ni la clasificación MIPE.</span>
+                </span>
+                {' '}{data.score===null?'sin medición':data.score>=AVGUST_COMPLIANCE_TARGET?'alcanzada':`faltan ${AVGUST_COMPLIANCE_TARGET-data.score} puntos porcentuales`}.
               </div>
               <div className="b2b-kpi-progress">
                 <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${data.score||0}%`}}/>
@@ -317,9 +326,10 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                 <div>
                   <h3>Evolución Mensual Consolidada</h3>
                   <p>Promedio ponderado mensual de la flota de fincas.</p>
+                  <p className="b2b-reading-guide">La línea verde indica la meta visual AVGUST del {AVGUST_COMPLIANCE_TARGET}%; no modifica los umbrales oficiales MIPE.</p>
                 </div>
               </div>
-              <div className="w-full overflow-x-auto">
+              <figure className="b2b-chart-figure w-full overflow-x-auto" aria-label={`Evolución mensual del índice MIPE consolidado. La línea verde marca la meta visual AVGUST del ${AVGUST_COMPLIANCE_TARGET} por ciento.`}>
                 <div style={{minWidth:Math.max(400,chart.length*60)}}>
                   <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={chart} margin={{top:15,right:20,left:-15,bottom:4}}>
@@ -327,11 +337,12 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
                       <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
                       <Tooltip formatter={value=>[`${value}%`,'Índice Promedio']}/>
+                      <ReferenceLine y={AVGUST_COMPLIANCE_TARGET} stroke="#78be20" strokeDasharray="5 4" label={{value:`Meta AVGUST ${AVGUST_COMPLIANCE_TARGET}%`,fill:'#4b7413',fontSize:10,position:'insideTopRight'}}/>
                       <Line type="monotone" dataKey="score" name="Índice" stroke="#007fa3" strokeWidth={3} dot={{r:5,fill:'#007fa3'}} activeDot={{r:7}}/>
                     </LineChart>
                   </ResponsiveContainer>
-                </div>
               </div>
+              </figure>
             </div>
 
             <div className="b2b-chart-card">
@@ -359,7 +370,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <div>
                 <div className="b2b-kicker">Priorización de Intervención</div>
                 <h3>Criterios con Mayor Frecuencia de No Conformidad</h3>
-                <p className="sub">Listado ordenado por volumen de respuestas “No” acumuladas en todas las fincas.</p>
+                <p className="sub">Listado ordenado por respuestas “No”. Abre la evidencia para ver la finca, fecha, observación y recomendación registradas. La meta es ≥{AVGUST_COMPLIANCE_TARGET}% de conformidad.</p>
+                <p className="b2b-finding-count" aria-live="polite">{findingCriteriaCount} criterio{findingCriteriaCount===1?'':'s'} con hallazgos en el periodo seleccionado.</p>
               </div>
             </div>
 
@@ -380,12 +392,35 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                     <tr key={item.id}>
                       <td><span className="font-semibold text-slate-700">Cap. {item.chapter} · {item.chapterTitle}</span></td>
                       <td><strong className="text-slate-900">{item.id}</strong></td>
-                      <td><span className="text-slate-700 text-xs">{item.text}</span></td>
+                      <td>
+                        <span className="text-slate-700 text-xs">{item.text}</span>
+                        {item.findings>0 && (
+                          <details className="b2b-finding-evidence">
+                            <summary aria-label={`Mostrar evidencia de ${item.findings} hallazgo${item.findings===1?'':'s'} del criterio ${item.id}`}>Ver {item.findings} registro{item.findings===1?'':'s'} con “No”</summary>
+                            <ul className="b2b-evidence-list">
+                              {data.matrix.filter(row=>row.item===item.id&&row.answer==='No').map((row,index)=>(
+                                <li key={`${row.farm}-${row.date}-${index}`}>
+                                  <strong>{row.farm}</strong><span>{row.date} · {row.responsible||'Responsable sin registrar'}</span>
+                                  <p><b>Observación:</b> {row.observation||'No registrada.'}</p>
+                                  <p><b>Recomendación:</b> {row.recommendation||'No registrada.'}</p>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </td>
                       <td><strong className="text-rose-600 text-sm">{item.findings}</strong></td>
                       <td>
-                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${item.rate>=50?'bg-rose-100 text-rose-800':item.rate>=25?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate-700'}`}>
-                          {item.rate}%
-                        </span>
+                        {item.applicable ? (
+                          <>
+                            <span className="b2b-finding-rate">{item.rate}% con respuesta “No”</span>
+                            <small className={`b2b-target-status ${(item.applicable-item.findings)/item.applicable*100>=AVGUST_COMPLIANCE_TARGET?'met':'below'}`}>
+                              {Math.round((item.applicable-item.findings)/item.applicable*1000)/10}% conformidad · {(item.applicable-item.findings)/item.applicable*100>=AVGUST_COMPLIANCE_TARGET?`meta ${AVGUST_COMPLIANCE_TARGET}% alcanzada`:`bajo meta ${AVGUST_COMPLIANCE_TARGET}%`}
+                            </small>
+                          </>
+                        ) : (
+                          <span className="b2b-target-status">Sin medición</span>
+                        )}
                       </td>
                       <td><span className="font-bold text-slate-800">{item.farms}</span></td>
                     </tr>
