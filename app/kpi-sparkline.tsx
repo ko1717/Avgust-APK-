@@ -59,9 +59,15 @@ export function KpiSparkline({
 }: KpiSparklineProps) {
   const gradientKey = useMemo(() => `${fillGradientId}-${color.replace(/[^a-zA-Z0-9]/g, '')}`, [fillGradientId, color]);
 
+  const accessibleLabel = useMemo(() => {
+    if (!data || data.length === 0) return 'Sin datos históricos disponibles';
+    const last = data[data.length - 1];
+    return `Gráfica de tendencia histórica: ${data.length} mediciones. Último valor: ${last.formattedValue ?? `${last.value}${unit}`}`;
+  }, [data, unit]);
+
   if (!data || data.length === 0) {
     return (
-      <div className="h-[42px] flex items-center justify-center text-[11px] text-slate-400 italic">
+      <div className="h-[42px] flex items-center justify-center text-[11px] text-slate-400 dark:text-slate-500 italic" aria-label="Sin datos históricos">
         Sin histórico
       </div>
     );
@@ -70,7 +76,10 @@ export function KpiSparkline({
   // Single point (baseline initial visit)
   if (data.length === 1) {
     return (
-      <div className="h-[42px] flex items-center justify-between px-2 bg-slate-50/80 dark:bg-slate-800/40 rounded border border-dashed border-slate-200 dark:border-slate-700/60">
+      <div
+        className="h-[42px] flex items-center justify-between px-2 bg-slate-50/80 dark:bg-slate-800/40 rounded border border-dashed border-slate-200 dark:border-slate-700/60"
+        aria-label={`Línea base inicial única: ${data[0].formattedValue ?? `${data[0].value}${unit}`}`}
+      >
         <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full inline-block animate-pulse" style={{backgroundColor: color}} />
           Línea base única
@@ -83,7 +92,7 @@ export function KpiSparkline({
   }
 
   return (
-    <div className="w-full relative overflow-visible" style={{height}} aria-label="Gráfica de tendencia histórica">
+    <div className="w-full relative overflow-visible" style={{height}} aria-label={accessibleLabel}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{top: 4, right: 4, left: 4, bottom: 2}}>
           <defs>

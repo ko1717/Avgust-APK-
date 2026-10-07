@@ -6,7 +6,7 @@ import template from '@/lib/template.json';
 
 export default function Report({v,snapshot}:{v:Visit;snapshot?:ReportSnapshot}){
  const sections=snapshot?.sections||reportSections();
- const m=snapshot?.indicator||(()=>{const applicable=sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO'].includes(v.answers[q.id]?.value));const positive=applicable.filter(q=>v.answers[q.id]?.value==='SI').length,findings=applicable.filter(q=>v.answers[q.id]?.value==='NO').length;return {total:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).length,answered:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value)).length,applicable:applicable.length,positive,findings,score:applicable.length?Math.round(positive/applicable.length*100):null,status:applicable.length?(positive/applicable.length>=.8?'healthy':positive/applicable.length>=.5?'acceptable':'critical'):'pending' as const};})();
+ const m=snapshot?.indicator||(()=>{const applicable=sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO'].includes(v.answers[q.id]?.value));const positive=applicable.filter(q=>v.answers[q.id]?.value==='SI').length,findings=applicable.filter(q=>v.answers[q.id]?.value==='NO').length;return {total:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).length,answered:sections.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>['SI','NO','NA'].includes(v.answers[q.id]?.value)).length,applicable:applicable.length,positive,findings,score:applicable.length?Math.round(positive/applicable.length*100):null,status:applicable.length?(positive/applicable.length>=.95?'healthy':positive/applicable.length>=.85?'acceptable':'critical'):'pending' as const};})();
  const reportFindingsForVersion=reportFindings(v,sections);
  const groupedMeasurements=measurementGroupsFor(v.measurements);
  const unplacedGroups=groupedMeasurements.filter(group=>!v.chapters.includes(Number(group.criterionId.split('.')[0])));
@@ -16,12 +16,12 @@ export default function Report({v,snapshot}:{v:Visit;snapshot?:ReportSnapshot}){
   <p>Programa de aseguramiento del proceso MIPE</p>
   <h1>Informe técnico de visita</h1>
   {v.serviceKind&&<p>Servicio: {serviceLabels[v.serviceKind as keyof typeof serviceLabels]}</p>}
-  <p><strong>{v.farm||'Finca pendiente'}</strong> · {v.date}</p>
+  <p suppressHydrationWarning><strong>{v.farm||'Finca pendiente'}</strong> · {v.date}</p>
   <p>{v.reviewed?'Revisado por el responsable técnico':'BORRADOR · Pendiente de revisión técnica'}</p>
-  <table><tbody>{[['Finca',v.farm],['Fecha',v.date],['Ciudad / departamento',v.city],['Municipio / zona',v.zone],['Representante de la finca',v.technician],['Responsable AVGUST',v.responsible],['Representante técnico comercial',v.rtc]].map(([k,a])=><tr key={k}><th>{k}</th><td>{a||'No registrado'}</td></tr>)}</tbody></table>
+  <table><tbody>{[['Finca',v.farm],['Fecha',v.date],['Ciudad / departamento',v.city],['Municipio / zona',v.zone],['Representante de la finca',v.technician],['Responsable AVGUST',v.responsible],['Representante técnico comercial',v.rtc]].map(([k,a])=><tr key={k}><th>{k}</th><td suppressHydrationWarning={k==='Fecha'}>{a||'No registrado'}</td></tr>)}</tbody></table>
   {template.map(s=><section key={s.title}><h2>{s.title}</h2>{s.paragraphs.map((p,i)=><p key={i}>{p}</p>)}</section>)}
   <h2>Cronograma de actividades</h2>
-  <table><tbody>{[['Visita y aseguramiento',v.date],['Entrega del informe',v.delivery],['Seguimiento',v.followup]].map(([k,a])=><tr key={k}><th>{k}</th><td>{a||'No programado'}</td></tr>)}</tbody></table>
+  <table><tbody>{[['Visita y aseguramiento',v.date],['Entrega del informe',v.delivery],['Seguimiento',v.followup]].map(([k,a])=><tr key={k}><th>{k}</th><td suppressHydrationWarning={['Visita y aseguramiento','Entrega del informe','Seguimiento'].includes(k)}>{a||'No programado'}</td></tr>)}</tbody></table>
   <h2>Indicador de la visita</h2>
   {m.score===null?<p>Sin medición: no hay respuestas aplicables para calcular el indicador.</p>:<p><strong>{metricStatusLabels[m.status]} · {m.score}%</strong>. {m.positive} respuestas “Sí” de {m.applicable} criterios aplicables; {m.findings} hallazgos por corregir.</p>}
   <h2>Plan de acción</h2>

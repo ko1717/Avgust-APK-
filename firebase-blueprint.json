@@ -1,0 +1,285 @@
+{
+  "entities": {
+    "visitRecord": {
+      "title": "Visit Record",
+      "description": "Registro técnico en tiempo real de la visita o aseguramiento MIPE en campo.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único de la visita"
+        },
+        "farm": {
+          "type": "string",
+          "description": "Nombre de la finca auditada"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Identificador de la finca en el sistema"
+        },
+        "date": {
+          "type": "string",
+          "description": "Fecha de la visita (YYYY-MM-DD)"
+        },
+        "responsible": {
+          "type": "string",
+          "description": "Responsable técnico de AVGUST"
+        },
+        "technician": {
+          "type": "string",
+          "description": "Representante de la finca"
+        },
+        "serviceKind": {
+          "type": "string",
+          "description": "Tipo de servicio agronómico (assurance, training, calibration, followup)"
+        },
+        "reviewed": {
+          "type": "boolean",
+          "description": "Indica si la visita fue revisada técnicamente"
+        },
+        "chapters": {
+          "type": "array",
+          "description": "Capítulos evaluados en la visita"
+        },
+        "answers": {
+          "type": "object",
+          "description": "Respuestas a los criterios del cuestionario MIPE"
+        },
+        "measurements": {
+          "type": "object",
+          "description": "Mediciones técnicas registradas en campo"
+        },
+        "conclusion": {
+          "type": "string",
+          "description": "Conclusiones y seguimiento de la visita"
+        },
+        "syncTimestamp": {
+          "type": "string",
+          "description": "Marca de tiempo de sincronización en la nube"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Correo o identificador del usuario que actualizó la visita"
+        }
+      },
+      "required": ["id", "farm", "date"]
+    },
+    "onlineReport": {
+      "title": "Online Assurance Report",
+      "description": "Informe técnico oficial de aseguramiento MIPE publicado en la nube para consulta en línea por los responsables de la finca.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único del informe en la nube"
+        },
+        "farm": {
+          "type": "string",
+          "description": "Nombre de la finca auditada"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Identificador de la finca en el sistema"
+        },
+        "date": {
+          "type": "string",
+          "description": "Fecha del aseguramiento técnico (YYYY-MM-DD)"
+        },
+        "score": {
+          "type": "number",
+          "description": "Índice de cumplimiento oficial MIPE (0-100)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "acceptable", "critical", "pending"],
+          "description": "Estado del semáforo oficial AVGUST (Saludable >= 95%, Aceptable 85-94%, Crítico < 85%)"
+        },
+        "responsible": {
+          "type": "string",
+          "description": "Responsable técnico de AVGUST"
+        },
+        "technician": {
+          "type": "string",
+          "description": "Representante técnico de la finca"
+        },
+        "rtc": {
+          "type": "string",
+          "description": "Representante técnico comercial"
+        },
+        "reviewed": {
+          "type": "boolean",
+          "description": "Indica si el informe fue revisado y validado"
+        },
+        "serviceKind": {
+          "type": "string",
+          "description": "Tipo de servicio (assurance, training, calibration, followup)"
+        },
+        "chapters": {
+          "type": "array",
+          "description": "Capítulos evaluados en la visita"
+        },
+        "findingsCount": {
+          "type": "number",
+          "description": "Cantidad de hallazgos (respuestas No) detectados"
+        },
+        "applicableCount": {
+          "type": "number",
+          "description": "Cantidad de criterios evaluados aplicables"
+        },
+        "conclusion": {
+          "type": "string",
+          "description": "Conclusiones técnicas y plan de seguimiento"
+        },
+        "publishedAt": {
+          "type": "string",
+          "description": "Marca de tiempo ISO de la publicación en la nube"
+        },
+        "publishedBy": {
+          "type": "string",
+          "description": "Correo del administrador o técnico que generó el informe"
+        }
+      },
+      "required": ["id", "farm", "date", "reviewed", "publishedAt"]
+    },
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Perfil del usuario administrador de fincas o técnico de campo autenticado en Firebase Auth.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Identificador de usuario en Firebase Auth"
+        },
+        "email": {
+          "type": "string",
+          "description": "Correo electrónico del usuario"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Nombre completo o de visualización"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "technician", "farm_manager", "viewer"],
+          "description": "Rol en la plataforma AVGUST CARE 360"
+        },
+        "lastLogin": {
+          "type": "string",
+          "description": "Último inicio de sesión registrado"
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "farmProfile": {
+      "title": "Farm Profile",
+      "description": "Ficha técnica de la finca con contactos autorizados para recibir y consultar informes en línea.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador de la finca"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre de la finca"
+        },
+        "zone": {
+          "type": "string",
+          "description": "Municipio o zona agroclimática"
+        },
+        "crop": {
+          "type": "string",
+          "description": "Variedad o cultivo ornamental"
+        },
+        "latestScore": {
+          "type": "number",
+          "description": "Último índice MIPE registrado"
+        },
+        "latestStatus": {
+          "type": "string",
+          "description": "Estado semáforo más reciente"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Fecha de última actualización"
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "farmInvitation": {
+      "title": "Farm Invitation",
+      "description": "Invitación de acceso seguro emitida por el técnico agrícola para que el responsable de finca consulte sus aseguramientos e informes en línea.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único de la invitación"
+        },
+        "code": {
+          "type": "string",
+          "description": "Código corto de acceso (ej. MIPE-7482)"
+        },
+        "token": {
+          "type": "string",
+          "description": "Token de seguridad para enlace directo de invitación"
+        },
+        "farm": {
+          "type": "string",
+          "description": "Nombre de la finca autorizada"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Identificador opcional de la finca"
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Nombre del responsable de la finca (Administrador, Gerente MIPE)"
+        },
+        "clientEmail": {
+          "type": "string",
+          "description": "Correo del responsable"
+        },
+        "clientPhone": {
+          "type": "string",
+          "description": "Teléfono / WhatsApp del destinatario"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "revoked"],
+          "description": "Estado de la invitación"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Fecha de creación ISO"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Nombre o correo del técnico que generó la invitación"
+        }
+      },
+      "required": ["id", "code", "token", "farm", "clientName", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/invitations/{invitationId}": {
+      "schema": "farmInvitation",
+      "description": "Colección de invitaciones de acceso en línea generadas por los técnicos agrícolas para los administradores de fincas."
+    },
+    "/visits/{visitId}": {
+      "schema": "visitRecord",
+      "description": "Sincronización en tiempo real de aseguramientos técnicos y visitas realizadas por el equipo."
+    },
+    "/reports/{reportId}": {
+      "schema": "onlineReport",
+      "description": "Colección de informes técnicos de aseguramiento publicados en línea para los responsables de las fincas."
+    },
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "Colección de perfiles de administradores de finca y técnicos del equipo."
+    },
+    "/farms/{farmId}": {
+      "schema": "farmProfile",
+      "description": "Colección de fincas y directorios de aseguramiento técnico."
+    }
+  }
+}

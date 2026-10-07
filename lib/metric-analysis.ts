@@ -2,8 +2,10 @@ import {catalog,farmKey,findings,metrics,metricStatus,metricTrend,type MetricSta
 import {calculateVisitScore} from '../migration/source-core/mipe-scoring.mjs';
 
 export type MetricRecord={visit:Visit;score:number;status:MetricStatus;applicable:number;positive:number;findings:number;date:string;responsible:string;weightedScore:number|null;pointsEarned:number;criteriaCompliance:number|null;weightedCoveragePct:number;evaluatedChapters:number};
-export type ChapterMetricItem={id:string;text:string;firstAnswer:string|null;latestAnswer:string|null;firstScore:number|null;latestScore:number|null};
-export type ChapterMetricDetail={id:number;title:string;weight:number;weightPct:number;maxPoints:number;pointsEarned:number;firstPointsEarned:number;score:number|null;firstScore:number|null;findings:number;applicable:number;status:MetricStatus;items:ChapterMetricItem[]};
+export type ChapterVisitAnswer={date:string;visitId:string;answer:string|null;score:number|null;observation?:string;recommendation?:string};
+export type ChapterMetricItem={id:string;text:string;firstAnswer:string|null;latestAnswer:string|null;firstScore:number|null;latestScore:number|null;allVisits:ChapterVisitAnswer[]};
+export type ChapterVisitEvolution={date:string;visitId:string;score:number|null;pointsEarned:number;findings:number;applicable:number;status:MetricStatus};
+export type ChapterMetricDetail={id:number;title:string;weight:number;weightPct:number;maxPoints:number;pointsEarned:number;firstPointsEarned:number;score:number|null;firstScore:number|null;findings:number;applicable:number;status:MetricStatus;items:ChapterMetricItem[];visitEvolution:ChapterVisitEvolution[]};
 export type FarmMetricAnalysis={farm:string;records:MetricRecord[];first?:MetricRecord;latest?:MetricRecord;trend:ReturnType<typeof metricTrend>;delta:number|null;yearly:{year:string;average:number;closing:number;visits:number;status:MetricStatus}[];chapters:ChapterMetricDetail[];problems:{id:string;text:string;recommendation:string;chapter:number;occurrences:number}[]};
 export type ConsolidatedMetricAnalysis={records:MetricRecord[];farms:number;applicable:number;findings:number;score:number|null;status:MetricStatus;timeline:{period:string;score:number;findings:number;reports:number;status:MetricStatus}[];trend:ReturnType<typeof metricTrend>;chapters:{id:number;title:string;applicable:number;findings:number;score:number|null;status:MetricStatus;farms:number}[];items:{id:string;chapter:number;chapterTitle:string;text:string;applicable:number;findings:number;rate:number;farms:number}[];matrix:{farm:string;date:string;responsible:string;chapter:string;item:string;text:string;answer:string;observation:string;recommendation:string}[]};
 export type FarmBenchmarkRecord={farm:string;date:string;score:number;findings:number;applicable:number;chapterIds:number[];rank:number;tied:boolean};
@@ -43,13 +45,23 @@ export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis
  const problems=latest?findings(latest.visit).map(f=>({id:f.id,text:f.text,recommendation:f.answer.recommendation,chapter:Number(f.id.split('.')[0]),occurrences:occurrence.get(f.id)||1})):[];
  const chapters=catalog.map(chapter=>{
   const firstStats=chapterStats(first?.visit,chapter.id),latestStats=chapterStats(latest?.visit,chapter.id);
+  const visitEvolution:ChapterVisitEvolution[]=records.map(r=>{
+   const stats=chapterStats(r.visit,chapter.id);
+   return {date:r.date,visitId:r.visit.id,score:stats.score,pointsEarned:stats.pointsEarned,findings:stats.findings,applicable:stats.applicable,status:stats.status};
+  });
   const items=chapter.items.map(item=>{
+   const answerScore=(answer:string|null)=>answer==='SI'?100:answer==='NO'?0:null;
    const firstAnswer=first?.visit.chapters.includes(chapter.id)?first.visit.answers[item.id]?.value||null:null;
    const latestAnswer=latest?.visit.chapters.includes(chapter.id)?latest.visit.answers[item.id]?.value||null:null;
-   const answerScore=(answer:string|null)=>answer==='SI'?100:answer==='NO'?0:null;
-   return {id:item.id,text:item.text,firstAnswer,latestAnswer,firstScore:answerScore(firstAnswer),latestScore:answerScore(latestAnswer)};
+   const allVisits:ChapterVisitAnswer[]=records.map(r=>{
+    const isIncluded=r.visit.chapters.includes(chapter.id);
+    const ansObj=isIncluded?r.visit.answers[item.id]:undefined;
+    const ansVal=ansObj?.value||null;
+    return {date:r.date,visitId:r.visit.id,answer:ansVal,score:answerScore(ansVal),observation:ansObj?.observation,recommendation:ansObj?.recommendation};
+   });
+   return {id:item.id,text:item.text,firstAnswer,latestAnswer,firstScore:answerScore(firstAnswer),latestScore:answerScore(latestAnswer),allVisits};
   });
-  return {id:chapter.id,title:chapter.title,...latestStats,firstScore:firstStats.score,firstPointsEarned:firstStats.pointsEarned,items};
+  return {id:chapter.id,title:chapter.title,...latestStats,firstScore:firstStats.score,firstPointsEarned:firstStats.pointsEarned,items,visitEvolution};
  });
  const byYear=new Map<string,MetricRecord[]>();for(const record of records){const year=record.date.slice(0,4);byYear.set(year,[...(byYear.get(year)||[]),record]);}
  const yearly=Array.from(byYear.entries()).map(([year,items])=>{const closing=items.at(-1)!;const average=Math.round(items.reduce((total,item)=>total+item.score,0)/items.length);return {year,average,closing:closing.score,visits:items.length,status:metricStatus(closing.score)};});

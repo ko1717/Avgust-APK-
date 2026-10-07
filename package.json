@@ -36,6 +36,7 @@
     "docx": "^9.7.1",
     "drizzle-orm": "0.45.2",
     "embla-carousel-react": "8.5.2",
+    "firebase": "^13.0.0",
     "input-otp": "1.4.2",
     "lucide-react": "1.31.0",
     "react": "19.2.6",

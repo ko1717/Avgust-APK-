@@ -218,6 +218,12 @@
   transform: translateY(-2px);
 }
 
+.b2b-kpi-card:focus-visible, .metric-summary > div:focus-visible {
+  outline: 2px solid #007fa3;
+  outline-offset: 2px;
+  border-color: #007fa3;
+}
+
 /* Primary Hero KPI Accent */
 .b2b-kpi-card.highlight, .metric-summary > div:first-child {
   border-left: 4px solid #007fa3;
@@ -225,15 +231,15 @@
 }
 
 .b2b-kpi-card.healthy {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid #78be20;
 }
 
 .b2b-kpi-card.acceptable, .b2b-kpi-card.warning {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid #f2a900;
 }
 
 .b2b-kpi-card.critical {
-  border-left: 4px solid #ef4444;
+  border-left: 4px solid #dc2626;
 }
 
 .b2b-kpi-header {
@@ -296,9 +302,9 @@
   transition: width 0.4s ease;
 }
 
-.b2b-kpi-progress-fill.healthy { background: #10b981; }
-.b2b-kpi-progress-fill.acceptable { background: #f59e0b; }
-.b2b-kpi-progress-fill.critical { background: #ef4444; }
+.b2b-kpi-progress-fill.healthy { background: #78be20; }
+.b2b-kpi-progress-fill.acceptable { background: #f2a900; }
+.b2b-kpi-progress-fill.critical { background: #dc2626; }
 
 /* Status Badges */
 .b2b-kpi-badge, .metric-status {
@@ -313,15 +319,15 @@
 }
 
 .b2b-kpi-badge.healthy, .metric-status.healthy {
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
+  background: rgba(120, 190, 32, 0.12);
+  color: #15803d;
+  border: 1px solid rgba(120, 190, 32, 0.35);
 }
 
 .b2b-kpi-badge.acceptable, .metric-status.acceptable {
-  background: #fffbeb;
-  color: #b45309;
-  border: 1px solid #fde68a;
+  background: rgba(242, 169, 0, 0.12);
+  color: #92400e;
+  border: 1px solid rgba(242, 169, 0, 0.35);
 }
 
 .b2b-kpi-badge.critical, .metric-status.critical {
@@ -572,8 +578,8 @@
   justify-content: space-between;
   padding: 16px 18px;
   background: #ffffff;
-  border: 1px solid #fed7aa;
-  border-left: 4px solid #f97316;
+  border: 1px solid #fae39e;
+  border-left: 4px solid #f2a900;
   border-radius: 10px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -586,8 +592,8 @@
 
 .b2b-alert-card.recurrent {
   border-color: #fecdd3;
-  border-left-color: #e11d48;
-  background: #fff5f5;
+  border-left-color: #dc2626;
+  background: #fffafa;
 }
 
 .b2b-alert-header {
@@ -601,15 +607,15 @@
 .b2b-alert-code {
   font-size: 11px;
   font-weight: 700;
-  color: #c2410c;
-  background: #ffedd5;
+  color: #8a6300;
+  background: #fef3c7;
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .b2b-alert-card.recurrent .b2b-alert-code {
-  color: #be123c;
-  background: #ffe4e6;
+  color: #b91c1c;
+  background: #fee2e2;
 }
 
 .b2b-alert-tag {
@@ -712,6 +718,12 @@ html.dark .b2b-process-summary {
   background: #0f172a;
   border-color: #1e293b;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .b2b-kpi-card:hover,
+html.dark .metric-summary > div:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 html.dark .b2b-kpi-card.highlight,

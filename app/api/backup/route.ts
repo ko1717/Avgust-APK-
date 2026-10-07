@@ -78,6 +78,7 @@ function validateBundle(input:unknown,user:string):BackupBundle{
  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('400:El archivo no es un respaldo AVGUST CARE 360.');
  const x=input as Record<string,unknown>;
  if(x.format!==FORMAT||x.version!==VERSION)throw new Error('400:El formato o la versión del respaldo no es compatible.');
+ if(typeof x.accountId==='string'&&x.accountId&&x.accountId!==user&&x.accountId!=='care360-local')throw new Error('403:No tienes autorización para restaurar el respaldo de otra cuenta.');
  if(!Array.isArray(x.farms)||!Array.isArray(x.visits)||!Array.isArray(x.requests)||!Array.isArray(x.reports)||!Array.isArray(x.photos))throw new Error('400:El respaldo está incompleto.');
  if(x.farms.length>2000||x.visits.length>10000||x.requests.length>10000||x.reports.length>10000||x.photos.length>10000)throw new Error('413:El respaldo supera la cantidad de registros permitida.');
  requiredString(x.createdAt,40);

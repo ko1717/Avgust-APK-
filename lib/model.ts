@@ -33,7 +33,16 @@ export function ungroupedMeasurements(measurements:Record<string,string>){
 export const CHAPTER_WEIGHTS:Record<number,number> = {1:0.05, 2:0.30, 3:0.05, 4:0.30, 5:0.30};
 export const CHAPTER_MAX_POINTS:Record<number,number> = {1:5, 2:30, 3:5, 4:30, 5:30};
 
-export function blankVisit():Visit {const d=new Date();return {id:'',revision:0,farm:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,city:'',zone:'',technician:'',responsible:'Wilson Castro',rtc:'',chapters:[2,3,4,5],answers:{},notes:{},recommendations:{},measurements:{},delivery:'',followup:'',conclusion:'',photos:[],reviewed:false};}
+export function todayDate(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+  } catch {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+}
+
+export function blankVisit():Visit {return {id:'',revision:0,farm:'',date:todayDate(),city:'',zone:'',technician:'',responsible:'Wilson Castro',rtc:'',chapters:[2,3,4,5],answers:{},notes:{},recommendations:{},measurements:{},delivery:'',followup:'',conclusion:'',photos:[],reviewed:false};}
 export function metrics(v:Visit) {
  const selected = new Set(v.chapters && v.chapters.length ? v.chapters : [1, 2, 3, 4, 5]);
  const items=catalog.filter(c=>selected.has(c.id)).flatMap(c=>c.items);
@@ -93,7 +102,7 @@ export function metrics(v:Visit) {
   status: metricStatus(score)
  };
 }
-export function metricStatus(score:number|null):MetricStatus{return score===null?'pending':score>=80?'healthy':score>=50?'acceptable':'critical';}
+export function metricStatus(score:number|null):MetricStatus{return score===null?'pending':score>=95?'healthy':score>=85?'acceptable':'critical';}
 export const metricStatusLabels:Record<MetricStatus,string>={healthy:'Saludable',acceptable:'Aceptable',critical:'Crítico',pending:'Sin medición'};
 export function visitMetric(v:Visit):VisitMetric{const m=metrics(v);return {score:m.score,status:m.status,applicable:m.applicable,positive:m.positive,findings:m.findings,date:v.date,responsible:v.responsible};}
 export function metricTrend(previous:VisitMetric|undefined,current:VisitMetric):'improved'|'stable'|'declined'|'first'|'pending'{if(!previous)return current.score===null?'pending':'first';if(previous.score===null||current.score===null)return 'pending';const delta=current.score-previous.score;return delta>=5?'improved':delta<=-5?'declined':'stable';}

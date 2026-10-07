@@ -60,7 +60,7 @@ export default function FarmQuery({visits,farms,loading,onOpen,onNew}:{visits:Vi
      <b className={'b2b-kpi-value trend '+history.trend}>{history.trend==='improved'?'Mejoró':history.trend==='declined'?'Disminuyó':history.trend==='stable'?'Estable':'Sin comparación'}</b>
     </div>
     <div className="mt-1 mb-2">
-     <KpiSparkline data={scoreSparkline} color={history.trend==='improved'?'#10b981':history.trend==='declined'?'#f43f5e':'#0284c7'} fillGradientId="sparkQueryTrend" unit="%" height={36}/>
+     <KpiSparkline data={scoreSparkline} color={history.trend==='improved'?'#78be20':history.trend==='declined'?'#dc2626':'#007fa3'} fillGradientId="sparkQueryTrend" unit="%" height={36}/>
     </div>
     <small className="b2b-kpi-footer">{history.delta===null?'Línea base':`${history.delta>0?'+':''}${history.delta} puntos desde la primera medición`}</small>
    </div>
@@ -79,11 +79,11 @@ export default function FarmQuery({visits,farms,loading,onOpen,onNew}:{visits:Vi
    <div className={`b2b-kpi-card ${(latest?.findings??0)>0?'critical':'healthy'}`}>
     <span className="b2b-kpi-title">Hallazgos actuales</span>
     <div className="b2b-kpi-body">
-     <b className="b2b-kpi-value" style={{color:(latest?.findings??0)>0?'#e11d48':'#059669'}}>{latest?.findings??0}</b>
+     <b className="b2b-kpi-value" style={{color:(latest?.findings??0)>0?'#dc2626':'#78be20'}}>{latest?.findings??0}</b>
      <span className="text-xs font-semibold text-slate-500">de {latest?.applicable??0} criterios</span>
     </div>
     <div className="mt-1 mb-2">
-     <KpiSparkline data={findingsSparkline} color={(latest?.findings??0)>0?'#e11d48':'#10b981'} fillGradientId="sparkQueryFindings" height={36}/>
+     <KpiSparkline data={findingsSparkline} color={(latest?.findings??0)>0?'#dc2626':'#78be20'} fillGradientId="sparkQueryFindings" height={36}/>
     </div>
     <small className="b2b-kpi-footer">{(latest?.findings??0)===0?'Sin desviaciones pendientes':'Respuestas “No” en la última visita'}</small>
    </div>

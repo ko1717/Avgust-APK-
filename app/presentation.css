@@ -1,0 +1,439 @@
+/*
+ * AVGUST CARE 360 — Presentación de Bienvenida, Guía del Programa y Créditos Oficiales
+ */
+
+:root {
+  --c360-brand: #007fa3;
+  --c360-brand-strong: #005f7a;
+  --c360-accent: #00b5e2;
+  --c360-agro-green: #78be20;
+  --c360-surface: #ffffff;
+  --c360-ink: #1c2b32;
+  --c360-ink-soft: #58696d;
+  --c360-line: #dbe4e8;
+  --c360-on-brand: #ffffff;
+}
+
+html.dark {
+  --c360-brand: #00b5e2;
+  --c360-brand-strong: #38bdf8;
+  --c360-accent: #66d3b5;
+  --c360-surface: #16262a;
+  --c360-ink: #e8f2ef;
+  --c360-ink-soft: #9bb0b5;
+  --c360-line: #3a5552;
+}
+
+/* ---------------- Botón Guía en Barra Superior ---------------- */
+
+.c360-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  min-width: 44px;
+  padding: 6px 14px;
+  border: 1px solid #c8d8d5;
+  border-radius: 20px;
+  background: var(--c360-surface);
+  color: var(--c360-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease, border-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.c360-help-btn:hover {
+  background: #edf8fc;
+  border-color: #00b5e2;
+  color: #007fa3;
+}
+
+.c360-help-btn:active {
+  transform: scale(0.97);
+}
+
+html.dark .c360-help-btn {
+  background: #122226;
+  border-color: #3d5c58;
+  color: #e8f2ef;
+}
+
+html.dark .c360-help-btn:hover {
+  background: #1d3539;
+  border-color: #00b5e2;
+  color: #38bdf8;
+}
+
+/* ---------------- Overlay de la Presentación ---------------- */
+
+.c360-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(120% 90% at 12% 0%, rgb(0 181 226 / 28%) 0%, rgb(0 181 226 / 0%) 52%),
+    radial-gradient(110% 85% at 100% 100%, rgb(120 190 32 / 24%) 0%, rgb(120 190 32 / 0%) 55%),
+    linear-gradient(160deg, #062029 0%, #0b303c 48%, #0a2218 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.26s ease;
+  overscroll-behavior: contain;
+}
+
+.c360-intro[data-open="1"] {
+  display: flex;
+  opacity: 1;
+}
+
+.c360-intro-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(580px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--c360-surface, #ffffff);
+  color: var(--c360-ink, #1c2b32);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 10%),
+    0 28px 80px rgb(0 0 0 / 48%);
+  transform: translateY(14px) scale(0.985);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.c360-intro[data-open="1"] .c360-intro-card {
+  transform: translateY(0) scale(1);
+}
+
+/* ---------------- Cabecera del Modal ---------------- */
+
+.c360-intro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--c360-line, #dbe4e8);
+  background: linear-gradient(180deg, rgb(0 181 226 / 8%), transparent 70%);
+}
+
+.c360-intro-head img {
+  width: min(168px, 44vw);
+  height: auto;
+  filter: drop-shadow(0 4px 14px rgb(0 127 163 / 22%));
+}
+
+.c360-intro-skip {
+  flex: none;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c360-ink-soft, #58696d);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.c360-intro-skip:hover {
+  background: rgb(0 181 226 / 12%);
+  border-color: #00b5e2;
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-intro-progress {
+  height: 4px;
+  background: rgb(0 127 163 / 14%);
+}
+
+.c360-intro-progress > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #007fa3, #00b5e2 50%, #78be20 100%);
+  border-radius: 0 999px 999px 0;
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ---------------- Cuerpo y Diapositivas ---------------- */
+
+.c360-intro-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 340px;
+  padding: 24px 24px 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.c360-slide {
+  margin-block: auto;
+  animation: c360-slide-in 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes c360-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.c360-slide-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #007fa3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+html.dark .c360-slide-eyebrow {
+  color: #38bdf8;
+}
+
+.c360-slide h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  color: var(--c360-ink);
+}
+
+.c360-slide > p {
+  margin: 0 0 16px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.c360-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.c360-list li {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 12px;
+  background: rgb(0 181 226 / 4%);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.c360-list li b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--c360-ink);
+}
+
+.c360-list li > div > span {
+  color: var(--c360-ink-soft, #58696d);
+}
+
+.c360-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(140deg, #007fa3, #00b5e2);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.c360-badge svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------------- Créditos ---------------- */
+
+.c360-credits {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.c360-credit {
+  padding: 15px;
+  border: 1px solid var(--c360-line, #dbe4e8);
+  border-radius: 14px;
+  background: linear-gradient(140deg, rgb(0 127 163 / 8%), rgb(120 190 32 / 8%));
+  text-align: center;
+}
+
+.c360-credit small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+
+.c360-credit strong {
+  display: block;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--c360-ink);
+  letter-spacing: -0.3px;
+}
+
+.c360-credit p {
+  margin: 5px 0 0;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.c360-version {
+  margin-top: 8px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ---------------- Pie y Controles ---------------- */
+
+.c360-intro-again {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 24px 10px;
+  color: var(--c360-ink-soft, #58696d);
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.c360-intro-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px max(14px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--c360-line, #dbe4e8);
+  background: var(--c360-surface, #ffffff);
+}
+
+.c360-dots {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.c360-dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(0 127 163 / 26%);
+  cursor: pointer;
+  transition: width 0.22s ease, background-color 0.22s ease;
+}
+
+.c360-dots button[aria-current="true"] {
+  width: 22px;
+  background: var(--c360-brand);
+}
+
+.c360-nav-btn {
+  flex: none;
+  min-height: 42px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.c360-nav-btn:active {
+  transform: scale(0.98);
+}
+
+.c360-nav-btn[data-kind="back"] {
+  border-color: var(--c360-line, #dbe4e8);
+  background: transparent;
+  color: var(--c360-ink, #1c2b32);
+}
+
+.c360-nav-btn[data-kind="back"]:hover {
+  background: #f1f5f9;
+}
+
+.c360-nav-btn[data-kind="next"] {
+  background: linear-gradient(135deg, #007fa3 0%, #00b5e2 60%, #78be20 150%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgb(0 127 163 / 32%);
+}
+
+.c360-nav-btn[data-kind="next"]:hover {
+  box-shadow: 0 6px 18px rgb(0 127 163 / 44%);
+  transform: translateY(-1px);
+}
+
+/* Modo oscuro adaptado */
+html.dark .c360-intro-card,
+html.dark .c360-intro-foot {
+  background: var(--c360-surface, #16262a);
+  color: var(--c360-ink, #e8f2ef);
+}
+
+html.dark .c360-list li {
+  background: rgb(0 181 226 / 8%);
+  border-color: var(--c360-line, #3a5552);
+}
+
+html.dark .c360-credit {
+  background: linear-gradient(140deg, rgb(0 127 163 / 18%), rgb(120 190 32 / 12%));
+  border-color: var(--c360-line, #3a5552);
+}
+
+html.dark .c360-nav-btn[data-kind="back"],
+html.dark .c360-intro-skip {
+  color: var(--c360-ink, #e8f2ef);
+  border-color: var(--c360-line, #3a5552);
+}
+
+html.dark .c360-nav-btn[data-kind="back"]:hover {
+  background: #1f373d;
+}

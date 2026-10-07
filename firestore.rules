@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'vixnine777@gmail.com' ||
+        (request.auth.token.keys().hasAny(['admin']) && request.auth.token.admin == true)
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Invitaciones de acceso exclusivo para responsables de fincas
+    match /invitations/{invitationId} {
+      allow get: if isValidId(invitationId);
+      allow list: if isSignedIn() || request.query.limit <= 100;
+      allow create, update: if isValidId(invitationId) &&
+        request.resource.data.farm is string &&
+        request.resource.data.farm.size() > 0 &&
+        request.resource.data.code is string;
+      allow delete: if isAdmin() || isSignedIn();
+    }
+
+    // Informes en línea para administradores y responsables de fincas
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId);
+      allow list: if isSignedIn() || request.query.limit <= 100;
+      allow create, update: if isValidId(reportId) &&
+        request.resource.data.farm is string &&
+        request.resource.data.farm.size() > 0 &&
+        request.resource.data.farm.size() <= 250 &&
+        request.resource.data.date is string;
+      allow delete: if isAdmin();
+    }
+
+    // Sincronización en tiempo real de visitas y aseguramientos técnicos
+    match /visits/{visitId} {
+      allow get: if isValidId(visitId);
+      allow list: if isSignedIn() || request.query.limit <= 100;
+      allow create, update: if isValidId(visitId) &&
+        request.resource.data.farm is string &&
+        request.resource.data.date is string;
+      allow delete: if isAdmin();
+    }
+
+    // Perfiles de administradores de fincas y técnicos
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Directorio de fincas
+    match /farms/{farmId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(farmId) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 250;
+      allow delete: if isAdmin();
+    }
+
+    // Colección de validación de conectividad
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

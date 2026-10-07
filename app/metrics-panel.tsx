@@ -11,7 +11,8 @@ import {
   TrendingUp,
   AlertTriangle,
   Building2,
-  ShieldAlert
+  ShieldAlert,
+  Info
 } from 'lucide-react';
 import {
   Area,
@@ -25,12 +26,13 @@ import {
   YAxis
 } from 'recharts';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
-import {farmKey,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {catalog,farmKey,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import {FarmChapterDetails} from './metric-chapter-details';
 import ConsolidatedMetrics from './consolidated-metrics';
 import {KpiSparkline,type SparklinePoint} from './kpi-sparkline';
+import {GuidePresentation,GuideHelpButton} from './guide-presentation';
 import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
@@ -50,31 +52,80 @@ type TooltipPayloadItem = {
     criterios: number;
     hallazgos: number;
     puntos: number;
+    cobertura: number;
+    cap1: number | null;
+    cap2: number | null;
+    cap3: number | null;
+    cap4: number | null;
+    cap5: number | null;
   };
 };
 
-function CustomTooltip({active,payload,label}:{active?:boolean;payload?:TooltipPayloadItem[];label?:string}){
+function CustomTooltip({active,payload,label,view}:{active?:boolean;payload?:TooltipPayloadItem[];label?:string;view?:string}){
   if(active&&payload&&payload.length){
     const data=payload[0].payload;
+    const isHealthy=data.score>=95;
     return (
-      <div className="p-3 bg-slate-900 text-white rounded-lg shadow-xl border border-slate-700 text-xs flex flex-col gap-1.5 min-w-[180px]">
-        <span className="font-bold text-slate-200 border-b border-slate-800 pb-1">{label}</span>
-        <div className="flex justify-between items-center text-sky-400">
-          <span>Índice MIPE:</span>
-          <b className="text-sm font-extrabold">{data.score}%</b>
+      <div className="p-3.5 bg-slate-900 text-white rounded-lg shadow-xl border border-slate-700/80 text-xs flex flex-col gap-1.5 min-w-[230px] font-sans">
+        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span className="font-bold text-slate-100">{label}</span>
+          {isHealthy ? (
+            <span className="text-[10px] font-bold text-[#78be20] bg-emerald-950/80 px-2 py-0.5 rounded border border-[#78be20]/50">
+              ★ Meta 95%
+            </span>
+          ) : (
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${data.score>=85?'text-[#f2a900] bg-amber-950/80 border-[#f2a900]/50':'text-rose-300 bg-rose-950/80 border-rose-600/50'}`}>
+              {data.score>=85?'Aceptable (85-94%)':'Crítico (< 85%)'}
+            </span>
+          )}
         </div>
-        <div className="flex justify-between items-center text-emerald-400">
-          <span>Puntos ganados:</span>
-          <b>{data.puntos} / 100</b>
+
+        <div className="flex justify-between items-center text-[#00b5e2]">
+          <span className="font-medium">Índice MIPE Ponderado:</span>
+          <b className="text-sm font-extrabold tabular-nums">{data.score}%</b>
         </div>
-        <div className="flex justify-between items-center text-amber-400">
-          <span>Cumplimiento criterios:</span>
-          <b>{data.criterios}%</b>
+        <div className="flex justify-between items-center text-[#78be20]">
+          <span className="font-medium">Puntos oficiales ganados:</span>
+          <b className="tabular-nums">{data.puntos} / 100 pts</b>
         </div>
-        <div className="flex justify-between items-center text-rose-400 border-t border-slate-800 pt-1 mt-0.5">
-          <span>Hallazgos abiertos:</span>
-          <b>{data.hallazgos}</b>
+        <div className="flex justify-between items-center text-slate-300">
+          <span className="font-medium">Conformidad de criterios:</span>
+          <b className="tabular-nums text-slate-100">{data.criterios}%</b>
         </div>
+        <div className="flex justify-between items-center text-slate-400">
+          <span className="font-medium">Cobertura de auditoría:</span>
+          <b className="tabular-nums text-slate-200">{data.cobertura}% peso</b>
+        </div>
+        <div className="flex justify-between items-center border-t border-slate-800 pt-1.5 mt-0.5" style={{color:data.hallazgos>0?'#f43f5e':'#78be20'}}>
+          <span className="font-medium">Hallazgos abiertos:</span>
+          <b className="tabular-nums">{data.hallazgos>0?`${data.hallazgos} no conformes`:'0 (Conforme)'}</b>
+        </div>
+
+        {view==='chapters' && (
+          <div className="mt-1.5 pt-2 border-t border-slate-800 flex flex-col gap-1 text-[11px]">
+            <span className="font-bold text-slate-300 text-[10px] uppercase tracking-wider">Desglose 5 Procesos MIPE:</span>
+            <div className="flex justify-between text-[#00b5e2]">
+              <span>1. Almacén (5%):</span>
+              <b className="tabular-nums">{data.cap1!==null?`${data.cap1}%`:'—'}</b>
+            </div>
+            <div className="flex justify-between text-[#78be20]">
+              <span>2. Dosificación (30%):</span>
+              <b className="tabular-nums">{data.cap2!==null?`${data.cap2}%`:'—'}</b>
+            </div>
+            <div className="flex justify-between text-[#f2a900]">
+              <span>3. Transporte (5%):</span>
+              <b className="tabular-nums">{data.cap3!==null?`${data.cap3}%`:'—'}</b>
+            </div>
+            <div className="flex justify-between text-[#38bdf8]">
+              <span>4. Mezclas (30%):</span>
+              <b className="tabular-nums">{data.cap4!==null?`${data.cap4}%`:'—'}</b>
+            </div>
+            <div className="flex justify-between text-[#007fa3]">
+              <span>5. Aplicación (30%):</span>
+              <b className="tabular-nums">{data.cap5!==null?`${data.cap5}%`:'—'}</b>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -86,20 +137,37 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
   const [farm,setFarm]=useState('');
   const [from,setFrom]=useState('');
   const [to,setTo]=useState('');
-  const [chartView,setChartView]=useState<'score'|'both'|'findings'|'compliance'|'coverage'>('both');
+  const [chartView,setChartView]=useState<'score'|'both'|'findings'|'compliance'|'coverage'|'chapters'>('both');
+  const [showGuide,setShowGuide]=useState(false);
+  const [showGuideModal,setShowGuideModal]=useState(false);
   
   const activeFarm=farm||farms[0]?.[0]||'';
   const scoped=useMemo(()=>visits.filter(v=>(!from||v.date>=`${from}-01-01`)&&(!to||v.date<=`${to}-12-31`)),[visits,from,to]);
   const data=useMemo(()=>farmMetricHistory(scoped,activeFarm),[scoped,activeFarm]);
   
-  const chart=data.records.map(r=>({
-    label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${r.date}T12:00:00`)),
-    score:r.score,
-    criterios:r.criteriaCompliance??r.score,
-    hallazgos:r.findings,
-    puntos:r.pointsEarned,
-    cobertura:r.weightedCoveragePct
-  }));
+  const chart=data.records.map(r=>{
+    const getCapScore=(capId:number)=>{
+      const c=catalog.find(cat=>cat.id===capId);
+      if(!c||!r.visit.chapters.includes(capId))return null;
+      const applicable=c.items.filter(item=>['SI','NO'].includes(r.visit.answers[item.id]?.value||''));
+      if(!applicable.length)return null;
+      const positive=applicable.filter(item=>r.visit.answers[item.id]?.value==='SI').length;
+      return Math.round((positive/applicable.length)*100);
+    };
+    return {
+      label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${r.date}T12:00:00`)),
+      score:r.score,
+      criterios:r.criteriaCompliance??r.score,
+      hallazgos:r.findings,
+      puntos:r.pointsEarned,
+      cobertura:r.weightedCoveragePct,
+      cap1:getCapScore(1),
+      cap2:getCapScore(2),
+      cap3:getCapScore(3),
+      cap4:getCapScore(4),
+      cap5:getCapScore(5)
+    };
+  });
 
   const scoreSparkline:SparklinePoint[]=useMemo(()=>data.records.map(r=>({
     date:r.date,
@@ -165,12 +233,23 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
       {/* Executive Command Header */}
       <div className="b2b-header no-print">
         <div className="b2b-header-title">
-          <div className="b2b-kicker">Panel de Inteligencia Agronómica · B2B</div>
+          <div className="b2b-kicker flex items-center gap-2">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#00b5e2] inline-block" title="Avgust Cian"/>
+              <span className="w-2 h-2 rounded-full bg-[#78be20] inline-block" title="Avgust Verde Agro"/>
+              <span className="w-2 h-2 rounded-full bg-[#f2a900] inline-block" title="Avgust Oro"/>
+            </span>
+            <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
+          </div>
           <h2 id="farm-metrics-title">Evolución y Control MIPE por Finca</h2>
           <p>Supervisión oficial ponderada por procesos: Almacén (5%), Dosificación (30%), Transporte (5%), Mezclas (30%) y Aplicación (30%).</p>
         </div>
         {current && (
           <div className="b2b-header-actions">
+            <GuideHelpButton onClick={()=>setShowGuideModal(true)}/>
+            <button className="b2b-btn b2b-btn-secondary" onClick={()=>setShowGuide(!showGuide)} aria-expanded={showGuide}>
+              <Info size={16}/> {showGuide?'Ocultar Modelo MIPE':'Modelo MIPE'}
+            </button>
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportFarmMetricsWord(data)}>
               <FileText size={16}/> Informe Ejecutivo Word
             </button>
@@ -180,6 +259,52 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           </div>
         )}
       </div>
+
+      {showGuide && (
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl no-print shadow-sm text-xs text-slate-700 dark:text-slate-300">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Info size={18} className="text-[#007fa3]"/>
+              <strong className="text-sm font-bold text-slate-900 dark:text-slate-100">Guía Oficial de Ponderación Normativa MIPE (37 Criterios · 100 Puntos)</strong>
+            </div>
+            <button onClick={()=>setShowGuide(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold px-2 py-0.5">✕</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-2">
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#007fa3]">
+              <span className="font-bold text-[#007fa3] block text-xs">Capítulo 1: Almacén</span>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">5 Puntos (5%)</b>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">4 criterios de almacenamiento seguro y señalización técnica.</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#78be20]">
+              <span className="font-bold text-[#78be20] block text-xs">Capítulo 2: Dosificación</span>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">30 Puntos (30%)</b>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">8 criterios de calibración, probetas y pesaje exacto de PPC.</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#f2a900]">
+              <span className="font-bold text-[#f2a900] block text-xs">Capítulo 3: Transporte</span>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">5 Puntos (5%)</b>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">4 criterios de traslado seguro y contención de derrames.</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#00b5e2]">
+              <span className="font-bold text-[#00b5e2] block text-xs">Capítulo 4: Mezclas</span>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">30 Puntos (30%)</b>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">10 criterios de orden de mezcla, pre-dilución y calidad de agua.</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#005f7a]">
+              <span className="font-bold text-[#005f7a] dark:text-[#38bdf8] block text-xs">Capítulo 5: Aplicación</span>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">30 Puntos (30%)</b>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">11 criterios de boquillas, presión, aforo y uso de EPP.</p>
+            </div>
+          </div>
+          <div className="mt-3.5 text-[11.5px] text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3 flex flex-wrap gap-x-6 gap-y-1.5">
+            <span>• <strong>Lógica de puntuación:</strong> Los capítulos 2, 4 y 5 aportan el 90% del peso normativo por su criticidad agronómica directa.</span>
+            <span>• <strong>Meta Saludable Oficial:</strong> <span className="text-[#15803d] font-bold">≥ 95%</span> (Estándar de floricultura para auditorías corporativas).</span>
+            <span>• <strong>Rango Aceptable:</strong> <span className="text-[#92400e] font-bold">85% a 94%</span> (Permite seguimiento con compromisos correctivos).</span>
+            <span>• <strong>Límite Crítico:</strong> <span className="text-[#dc2626] font-bold">&lt; 85%</span> (Exige plan de contingencia inmediato).</span>
+            <span>• <strong>No Aplica (NA):</strong> Se excluye del cálculo sin penalizar puntuación ni inflar conformidad.</span>
+          </div>
+        </div>
+      )}
 
       {/* Filter & Selector Ribbon */}
       <div className="b2b-filter-card no-print">
@@ -264,7 +389,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
 
             <div
-              className={`b2b-kpi-card highlight cursor-pointer transition-all ${chartView==='both'?'ring-2 ring-emerald-500 shadow-md':''}`}
+              className={`b2b-kpi-card highlight cursor-pointer transition-all ${chartView==='both'?'ring-2 ring-[#78be20] shadow-md':''}`}
               onClick={()=>setChartView('both')}
               title="Click para comparar Trayectoria y Conformidad en la gráfica principal"
               role="button"
@@ -273,7 +398,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             >
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Trayectoria Temporal</span>
-                <span className={`inline-flex items-center gap-1 text-xs font-bold ${data.trend==='improved'?'text-emerald-600':data.trend==='declined'?'text-rose-600':'text-slate-600'}`}>
+                <span className={`inline-flex items-center gap-1 text-xs font-bold ${data.trend==='improved'?'text-[#78be20]':data.trend==='declined'?'text-[#dc2626]':'text-slate-600'}`}>
                   {data.trend==='improved'?<TrendingUp size={14}/>:data.trend==='declined'?<TrendingDown size={14}/>:<Minus size={14}/>}
                   {metricTrendLabels[data.trend]}
                 </span>
@@ -285,7 +410,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
               {/* Interactive Recharts Sparkline */}
               <div className="mt-1 mb-2">
-                <KpiSparkline data={deltaSparkline} color={data.trend==='improved'?'#10b981':data.trend==='declined'?'#f43f5e':'#0284c7'} fillGradientId="sparkDelta" unit=" pts" height={38}/>
+                <KpiSparkline data={deltaSparkline} color={data.trend==='improved'?'#78be20':data.trend==='declined'?'#dc2626':'#007fa3'} fillGradientId="sparkDelta" unit=" pts" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
                 {data.delta===null?'Línea base inicial':`Variación absoluta desde la primera auditoría técnica.`}
@@ -293,7 +418,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
 
             <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${chartView==='compliance'?'ring-2 ring-sky-500 shadow-md':''}`}
+              className={`b2b-kpi-card cursor-pointer transition-all ${chartView==='compliance'?'ring-2 ring-[#00b5e2] shadow-md':''}`}
               onClick={()=>setChartView('compliance')}
               title="Click para enfocar Tasa de Conformidad en la gráfica principal"
               role="button"
@@ -309,18 +434,18 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
               {/* Interactive Recharts Sparkline */}
               <div className="mt-1 mb-2">
-                <KpiSparkline data={complianceSparkline} color="#0284c7" fillGradientId="sparkCompliance" unit="%" height={38}/>
+                <KpiSparkline data={complianceSparkline} color="#00b5e2" fillGradientId="sparkCompliance" unit="%" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
                 Porcentaje de criterios individuales evaluados con respuesta “Sí”.
               </div>
               <div className="b2b-kpi-progress">
-                <div className="b2b-kpi-progress-fill bg-sky-600" style={{width:`${current.criteriaCompliance||0}%`}}/>
+                <div className="b2b-kpi-progress-fill bg-[#00b5e2]" style={{width:`${current.criteriaCompliance||0}%`}}/>
               </div>
             </div>
 
             <div
-              className={`b2b-kpi-card ${current.findings>0?'critical':'healthy'} cursor-pointer transition-all ${chartView==='findings'?'ring-2 ring-rose-500 shadow-md':''}`}
+              className={`b2b-kpi-card ${current.findings>0?'critical':'healthy'} cursor-pointer transition-all ${chartView==='findings'?'ring-2 ring-[#dc2626] shadow-md':''}`}
               onClick={()=>setChartView('findings')}
               title="Click para enfocar Hallazgos Abiertos en la gráfica principal"
               role="button"
@@ -329,17 +454,17 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             >
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Hallazgos Abiertos</span>
-                {current.findings>0?<AlertTriangle size={15} className="text-rose-600"/>:<CheckCircle2 size={15} className="text-emerald-600"/>}
+                {current.findings>0?<AlertTriangle size={15} className="text-[#dc2626]"/>:<CheckCircle2 size={15} className="text-[#78be20]"/>}
               </div>
               <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value" style={{color:current.findings>0?'#e11d48':'#059669'}}>
+                <span className="b2b-kpi-value" style={{color:current.findings>0?'#dc2626':'#78be20'}}>
                   {current.findings}
                 </span>
                 <span className="text-xs font-semibold text-slate-500">criterios en “No”</span>
               </div>
               {/* Interactive Recharts Sparkline */}
               <div className="mt-1 mb-2">
-                <KpiSparkline data={findingsSparkline} color={current.findings>0?'#e11d48':'#10b981'} fillGradientId="sparkFindings" height={38}/>
+                <KpiSparkline data={findingsSparkline} color={current.findings>0?'#dc2626':'#78be20'} fillGradientId="sparkFindings" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
                 {current.findings===0?'Cero desviaciones detectadas en la última visita.':'Inconformidades técnicas que exigen planes de acción correctiva.'}
@@ -347,7 +472,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
 
             <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${chartView==='coverage'?'ring-2 ring-indigo-500 shadow-md':''}`}
+              className={`b2b-kpi-card cursor-pointer transition-all ${chartView==='coverage'?'ring-2 ring-[#007fa3] shadow-md':''}`}
               onClick={()=>setChartView('coverage')}
               title="Click para enfocar Cobertura Normativa en la gráfica principal"
               role="button"
@@ -356,7 +481,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             >
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Cobertura Normativa</span>
-                <span className="text-xs font-bold text-indigo-600">{current.weightedCoveragePct}% Peso</span>
+                <span className="text-xs font-bold text-[#007fa3]">{current.weightedCoveragePct}% Peso</span>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{current.evaluatedChapters}/5</span>
@@ -364,7 +489,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
               {/* Interactive Recharts Sparkline */}
               <div className="mt-1 mb-2">
-                <KpiSparkline data={coverageSparkline} color="#6366f1" fillGradientId="sparkCoverage" unit="%" height={38}/>
+                <KpiSparkline data={coverageSparkline} color="#007fa3" fillGradientId="sparkCoverage" unit="%" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
                 {current.evaluatedChapters===5?'Auditoría integral completa (100% de procesos).':'Auditoría de alcance parcial por requerimiento de campo.'}
@@ -384,6 +509,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <div className="b2b-quick-ranges">
                   <button className={`b2b-range-btn ${chartView==='both'?'active':''}`} onClick={()=>setChartView('both')}>Ambos Índices</button>
                   <button className={`b2b-range-btn ${chartView==='score'?'active':''}`} onClick={()=>setChartView('score')}>Solo Índice MIPE</button>
+                  <button className={`b2b-range-btn ${chartView==='chapters'?'active':''}`} onClick={()=>setChartView('chapters')}>5 Procesos MIPE</button>
                   <button className={`b2b-range-btn ${chartView==='compliance'?'active':''}`} onClick={()=>setChartView('compliance')}>Solo Conformidad</button>
                   <button className={`b2b-range-btn ${chartView==='findings'?'active':''}`} onClick={()=>setChartView('findings')}>Hallazgos</button>
                   <button className={`b2b-range-btn ${chartView==='coverage'?'active':''}`} onClick={()=>setChartView('coverage')}>Cobertura</button>
@@ -401,22 +527,22 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                         <stop offset="95%" stopColor="#007fa3" stopOpacity={0.0}/>
                       </linearGradient>
                       <linearGradient id="colorCriterios" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0284c7" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0}/>
+                        <stop offset="5%" stopColor="#00b5e2" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#00b5e2" stopOpacity={0.0}/>
                       </linearGradient>
                       <linearGradient id="colorCoverage" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0}/>
+                        <stop offset="5%" stopColor="#005f7a" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#005f7a" stopOpacity={0.0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0"/>
                     <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} tick={{fontSize:11,fill:'#64748b'}}/>
                     <YAxis domain={chartView==='findings'?[0,'auto']:[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>chartView==='findings'?String(v):`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
-                    <Tooltip content={<CustomTooltip/>}/>
+                    <Tooltip content={<CustomTooltip view={chartView}/>}/>
                     {chartView!=='findings' && (
                       <>
-                        <ReferenceLine y={80} stroke="#10b981" strokeDasharray="4 4" label={{value:'Meta Saludable (80%)',fill:'#059669',fontSize:10,position:'insideTopRight'}}/>
-                        <ReferenceLine y={50} stroke="#ef4444" strokeDasharray="4 4" label={{value:'Límite Crítico (50%)',fill:'#dc2626',fontSize:10,position:'insideBottomRight'}}/>
+                        <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Saludable (≥ 95%)',fill:'#15803d',fontSize:10,fontWeight:700,position:'insideTopRight'}}/>
+                        <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Aceptable (85%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
                       </>
                     )}
                     
@@ -424,13 +550,22 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                       <Area type="monotone" name="Índice MIPE Ponderado" dataKey="score" stroke="#007fa3" strokeWidth={3.5} fillOpacity={1} fill="url(#colorMipe)" dot={{r:5,fill:'#007fa3',strokeWidth:2,stroke:'#ffffff'}} activeDot={{r:7,fill:'#007fa3'}}/>
                     )}
                     {(chartView==='both'||chartView==='compliance') && (
-                      <Line type="monotone" name="Cumplimiento Criterios" dataKey="criterios" stroke="#0284c7" strokeWidth={2.5} strokeDasharray={chartView==='both'?'4 4':'0'} dot={{r:4,fill:'#0284c7'}} activeDot={{r:6}}/>
+                      <Line type="monotone" name="Cumplimiento Criterios" dataKey="criterios" stroke="#00b5e2" strokeWidth={2.5} strokeDasharray={chartView==='both'?'4 4':'0'} dot={{r:4,fill:'#00b5e2'}} activeDot={{r:6}}/>
                     )}
                     {(chartView==='findings') && (
-                      <Line type="linear" name="Hallazgos Abiertos" dataKey="hallazgos" stroke="#e11d48" strokeWidth={2.5} dot={{r:4,fill:'#e11d48'}} activeDot={{r:6}}/>
+                      <Line type="linear" name="Hallazgos Abiertos" dataKey="hallazgos" stroke="#dc2626" strokeWidth={2.5} dot={{r:4,fill:'#dc2626'}} activeDot={{r:6}}/>
                     )}
                     {(chartView==='coverage') && (
-                      <Area type="monotone" name="Cobertura Normativa" dataKey="cobertura" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorCoverage)" dot={{r:5,fill:'#6366f1'}} activeDot={{r:7}}/>
+                      <Area type="monotone" name="Cobertura Normativa" dataKey="cobertura" stroke="#005f7a" strokeWidth={3} fillOpacity={1} fill="url(#colorCoverage)" dot={{r:5,fill:'#005f7a'}} activeDot={{r:7}}/>
+                    )}
+                    {(chartView==='chapters') && (
+                      <>
+                        <Line type="monotone" name="1. Almacén (5%)" dataKey="cap1" stroke="#007fa3" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#007fa3'}} activeDot={{r:6}}/>
+                        <Line type="monotone" name="2. Dosificación (30%)" dataKey="cap2" stroke="#78be20" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#78be20'}} activeDot={{r:6}}/>
+                        <Line type="monotone" name="3. Transporte (5%)" dataKey="cap3" stroke="#f2a900" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#f2a900'}} activeDot={{r:6}}/>
+                        <Line type="monotone" name="4. Mezclas (30%)" dataKey="cap4" stroke="#00b5e2" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#00b5e2'}} activeDot={{r:6}}/>
+                        <Line type="monotone" name="5. Aplicación (30%)" dataKey="cap5" stroke="#005f7a" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#005f7a'}} activeDot={{r:6}}/>
+                      </>
                     )}
                   </AreaChart>
                 </ResponsiveContainer>
@@ -438,31 +573,65 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
 
             <div className="b2b-chart-legend mt-3 justify-center">
-              <div className="b2b-legend-item">
-                <span className="b2b-legend-dot bg-[#007fa3]"/>
-                <span>Índice MIPE Ponderado (Oficial)</span>
-              </div>
-              <div className="b2b-legend-item">
-                <span className="b2b-legend-dot bg-[#0284c7]"/>
-                <span>Conformidad Criterios (%)</span>
-              </div>
+              {chartView!=='chapters' && (
+                <>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#007fa3]"/>
+                    <span>Índice MIPE Ponderado (Oficial)</span>
+                  </div>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#00b5e2]"/>
+                    <span>Conformidad Criterios (%)</span>
+                  </div>
+                </>
+              )}
               {chartView==='findings' && (
                 <div className="b2b-legend-item">
-                  <span className="b2b-legend-dot bg-[#e11d48]"/>
+                  <span className="b2b-legend-dot bg-[#dc2626]"/>
                   <span>Hallazgos Abiertos (Inconformidades)</span>
                 </div>
               )}
               {chartView==='coverage' && (
                 <div className="b2b-legend-item">
-                  <span className="b2b-legend-dot bg-[#6366f1]"/>
+                  <span className="b2b-legend-dot bg-[#005f7a]"/>
                   <span>Cobertura Normativa (% Peso)</span>
                 </div>
               )}
+              {chartView==='chapters' && (
+                <>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#007fa3]"/>
+                    <span>1. Almacén (5%)</span>
+                  </div>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#78be20]"/>
+                    <span>2. Dosificación (30%)</span>
+                  </div>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#f2a900]"/>
+                    <span>3. Transporte (5%)</span>
+                  </div>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#00b5e2]"/>
+                    <span>4. Mezclas (30%)</span>
+                  </div>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#005f7a]"/>
+                    <span>5. Aplicación (30%)</span>
+                  </div>
+                </>
+              )}
               {chartView!=='findings' && (
-                <div className="b2b-legend-item">
-                  <span className="b2b-legend-dot bg-[#10b981]"/>
-                  <span>Umbral Saludable ≥ 80%</span>
-                </div>
+                <>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#16a34a]"/>
+                    <span>Meta Saludable Oficial MIPE ≥ 95%</span>
+                  </div>
+                  <div className="b2b-legend-item">
+                    <span className="b2b-legend-dot bg-[#d97706]"/>
+                    <span>Rango Aceptable 85% a 94%</span>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -579,13 +748,13 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                           <StatusBadge value={record.status}/>
                         </td>
                         <td>
-                          <span className={`inline-flex items-center gap-1 text-xs font-bold ${difference>=5?'text-emerald-600':difference<=-5?'text-rose-600':'text-slate-500'}`}>
+                          <span className={`inline-flex items-center gap-1 text-xs font-bold ${difference>=5?'text-[#78be20]':difference<=-5?'text-[#dc2626]':'text-slate-500'}`}>
                             {index===data.records.length-1?'Línea base':difference>=5?`+${difference} pts`:difference<=-5?`${difference} pts`:'Estable'}
                           </span>
                         </td>
                         <td>{record.responsible || 'Sin registrar'}</td>
                         <td>
-                          <span className={`font-bold ${record.findings>0?'text-rose-600':'text-emerald-600'}`}>
+                          <span className={`font-bold ${record.findings>0?'text-[#dc2626]':'text-[#78be20]'}`}>
                             {record.findings}
                           </span>
                         </td>
@@ -603,6 +772,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           </div>
         </>
       )}
+      <GuidePresentation open={showGuideModal} onClose={()=>setShowGuideModal(false)}/>
     </div>
   );
 }

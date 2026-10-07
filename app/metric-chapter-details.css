@@ -14,6 +14,106 @@
 .report-measurement-group{margin:12px 0;padding:10px 12px;border-left:3px solid #78be20;background:#f7faf7;break-inside:avoid}
 .report-measurement-group h4{margin:0 0 6px;color:#245b3a}
 .report-measurement-group table{margin:6px 0}
+
+/* Audit Matrix & Clean Chips */
+.audit-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.audit-chip.healthy {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.audit-chip.critical {
+  background: #fff1f2;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+}
+.audit-chip.na {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.audit-chip.pending {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px dashed #cbd5e1;
+}
+
+.audit-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+.audit-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+.audit-matrix th {
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.audit-matrix td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.audit-matrix tr:hover td {
+  background: #f8fafc;
+}
+
+html.dark .audit-table-wrap {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+html.dark .audit-matrix th {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+html.dark .audit-matrix td {
+  border-color: #1e293b;
+  color: #e2e8f0;
+}
+html.dark .audit-matrix tr:hover td {
+  background: #1e293b/50;
+}
+html.dark .audit-chip.healthy {
+  background: #064e3b/30;
+  color: #6ee7b7;
+  border-color: #065f46;
+}
+html.dark .audit-chip.critical {
+  background: #881337/30;
+  color: #fda4af;
+  border-color: #9f1239;
+}
+html.dark .audit-chip.na {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: #334155;
+}
+
 html.dark .chapter-detail{background:#16262a;border-color:#3a5552}
 html.dark .chapter-detail>summary strong{color:#e8f2ef}
 html.dark .chapter-detail>summary small{color:#b3c6c2}

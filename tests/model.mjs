@@ -69,7 +69,7 @@ validate({...v,chapters:[],serviceKind:'training',conclusion:'Capacitación real
 assert.throws(()=>validate({...v,chapters:[],serviceKind:'training',conclusion:'',reviewed:true}),/422/);
 console.log('PASS: proposals never overdue and activity reports require results');
 const historical={...v,chapters:[1],answers:Object.fromEntries(catalog[0].items.map(q=>[q.id,{value:'SI',observation:'',recommendation:''}]))};
-assert.equal(metrics(historical).score,100);assert.equal(metricStatus(79),'acceptable');assert.equal(metricStatus(49),'critical');
+assert.equal(metrics(historical).score,100);assert.equal(metricStatus(85),'acceptable');assert.equal(metricStatus(84),'critical');assert.equal(metricStatus(95),'healthy');
 const prior=visitMetric({...historical,date:'2025-01-20'}),current=visitMetric({...historical,date:'2026-01-20',answers:{...historical.answers,'1.4':{value:'NO',observation:'Inventario atrasado',recommendation:'Actualizar'}}});
 assert.equal(metricTrend(prior,current),'declined');
 console.log('PASS: official chapters one and two plus farm metric status and trend');
