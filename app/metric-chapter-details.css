@@ -29,14 +29,14 @@
   line-height: 1.2;
 }
 .audit-chip.healthy {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+  background: rgba(120, 190, 32, 0.12);
+  color: #245b3a;
+  border: 1px solid rgba(120, 190, 32, 0.45);
 }
 .audit-chip.critical {
-  background: #fff1f2;
-  color: #9f1239;
-  border: 1px solid #fecdd3;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
 }
 .audit-chip.na {
   background: #f8fafc;
@@ -122,3 +122,69 @@ html.dark .report-measurement-group{background:#17291f;border-color:#78be20}
 html.dark .report-measurement-group h4{color:#9ee0c8}
 @media(max-width:600px){.chapter-detail>summary{grid-template-columns:minmax(0,1fr) auto;gap:8px}.chapter-detail>summary .metric-status{grid-column:1/-1;width:max-content}.chapter-detail-body{padding:10px}}
 @media print{.chapter-detail>summary{display:none}.chapter-detail:not([open])>.chapter-detail-body{display:grid}.chapter-detail{break-inside:avoid}.chapter-detail-body{padding:8px}.chapter-details{gap:4px}.chapter-detail-chart{min-width:0}}
+
+.chapter-detail-panel {
+  background: #ffffff;
+  border: 1px solid #d8e2e2;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.chapter-detail-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+.chapter-detail-toolbar p {
+  margin: 0;
+  color: #58696d;
+  font-size: 12px;
+  font-weight: 600;
+}
+.chapter-compare-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 10px;
+}
+.chapter-compare-picks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #333f48;
+}
+.chapter-compare-picks select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #c5d5da;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #333f48;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+.chapter-chart-note {
+  margin: 8px 0 0;
+  color: #58696d;
+  font-size: 12px;
+}
+.chapter-diagnosis {
+  font-size: 12px;
+  font-weight: 700;
+}
+.chapter-diagnosis.corrected { color: #245b3a; }
+.chapter-diagnosis.worse,
+.chapter-diagnosis.repeat { color: #dc2626; }
+.chapter-diagnosis.stable { color: #007fa3; }
+.chapter-diagnosis.mixed { color: #58696d; font-weight: 600; }
+.chapter-scope-note {
+  margin: 0 0 4px;
+  color: #58696d;
+  font-size: 12px;
+  font-weight: 600;
+}
