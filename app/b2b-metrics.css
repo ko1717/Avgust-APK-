@@ -12,7 +12,8 @@
 .b2b-table-container,
 .b2b-quick-ranges,
 .b2b-dual-grid,
-.b2b-kpi-grid {
+.b2b-kpi-grid,
+.b2b-reading {
   min-width: 0;
   max-width: 100%;
 }
@@ -217,6 +218,58 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin: 0;
+}
+
+.b2b-reading {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) repeat(3, minmax(0, 1fr));
+  background: #ffffff;
+  border: 1px solid #d8e2e2;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.b2b-reading-primary,
+.b2b-reading-stat {
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.b2b-reading-primary {
+  border-top: 4px solid #00b5e2;
+}
+
+.b2b-reading-primary.healthy { border-top-color: #78be20; }
+.b2b-reading-primary.acceptable { border-top-color: #f2a900; }
+.b2b-reading-primary.critical { border-top-color: #dc2626; }
+.b2b-reading-primary.pending { border-top-color: #c5d5da; }
+
+.b2b-reading-stat {
+  border-left: 1px solid #d8e2e2;
+}
+
+.b2b-reading-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #58696d;
+  line-height: 1.4;
+}
+
+.b2b-fleet-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #58696d;
+}
+
+.b2b-fleet-counts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .b2b-kpi-card, .metric-summary > div {
@@ -504,13 +557,10 @@
   border-radius: 10px;
   background: #ffffff;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-  transition: all 0.15s ease;
 }
 
 .b2b-process-card:hover {
-  border-color: #c5d5da;
-  box-shadow: 0 3px 6px rgba(15, 23, 42, 0.05);
+  border-color: #9fc3ce;
 }
 
 .b2b-process-summary {
@@ -718,6 +768,9 @@ html.dark .b2b-metrics-wrapper {
 }
 
 html.dark .b2b-header,
+html.dark .b2b-reading,
+html.dark .b2b-reading-primary,
+html.dark .b2b-reading-stat,
 html.dark .b2b-kpi-card,
 html.dark .metric-summary > div,
 html.dark .b2b-chart-card,
@@ -839,6 +892,19 @@ html.dark .b2b-alert-card p {
   }
   .b2b-dual-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .b2b-reading {
+    grid-template-columns: 1fr 1fr;
+  }
+  .b2b-reading-primary {
+    grid-column: 1 / -1;
+  }
+  .b2b-reading-stat {
+    border-left: 0;
+    border-top: 1px solid #d8e2e2;
   }
 }
 

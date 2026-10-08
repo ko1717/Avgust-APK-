@@ -26,13 +26,7 @@ import {metricStatusLabels,type MetricStatus} from '@/lib/model';
 import type {ChapterMetricDetail,ConsolidatedMetricAnalysis} from '@/lib/metric-analysis';
 
 function Status({value}:{value:MetricStatus}){
-  const labels:Record<MetricStatus,string>={
-    healthy:'Saludable',
-    acceptable:'Aceptable',
-    critical:'Crítico',
-    pending:'Sin evaluar'
-  };
-  return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
+  return <span className={`b2b-kpi-badge ${value}`}>{metricStatusLabels[value]}</span>;
 }
 
 function answerChip(value:string|null){
@@ -142,56 +136,20 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
         <div className="b2b-process-info">
           <div className="b2b-process-title">
             <span>{chapter.id}. {chapter.title}</span>
-            <span className="b2b-process-weight-tag">{chapter.weightPct}% ({chapter.maxPoints} pts máx)</span>
-            {!isEvaluated && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                No evaluado en esta visita
-              </span>
-            )}
+            <span className="b2b-process-weight-tag">{chapter.weightPct}%</span>
           </div>
           <div className="b2b-process-subtitle">
             {isEvaluated ? (
-              <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-                <strong className="text-slate-800">{chapter.pointsEarned} / {chapter.maxPoints} pts ganados ·</strong>
-                <span>{chapter.findings} hallazgo{chapter.findings===1?'':'s'} en {chapter.applicable} criterios</span>
-                <span className="text-slate-300">|</span>
-                {visits.length > 1 ? (
-                  <span className="inline-flex items-center flex-wrap gap-1 text-[11px]">
-                    <strong className="text-slate-700">Evolución en {visits.length} visitas:</strong>
-                    {visits.map((v, i) => {
-                      const sc = v.score;
-                      const badgeCls = sc === null
-                        ? 'bg-slate-100 text-slate-600 border-slate-200'
-                        : sc >= 95
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
-                          : sc >= 85
-                            ? 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
-                            : 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
-                      return (
-                        <span key={v.visitId || i} className="inline-flex items-center gap-0.5">
-                          {i > 0 && <span className="text-slate-400 font-bold">→</span>}
-                          <span className={`px-1.5 py-0.2 rounded border text-[10px] ${badgeCls}`} title={`Visita ${i+1} (${v.date})`}>
-                            V{i+1}: {sc === null ? '—' : `${sc}%`}
-                          </span>
-                        </span>
-                      );
-                    })}
-                  </span>
-                ) : (
-                  <span>Visita única ({visits[0]?.date || 'actual'}): {chapter.score === null ? 'sin medición' : `${chapter.score}%`}</span>
-                )}
-              </div>
+              <span>{chapter.pointsEarned}/{chapter.maxPoints} pts · {chapter.findings} hallazgo{chapter.findings===1?'':'s'} · {visits.length} visita{visits.length===1?'':'s'}</span>
             ) : (
-              <span className="text-slate-500 italic">
-                Capítulo excluido de esta auditoría · 0 pts asignados de {chapter.maxPoints} pts posibles
-              </span>
+              <span>No evaluado · 0 de {chapter.maxPoints} pts</span>
             )}
           </div>
         </div>
 
         <div className="b2b-process-score">
           <b>{chapter.score===null?'—':`${chapter.score}%`}</b>
-          <small>{chapter.applicable ? `${chapter.applicable - chapter.findings}/${chapter.applicable} conformes` : 'Sin evaluación'}</small>
+          <small>{chapter.applicable ? `${chapter.applicable - chapter.findings}/${chapter.applicable} conformes` : 'Sin medición'}</small>
         </div>
 
         <div>
@@ -209,7 +167,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 m-0 flex items-center gap-1.5">
                     <TrendingUp size={15} className="text-[#007fa3]"/>
-                    <span>Análisis Histórico de Visitas · Capítulo {chapter.id}</span>
+                    <span>Detalle del capítulo {chapter.id}</span>
                   </h4>
                   <span className="text-[11px] text-slate-500 font-medium">
                     {evaluatedItems.length} criterios evaluados · {naItems.length} no aplican · {visits.length} visita{visits.length === 1 ? '' : 's'} registradas
@@ -706,7 +664,7 @@ function ConsolidatedChapterCard({chapter,items}:{chapter:ConsolidatedChapter;it
 
         <div className="b2b-process-score">
           <b>{chapter.score===null?'—':`${chapter.score}%`}</b>
-          <small>{chapter.applicable ? `${chapter.applicable - chapter.findings}/${chapter.applicable} conformes` : 'Sin evaluación'}</small>
+          <small>{chapter.applicable ? `${chapter.applicable - chapter.findings}/${chapter.applicable} conformes` : 'Sin medición'}</small>
         </div>
 
         <div>

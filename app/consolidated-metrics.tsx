@@ -150,7 +150,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         <div className="b2b-header-title">
           <div className="b2b-kicker">Consolidado</div>
           <h2 id="consolidated-title">Aseguramientos de todas las fincas</h2>
-          <p>Compara el indicador, los hallazgos y la cobertura sin repetir el mismo dato en cada tarjeta.</p>
+          <p>Promedio del periodo y las fincas que necesitan atención.</p>
         </div>
         {data.records.length>0 && (
           <div className="b2b-header-actions">
@@ -201,8 +201,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       ) : (
         <>
           {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines */}
-          <div className="b2b-kpi-grid">
-            <div className={`b2b-kpi-card ${data.status}`}>
+          <div className="b2b-reading">
+            <div className={`b2b-reading-primary ${data.status}`}>
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Índice MIPE</span>
                 <StatusBadge value={data.status}/>
@@ -210,55 +210,37 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.score}%</span>
               </div>
-              <div className="b2b-kpi-progress">
-                <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${data.score||0}%`}}/>
-              </div>
+              <p className="b2b-reading-note">{data.records.length} visitas revisadas en el periodo.</p>
             </div>
-
-            <div className="b2b-kpi-card highlight">
+            <div className="b2b-reading-stat">
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Tendencia</span>
-                {data.trend==='improved'?<TrendingUp size={15} className="text-[#78be20]"/>:data.trend==='declined'?<TrendingDown size={15} className="text-[#dc2626]"/>:null}
+                {data.trend==='improved'?<TrendingUp size={14} className="text-[#78be20]"/>:data.trend==='declined'?<TrendingDown size={14} className="text-[#dc2626]"/>:null}
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value" style={{fontSize:22}}>{metricTrendLabels[data.trend]}</span>
               </div>
-              <div className="b2b-kpi-footer">Primer periodo contra el último.</div>
+              <p className="b2b-reading-note">Primer periodo contra el último.</p>
             </div>
-
-            <div className="b2b-kpi-card">
+            <div className="b2b-reading-stat">
+              <div className="b2b-kpi-header">
+                <span className="b2b-kpi-title">Hallazgos</span>
+                {data.findings>0?<ShieldAlert size={14} className="text-[#dc2626]"/>:<CheckCircle2 size={14} className="text-[#78be20]"/>}
+              </div>
+              <div className="b2b-kpi-body">
+                <span className="b2b-kpi-value" style={{color:data.findings>0?'#dc2626':'#78be20'}}>{data.findings}</span>
+              </div>
+              <p className="b2b-reading-note">De {data.applicable} criterios evaluados.</p>
+            </div>
+            <div className="b2b-reading-stat">
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Fincas</span>
-                <Users size={15} className="text-[#007fa3]"/>
+                <Users size={14} className="text-[#007fa3]"/>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.farms}</span>
               </div>
-              <div className="b2b-kpi-footer">
-                {completeAuditsCount} completas · {fleetFarms.length - completeAuditsCount} parciales
-              </div>
-            </div>
-
-            <div className={`b2b-kpi-card ${data.findings>0?'critical':'healthy'}`}>
-              <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Hallazgos</span>
-                {data.findings>0?<ShieldAlert size={15} className="text-[#dc2626]"/>:<CheckCircle2 size={15} className="text-[#78be20]"/>}
-              </div>
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value" style={{color:data.findings>0?'#dc2626':'#78be20'}}>{data.findings}</span>
-                <span className="text-xs font-semibold text-slate-500">de {data.applicable}</span>
-              </div>
-            </div>
-
-            <div className="b2b-kpi-card">
-              <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Visitas</span>
-                <Layers size={15} className="text-[#007fa3]"/>
-              </div>
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">{data.records.length}</span>
-              </div>
-              <div className="b2b-kpi-footer">Informes revisados en el periodo.</div>
+              <p className="b2b-reading-note">{completeAuditsCount} completas · {fleetFarms.length - completeAuditsCount} parciales</p>
             </div>
           </div>
 
@@ -274,20 +256,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </div>
 
               {/* Fleet Overview Badges */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#78be20]"></span>
-                  {healthyCount} Saludables (≥95%)
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#f2a900]"></span>
-                  {acceptableCount} Aceptables (85-94%)
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#dc2626]"></span>
-                  {criticalCount} Críticas (&lt;85%)
-                </span>
-              </div>
+              <p className="b2b-fleet-counts">
+                <span><span className="b2b-legend-dot bg-[#78be20]"/>{healthyCount} saludables</span>
+                <span><span className="b2b-legend-dot bg-[#f2a900]"/>{acceptableCount} aceptables</span>
+                <span><span className="b2b-legend-dot bg-[#dc2626]"/>{criticalCount} críticas</span>
+              </p>
             </div>
 
             {/* Filter Bar for Master Table */}

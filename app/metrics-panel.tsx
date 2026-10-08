@@ -183,7 +183,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
         <div className="b2b-header-title">
           <div className="b2b-kicker">Por finca</div>
           <h2 id="farm-metrics-title">Evolución y control MIPE</h2>
-          <p>Peso oficial: Almacén 5%, Dosificación 30%, Transporte 5%, Mezclas 30% y Aplicación 30%.</p>
+          <p>Última visita revisada y cómo cambió en el periodo.</p>
         </div>
         {current && (
           <div className="b2b-header-actions">
@@ -299,8 +299,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
       ) : (
         <>
           {/* Executive KPI Scorecard with Recharts Trend Lines */}
-          <div className="b2b-kpi-grid">
-            <div className={`b2b-kpi-card ${current.status}`}>
+          <div className="b2b-reading">
+            <div className={`b2b-reading-primary ${current.status}`}>
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Índice MIPE</span>
                 <StatusBadge value={current.status}/>
@@ -309,62 +309,37 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <span className="b2b-kpi-value">{current.score}%</span>
                 <span className="text-xs font-semibold text-slate-500">{current.pointsEarned}/100</span>
               </div>
-              <div className="b2b-kpi-progress">
-                <div className={`b2b-kpi-progress-fill ${current.status}`} style={{width:`${Math.min(100,Math.max(0,current.score))}%`}}/>
-              </div>
+              <p className="b2b-reading-note">{current.positive}/{current.applicable} criterios conformes{current.criteriaCompliance!==null?` · ${current.criteriaCompliance}%`:''}</p>
             </div>
-
-            <div className="b2b-kpi-card highlight">
+            <div className="b2b-reading-stat">
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Variación</span>
-                <span className={`inline-flex items-center gap-1 text-xs font-bold ${data.trend==='improved'?'text-[#78be20]':data.trend==='declined'?'text-[#dc2626]':'text-slate-600'}`}>
-                  {data.trend==='improved'?<TrendingUp size={14}/>:data.trend==='declined'?<TrendingDown size={14}/>:<Minus size={14}/>}
-                  {metricTrendLabels[data.trend]}
-                </span>
+                {data.trend==='improved'?<TrendingUp size={14} className="text-[#78be20]"/>:data.trend==='declined'?<TrendingDown size={14} className="text-[#dc2626]"/>:<Minus size={14} className="text-[#58696d]"/>}
               </div>
               <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">
-                  {data.delta===null?'—':`${data.delta>0?'+':''}${data.delta}`}
-                </span>
+                <span className="b2b-kpi-value">{data.delta===null?'—':`${data.delta>0?'+':''}${data.delta}`}</span>
                 <span className="text-xs font-semibold text-slate-500">pts</span>
               </div>
+              <p className="b2b-reading-note">{metricTrendLabels[data.trend]}</p>
             </div>
-
-            <div className="b2b-kpi-card">
-              <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Conformidad</span>
-                <span className="text-xs font-bold text-slate-700">{current.positive}/{current.applicable}</span>
-              </div>
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">{current.criteriaCompliance!==null?`${current.criteriaCompliance}%`:'—'}</span>
-              </div>
-              <div className="b2b-kpi-progress">
-                <div className="b2b-kpi-progress-fill bg-[#00b5e2]" style={{width:`${current.criteriaCompliance||0}%`}}/>
-              </div>
-            </div>
-
-            <div className={`b2b-kpi-card ${current.findings>0?'critical':'healthy'}`}>
+            <div className="b2b-reading-stat">
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Hallazgos</span>
-                {current.findings>0?<AlertTriangle size={15} className="text-[#dc2626]"/>:<CheckCircle2 size={15} className="text-[#78be20]"/>}
+                {current.findings>0?<AlertTriangle size={14} className="text-[#dc2626]"/>:<CheckCircle2 size={14} className="text-[#78be20]"/>}
               </div>
               <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value" style={{color:current.findings>0?'#dc2626':'#78be20'}}>
-                  {current.findings}
-                </span>
-                <span className="text-xs font-semibold text-slate-500">en “No”</span>
+                <span className="b2b-kpi-value" style={{color:current.findings>0?'#dc2626':'#78be20'}}>{current.findings}</span>
               </div>
+              <p className="b2b-reading-note">Criterios en “No” en la última visita.</p>
             </div>
-
-            <div className="b2b-kpi-card">
+            <div className="b2b-reading-stat">
               <div className="b2b-kpi-header">
                 <span className="b2b-kpi-title">Cobertura</span>
-                <span className="text-xs font-bold text-[#007fa3]">{current.weightedCoveragePct}%</span>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{current.evaluatedChapters}/5</span>
-                <span className="text-xs font-semibold text-slate-500">capítulos</span>
               </div>
+              <p className="b2b-reading-note">{current.weightedCoveragePct}% del peso oficial.</p>
             </div>
           </div>
 
@@ -378,12 +353,9 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
 
               <div className="flex items-center gap-3 no-print">
                 <div className="b2b-quick-ranges">
-                  <button className={`b2b-range-btn ${chartView==='both'?'active':''}`} onClick={()=>setChartView('both')}>Ambos</button>
-                  <button className={`b2b-range-btn ${chartView==='score'?'active':''}`} onClick={()=>setChartView('score')}>Índice</button>
+                  <button className={`b2b-range-btn ${chartView==='both'?'active':''}`} onClick={()=>setChartView('both')}>Índice</button>
                   <button className={`b2b-range-btn ${chartView==='chapters'?'active':''}`} onClick={()=>setChartView('chapters')}>Procesos</button>
-                  <button className={`b2b-range-btn ${chartView==='compliance'?'active':''}`} onClick={()=>setChartView('compliance')}>Conformidad</button>
                   <button className={`b2b-range-btn ${chartView==='findings'?'active':''}`} onClick={()=>setChartView('findings')}>Hallazgos</button>
-                  <button className={`b2b-range-btn ${chartView==='coverage'?'active':''}`} onClick={()=>setChartView('coverage')}>Cobertura</button>
                 </div>
               </div>
             </div>
