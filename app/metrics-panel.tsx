@@ -30,7 +30,7 @@ import {
   Layers as LayersIcon
 } from 'lucide-react';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
-import {catalog,farmKey,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {actionLabels,catalog,farmKey,sameChapterScope,metricStatusDescriptions,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import {FarmChapterDetails} from './metric-chapter-details';
@@ -41,9 +41,9 @@ import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
   const labels:Record<MetricStatus,string>={
-    healthy:'Óptimo (≥ 95%)',
-    acceptable:'Aceptable (85-94%)',
-    critical:'Crítico (< 85%)',
+    healthy:'Saludable (95-100%)',
+    acceptable:'Alerta (80-94%)',
+    critical:'Vulnerable (< 80%)',
     pending:'Sin medición'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
@@ -79,11 +79,11 @@ function CustomTooltip({active,payload,label,view}:{active?:boolean;payload?:Too
             </span>
           ) : isHealthy ? (
             <span className="text-[10px] font-bold text-[#78be20] bg-emerald-950/80 px-2 py-0.5 rounded border border-[#78be20]/50">
-              ★ Meta Óptima ≥ 95%
+              ★ Saludable (95-100%)
             </span>
           ) : (
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${data.score>=85?'text-[#f2a900] bg-amber-950/80 border-[#f2a900]/50':'text-rose-300 bg-rose-950/80 border-rose-600/50'}`}>
-              {data.score>=85?'Aceptable (85-94%)':'Crítico (< 85%)'}
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${data.score>=80?'text-[#f2a900] bg-amber-950/80 border-[#f2a900]/50':'text-rose-300 bg-rose-950/80 border-rose-600/50'}`}>
+              {data.score>=80?'Alerta (80-94%)':'Vulnerable (< 80%)'}
             </span>
           )}
         </div>
@@ -117,11 +117,11 @@ function CustomTooltip({active,payload,label,view}:{active?:boolean;payload?:Too
               <b className="tabular-nums">{data.cap1!==null?`${data.cap1}%`:'—'}</b>
             </div>
             <div className="flex justify-between text-[#78be20]">
-              <span>2. Dosificación (30%):</span>
+              <span>2. Dosificación (25%):</span>
               <b className="tabular-nums">{data.cap2!==null?`${data.cap2}%`:'—'}</b>
             </div>
             <div className="flex justify-between text-[#f2a900]">
-              <span>3. Transporte (5%):</span>
+              <span>3. Transporte (10%):</span>
               <b className="tabular-nums">{data.cap3!==null?`${data.cap3}%`:'—'}</b>
             </div>
             <div className="flex justify-between text-[#38bdf8]">
@@ -187,8 +187,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
 
   const deltaSparkline:SparklinePoint[]=useMemo(()=>{
     if(data.records.length<=1)return [];
-    const baseScore=data.records[0]?.score??0;
-    return data.records.map(r=>{
+    const first=data.records[0];
+    const comparable=data.records.filter(record=>sameChapterScope(first.visit,record.visit));
+    if(comparable.length<=1)return [];
+    const baseScore=comparable[0].score;
+    return comparable.map(r=>{
       const delta=r.score-baseScore;
       return {
         date:r.date,
@@ -221,6 +224,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
   })),[data.records]);
   
   const current=data.latest;
+  const podium=data.records.slice(-3).map((record,index,items)=>{const previous=index>0?items[index-1]:undefined;return {record,label:index===items.length-1?'Última visita':index===items.length-2?'Visita anterior':'Inicio del periodo',delta:previous&&sameChapterScope(previous.visit,record.visit)?record.score-previous.score:null,hasPrevious:!!previous};});
   const currentYear=new Date().getFullYear();
 
   function setPreset(type:'all'|'lastYear'|'currentYear'){
@@ -268,7 +272,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
           <h2 id="farm-metrics-title">Evolución y Control MIPE por Finca</h2>
-          <p>Supervisión oficial ponderada por procesos: Almacén (5%), Dosificación (30%), Transporte (5%), Mezclas (30%) y Aplicación (30%).</p>
+          <p>Ponderación por capítulo: Almacén (5%), Dosificación (25%), Transporte (10%), Mezclas (30%) y Aplicación (30%).</p>
         </div>
 
         {current && (
@@ -306,12 +310,12 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#78be20]">
               <span className="font-bold text-[#78be20] block text-xs">Capítulo 2: Dosificación</span>
-              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">30 Puntos (30%)</b>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">25 Puntos (25%)</b>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">8 criterios de calibración, probetas y pesaje exacto de PPC.</p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#f2a900]">
               <span className="font-bold text-[#f2a900] block text-xs">Capítulo 3: Transporte</span>
-              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">5 Puntos (5%)</b>
+              <b className="text-base text-slate-900 dark:text-slate-100 block my-1">10 Puntos (10%)</b>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">4 criterios de traslado seguro y contención de derrames.</p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700/80 border-t-2 border-t-[#00b5e2]">
@@ -327,10 +331,10 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           </div>
 
           <div className="mt-3.5 text-[11.5px] text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3 flex flex-wrap gap-x-6 gap-y-1.5">
-            <span>• <strong>Lógica de puntuación:</strong> Los capítulos 2, 4 y 5 aportan el 90% del peso normativo por su criticidad agronómica directa.</span>
-            <span>• <strong>Meta Óptima Oficial:</strong> <span className="text-[#15803d] font-bold">≥ 95%</span> (Estándar de floricultura para auditorías internacionales).</span>
-            <span>• <strong>Rango Aceptable:</strong> <span className="text-[#92400e] font-bold">85% a 94%</span> (Permite seguimiento con compromisos correctivos).</span>
-            <span>• <strong>Límite Crítico:</strong> <span className="text-[#dc2626] font-bold">&lt; 85%</span> (Exige plan de contingencia inmediato).</span>
+            <span>• <strong>Lógica de puntuación:</strong> Los capítulos 2, 4 y 5 aportan el 85% del peso total.</span>
+            <span>• <strong>Saludable:</strong> <span className="text-[#15803d] font-bold">95% a 100%</span>.</span>
+            <span>• <strong>Alerta:</strong> <span className="text-[#92400e] font-bold">80% a 94%</span>.</span>
+            <span>• <strong>Vulnerable:</strong> <span className="text-[#dc2626] font-bold">&lt; 80%</span>.</span>
             <span>• <strong>No Aplica (NA):</strong> Se excluye del cálculo sin penalizar puntuación ni inflar conformidad.</span>
           </div>
         </div>
@@ -421,18 +425,14 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
 
               <div className="b2b-kpi-footer">
-                {current.score >= 95
-                  ? 'Nivel Óptimo de Certificación (≥ 95%): cumple con holgura los estándares técnicos para auditorías GlobalGAP, Florverde e ICA.'
-                  : current.score >= 85
-                  ? 'Nivel Aceptable (85-94%): finca bajo control operativo; subsanar desviaciones abiertas para consolidar el 95%.'
-                  : 'Nivel Crítico (< 85%): por debajo del umbral de certificación; exige plan de contingencia técnico inmediato.'}
+                {metricStatusDescriptions[current.status]}
               </div>
 
               <div className="b2b-kpi-progress-wrap">
                 <div className="b2b-kpi-progress">
                   <div className={`b2b-kpi-progress-fill ${current.status}`} style={{width:`${Math.min(100,Math.max(0,current.score))}%`}}/>
                 </div>
-                <div className="b2b-kpi-target-mark acceptable" style={{left:'85%'}} title="Umbral Aceptable: 85%"/>
+                <div className="b2b-kpi-target-mark acceptable" style={{left:'80%'}} title="Umbral Alerta: 80%"/>
                 <div className="b2b-kpi-target-mark" style={{left:'95%'}} title="Meta Óptima: 95%"/>
               </div>
             </div>
@@ -469,7 +469,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     ({data.recentDelta>0?'+':''}{data.recentDelta} vs previa)
                   </span>
                 ) : (
-                  <span className="text-xs font-semibold text-slate-400">Punto inicial</span>
+                  <span className="text-xs font-semibold text-slate-400">{data.records.length>1?'Alcance distinto':'Punto inicial'}</span>
                 )}
               </div>
 
@@ -480,7 +480,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
 
               <div className="b2b-kpi-footer">
                 {data.delta===null
-                  ? 'Primera auditoría registrada: punto de referencia oficial para evaluar ciclos futuros.'
+                  ? data.records.length<=1?'Primera medición: punto de referencia para evaluar ciclos futuros.':'Cambió el alcance de capítulos; no se compara la variación hasta tener dos visitas con el mismo alcance.'
                   : data.delta >= 5
                   ? `Avance acumulado de +${data.delta} puntos sobre el estado inicial; trayectoria favorable sostenida.`
                   : data.delta <= -5
@@ -609,6 +609,29 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
           </div>
 
+
+          {podium.length>0&&(
+            <section className="b2b-card-block">
+              <div className="b2b-kicker">Comparación de visitas</div>
+              <h3>Podio de mejora y desmejora</h3>
+              <p className="sub">Compara puntuaciones revisadas y muestra la variación entre visitas consecutivas.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                {podium.map((point,index)=>(
+                  <div key={point.record.visit.id} className={index===podium.length-1?'rounded-xl border border-[#007fa3] bg-sky-50 p-4':'rounded-xl border border-slate-200 bg-slate-50 p-4'}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-600">{index===0?'①':index===1?'②':'③'} {point.label}</span>
+                      <StatusBadge value={point.record.status}/>
+                    </div>
+                    <strong className="block text-3xl text-slate-900 mt-2 tabular-nums">{point.record.score}%</strong>
+                    <span className="text-xs text-slate-500">{point.record.date} · {point.record.pointsEarned} puntos</span>
+                    {point.delta!==null&&<p className={point.delta>0?'mt-2 text-sm font-bold text-emerald-700':point.delta<0?'mt-2 text-sm font-bold text-rose-700':'mt-2 text-sm font-bold text-slate-600'}>{point.delta>0?'Mejora +'+point.delta+' puntos':point.delta<0?'Desmejora '+point.delta+' puntos':'Sin variación'}</p>}
+                    {point.delta===null&&<p className="mt-2 text-xs text-slate-500">{point.hasPrevious?'Alcance distinto; sin comparación':'Línea base del periodo'}</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Process Bottleneck Quick Insight */}
           {bottleneckChapter && (bottleneckChapter.maxPoints - bottleneckChapter.pointsEarned) > 0 && (
             <div className="p-4 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between flex-wrap gap-3 text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
@@ -679,7 +702,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     {chartView!=='findings' && (
                       <>
                         <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Óptima (≥ 95%)',fill:'#15803d',fontSize:10,fontWeight:700,position:'insideTopRight'}}/>
-                        <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Aceptable (85%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
+                        <ReferenceLine y={80} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Alerta (80%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
                       </>
                     )}
                     
@@ -698,8 +721,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     {(chartView==='chapters') && (
                       <>
                         <Line type="monotone" name="1. Almacén (5%)" dataKey="cap1" stroke="#007fa3" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#007fa3'}} activeDot={{r:6}}/>
-                        <Line type="monotone" name="2. Dosificación (30%)" dataKey="cap2" stroke="#78be20" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#78be20'}} activeDot={{r:6}}/>
-                        <Line type="monotone" name="3. Transporte (5%)" dataKey="cap3" stroke="#f2a900" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#f2a900'}} activeDot={{r:6}}/>
+                        <Line type="monotone" name="2. Dosificación (25%)" dataKey="cap2" stroke="#78be20" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#78be20'}} activeDot={{r:6}}/>
+                        <Line type="monotone" name="3. Transporte (10%)" dataKey="cap3" stroke="#f2a900" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#f2a900'}} activeDot={{r:6}}/>
                         <Line type="monotone" name="4. Mezclas (30%)" dataKey="cap4" stroke="#00b5e2" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#00b5e2'}} activeDot={{r:6}}/>
                         <Line type="monotone" name="5. Aplicación (30%)" dataKey="cap5" stroke="#005f7a" strokeWidth={2.5} connectNulls dot={{r:4,fill:'#005f7a'}} activeDot={{r:6}}/>
                       </>
@@ -742,11 +765,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                   </div>
                   <div className="b2b-legend-item">
                     <span className="b2b-legend-dot bg-[#78be20]"/>
-                    <span>2. Dosificación (30%)</span>
+                    <span>2. Dosificación (25%)</span>
                   </div>
                   <div className="b2b-legend-item">
                     <span className="b2b-legend-dot bg-[#f2a900]"/>
-                    <span>3. Transporte (5%)</span>
+                    <span>3. Transporte (10%)</span>
                   </div>
                   <div className="b2b-legend-item">
                     <span className="b2b-legend-dot bg-[#00b5e2]"/>
@@ -762,11 +785,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <>
                   <div className="b2b-legend-item">
                     <span className="b2b-legend-dot bg-[#16a34a]"/>
-                    <span>Meta Óptima Oficial MIPE ≥ 95%</span>
+                    <span>Saludable MIPE 95%-100%</span>
                   </div>
                   <div className="b2b-legend-item">
                     <span className="b2b-legend-dot bg-[#d97706]"/>
-                    <span>Rango Aceptable 85% a 94%</span>
+                    <span>Alerta 80% a 94%</span>
                   </div>
                 </>
               )}
@@ -796,7 +819,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
 
             <div className="b2b-card-block">
               <h3>Desglose y Ponderación por Proceso Normativo</h3>
-              <p className="sub">Distribución oficial de los 5 capítulos MIPE con pesos normativos (5%, 30%, 5%, 30%, 30%).</p>
+              <p className="sub">Distribución oficial de los 5 capítulos MIPE con pesos normativos (5%, 25%, 10%, 30%, 30%).</p>
               <FarmChapterDetails chapters={data.chapters}/>
             </div>
           </div>
@@ -806,7 +829,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="b2b-kicker">Gestión de Riesgo Fitosanitario</div>
-                <h3>Hallazgos Técnicos y Alertas de la Última Visita</h3>
+                <h3>Acciones correctivas prioritarias</h3>
               </div>
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
                 <span>{data.problems.length} desviación{data.problems.length===1?'':'es'} identificada{data.problems.length===1?'':'s'}</span>
@@ -828,7 +851,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                         <span className="b2b-alert-tag">Capítulo {problem.chapter}</span>
                         {problem.chapter === 2 || problem.chapter === 4 || problem.chapter === 5 ? (
                           <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
-                            Proceso Crítico 30%
+                            Peso {problem.weightPct}%
                           </span>
                         ) : null}
                       </div>
@@ -838,6 +861,12 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                         <p className="text-slate-600 m-0 leading-relaxed">
                           {problem.recommendation || 'Registrar plan de acción correctiva con responsable y plazo.'}
                         </p>
+                        <div className="mt-2 text-[11px] text-slate-600 flex flex-wrap gap-x-3 gap-y-1">
+                          <span>Responsable: <strong>{problem.action.owner||'Sin asignar'}</strong></span>
+                          <span>Fecha objetivo: <strong>{problem.action.due||'Sin definir'}</strong></span>
+                          <span>Estado: <strong>{actionLabels[problem.action.status as keyof typeof actionLabels]||problem.action.status}</strong></span>
+                          {problem.action.closure&&<span>Verificación de cierre: <strong>{problem.action.closure}</strong></span>}
+                        </div>
                       </div>
                     </div>
 

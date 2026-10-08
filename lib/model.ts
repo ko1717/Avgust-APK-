@@ -30,8 +30,8 @@ export function ungroupedMeasurements(measurements:Record<string,string>){
  const grouped=new Set<string>(measurementGroups.flatMap(group=>group.keys));
  return Object.entries(measurementLabels).filter(([key])=>!grouped.has(key)&&!!measurements[key]?.trim()).map(([key,label])=>({key,label,value:measurements[key]}));
 }
-export const CHAPTER_WEIGHTS:Record<number,number> = {1:0.05, 2:0.30, 3:0.05, 4:0.30, 5:0.30};
-export const CHAPTER_MAX_POINTS:Record<number,number> = {1:5, 2:30, 3:5, 4:30, 5:30};
+export const CHAPTER_WEIGHTS:Record<number,number> = {1:0.05, 2:0.25, 3:0.10, 4:0.30, 5:0.30};
+export const CHAPTER_MAX_POINTS:Record<number,number> = {1:5, 2:25, 3:10, 4:30, 5:30};
 
 export function todayDate(): string {
   try {
@@ -102,8 +102,9 @@ export function metrics(v:Visit) {
   status: metricStatus(score)
  };
 }
-export function metricStatus(score:number|null):MetricStatus{return score===null?'pending':score>=95?'healthy':score>=85?'acceptable':'critical';}
-export const metricStatusLabels:Record<MetricStatus,string>={healthy:'Saludable',acceptable:'Aceptable',critical:'Crítico',pending:'Sin medición'};
+export function metricStatus(score:number|null):MetricStatus{return score===null?'pending':score>=95?'healthy':score>=80?'acceptable':'critical';}
+export const metricStatusLabels:Record<MetricStatus,string>={healthy:'Saludable',acceptable:'Alerta',critical:'Vulnerable',pending:'Sin medición'};
+export const metricStatusDescriptions:Record<MetricStatus,string>={healthy:'Proceso de aspersión confiable que favorece la eficiencia del control fitosanitario y contribuye a mantener la sanidad del cultivo.',acceptable:'Desviaciones que pueden comprometer la eficiencia de la aspersión que requiere una acción correctiva.',critical:'Deficiencias importantes que ponen en riesgo la protección fitosanitaria del cultivo.',pending:'Sin una visita revisada con criterios aplicables.'};
 export function visitMetric(v:Visit):VisitMetric{const m=metrics(v);return {score:m.score,status:m.status,applicable:m.applicable,positive:m.positive,findings:m.findings,date:v.date,responsible:v.responsible};}
 export function metricTrend(previous:VisitMetric|undefined,current:VisitMetric):'improved'|'stable'|'declined'|'first'|'pending'{if(!previous)return current.score===null?'pending':'first';if(previous.score===null||current.score===null)return 'pending';const delta=current.score-previous.score;return delta>=5?'improved':delta<=-5?'declined':'stable';}
 export const metricTrendLabels={improved:'Aumentó',stable:'Estable',declined:'Disminuyó',first:'Primera medición',pending:'Sin comparación'};
@@ -123,12 +124,17 @@ export function issues(v:Visit):string[] {
  return errors;
 }
 export function findings(v:Visit){
- return catalog.filter(c=>v.chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>v.answers[q.id]?.value==='NO').map(q=>({id:q.id,text:q.text,answer:v.answers[q.id],action:v.actions?.[q.id]||blankAction()}));
+ const chapters=v.chapters?.length?v.chapters:[1,2,3,4,5];
+ return catalog.filter(c=>chapters.includes(c.id)).flatMap(c=>c.items).filter(q=>v.answers[q.id]?.value==='NO').map(q=>({id:q.id,text:q.text,answer:v.answers[q.id],action:v.actions?.[q.id]||blankAction()}));
 }
 export function recommendationDraft(itemId:string){const item=catalog.flatMap(c=>c.items).find(q=>q.id===itemId);return `Corregir el incumplimiento identificado${item?` en ${item.id}`:''}, documentar la acción realizada y verificar su cierre en la próxima visita.`;}
 export function localDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 export function overdue(a:Action,today=localDate()){return ['pending','progress'].includes(a.status)&&!!a.due&&a.due<today;}
 export function farmKey(name:string){return name.trim().replace(/\s+/g,' ').toLocaleLowerCase('es');}
+export function sameChapterScope(a:Pick<Visit,'chapters'>,b:Pick<Visit,'chapters'>){
+ const ids=(visit:Pick<Visit,'chapters'>)=>visit.chapters?.length?[...visit.chapters].sort((x,y)=>x-y):[1,2,3,4,5];
+ return JSON.stringify(ids(a))===JSON.stringify(ids(b));
+}
 export function compareVisits(previous:Visit,current:Visit){
  const prior=findings(previous);const active=new Set(catalog.filter(c=>current.chapters.includes(c.id)).flatMap(c=>c.items.map(q=>q.id)));
  return prior.map(q=>({...q,result:!active.has(q.id)?'Sin reevaluar':current.answers[q.id]?.value==='SI'?'Corregido':current.answers[q.id]?.value==='NO'?'Recurrente':current.answers[q.id]?.value==='NA'?'No aplica':'Sin reevaluar'}));

@@ -31,7 +31,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import {catalog,farmKey,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {actionLabels,catalog,CHAPTER_WEIGHTS,findings,farmKey,metricStatusDescriptions,sameChapterScope,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {compareFarmBenchmarks,consolidatedMetricAnalysis} from '@/lib/metric-analysis';
 import {exportConsolidatedMatrixExcel} from '@/lib/export-matrix-excel';
 import {exportConsolidatedMatrixCsv} from '@/lib/export-matrix-csv';
@@ -43,9 +43,9 @@ import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
   const labels:Record<MetricStatus,string>={
-    healthy:'Óptimo (≥ 95%)',
-    acceptable:'Aceptable (85-94%)',
-    critical:'Crítico (< 85%)',
+    healthy:'Saludable (95-100%)',
+    acceptable:'Alerta (80-94%)',
+    critical:'Vulnerable (<80%)',
     pending:'Sin evaluar'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
@@ -106,15 +106,26 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       // Sort chronologically by date and revision/updated
       records.sort((a,b)=>{
         const dateCmp=a.date.localeCompare(b.date);
-        if(dateCmp!==0) return dateCmp;
-        const updA=a.visit.updated||'';
-        const updB=b.visit.updated||'';
-        if(updA&&updB) return updA.localeCompare(updB);
-        return (a.visit.revision||0) - (b.visit.revision||0);
+        if(dateCmp!==0)return dateCmp;
+        return (a.visit.revision||0)-(b.visit.revision||0)||a.visit.id.localeCompare(b.visit.id);
       });
 
       const latest=records[records.length-1];
-      const evaluatedChapters=latest.evaluatedChapters ? latest.evaluatedChapters : latest.visit.chapters.length;
+      const previous=records.length>1?records[records.length-2]:undefined;
+      const comparable=!!previous&&sameChapterScope(previous.visit,latest.visit);
+      const recentDelta=comparable?latest.score-previous!.score:null;
+      const evaluatedChapters=latest.evaluatedChapters;
+      const correctiveActions=findings(latest.visit).map(problem=>({
+        id:problem.id,
+        chapter:Number(problem.id.split('.')[0]),
+        weightPct:Math.round((CHAPTER_WEIGHTS[Number(problem.id.split('.')[0])]||0)*100),
+        text:problem.text,
+        recommendation:problem.answer.recommendation||'Definir y documentar la acción correctiva.',
+        owner:problem.action.owner,
+        due:problem.action.due,
+        status:problem.action.status,
+        closure:problem.action.closure
+      }));
 
       return {
         farm:latest.visit.farm,
@@ -124,6 +135,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         totalVisits:records.length,
         latestDate:latest.date,
         latestScore:latest.score,
+        recentDelta,
+        correctiveActions,
         latestFindings:latest.findings,
         latestApplicable:latest.applicable,
         latestStatus:latest.status,
@@ -153,6 +166,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
     });
   },[fleetFarms,fleetSearch,fleetStatusFilter,fleetScopeFilter]);
 
+  const improvingFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta>0).sort((a,b)=>(b.recentDelta||0)-(a.recentDelta||0)).slice(0,3),[filteredFleet]);
+  const decliningFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta<0).sort((a,b)=>(a.recentDelta||0)-(b.recentDelta||0)).slice(0,3),[filteredFleet]);
   const completeAuditsCount=useMemo(()=>fleetFarms.filter(f=>f.evaluatedChaptersCount===5).length,[fleetFarms]);
   const healthyCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='healthy').length,[fleetFarms]);
   const acceptableCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='acceptable').length,[fleetFarms]);
@@ -269,15 +284,16 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </div>
 
               <div className="b2b-kpi-footer">
-                {healthyCount} fincas en nivel óptimo (≥95%) · {acceptableCount} en aceptable (85-94%) · {criticalCount} en crítico (&lt;85%).
+                <strong>{metricStatusLabels[data.status]}:</strong> {metricStatusDescriptions[data.status]}
+                <span className="block mt-1">{healthyCount} saludables · {acceptableCount} en alerta · {criticalCount} vulnerables.</span>
               </div>
 
               <div className="b2b-kpi-progress-wrap">
                 <div className="b2b-kpi-progress">
                   <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${fleetAverageScore||0}%`}}/>
                 </div>
-                <div className="b2b-kpi-target-mark acceptable" style={{left:'85%'}} title="Umbral Aceptable: 85%"/>
-                <div className="b2b-kpi-target-mark" style={{left:'95%'}} title="Meta Óptima: 95%"/>
+                <div className="b2b-kpi-target-mark acceptable" style={{left:'80%'}} title="Umbral Alerta: 80%"/>
+                <div className="b2b-kpi-target-mark" style={{left:'95%'}} title="Saludable: 95-100%"/>
               </div>
             </div>
 
@@ -441,15 +457,15 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
                   <span className="w-2 h-2 rounded-full bg-[#78be20]"></span>
-                  {healthyCount} Óptimas (≥95%)
+                  {healthyCount} Saludables (95-100%)
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold">
                   <span className="w-2 h-2 rounded-full bg-[#f2a900]"></span>
-                  {acceptableCount} Aceptables (85-94%)
+                  {acceptableCount} En alerta (80-94%)
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-bold">
                   <span className="w-2 h-2 rounded-full bg-[#dc2626]"></span>
-                  {criticalCount} Críticas (&lt;85%)
+                  {criticalCount} Vulnerables (&lt;80%)
                 </span>
               </div>
             </div>
@@ -479,9 +495,9 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                     className="b2b-input py-1 text-xs"
                   >
                     <option value="all">Todos los estados</option>
-                    <option value="healthy">Óptimo (≥95%)</option>
-                    <option value="acceptable">Aceptable (85-94%)</option>
-                    <option value="critical">Crítico (&lt;85%)</option>
+                    <option value="healthy">Saludable (95-100%)</option>
+                    <option value="acceptable">Alerta (80-94%)</option>
+                    <option value="critical">Vulnerable (&lt;80%)</option>
                   </select>
                 </label>
 
@@ -499,6 +515,19 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   </select>
                 </label>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+              <section className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4" aria-label="Podio de mejora entre fincas">
+                <h4 className="font-bold text-emerald-900 flex items-center gap-2"><TrendingUp size={17}/> Mayores mejoras recientes</h4>
+                <p className="text-xs text-emerald-800 mt-1">Variación respecto a la visita previa con el mismo alcance de capítulos.</p>
+                {improvingFarms.length?improvingFarms.map((farm,index)=><div key={farm.key} className="flex justify-between gap-3 border-t border-emerald-200 mt-2 pt-2 text-sm"><span>{index===0?'🥇':index===1?'🥈':'🥉'} {farm.farm}</span><strong className="text-emerald-800">+{farm.recentDelta} pts</strong></div>):<p className="text-xs text-slate-600 mt-2">No hay mejoras comparables en el filtro actual.</p>}
+              </section>
+              <section className="rounded-xl border border-rose-200 bg-rose-50/70 p-4" aria-label="Podio de desmejora entre fincas">
+                <h4 className="font-bold text-rose-900 flex items-center gap-2"><TrendingDown size={17}/> Mayores desmejoras recientes</h4>
+                <p className="text-xs text-rose-800 mt-1">Variación respecto a la visita previa con el mismo alcance de capítulos.</p>
+                {decliningFarms.length?decliningFarms.map((farm,index)=><div key={farm.key} className="flex justify-between gap-3 border-t border-rose-200 mt-2 pt-2 text-sm"><span>{index===0?'🥇':index===1?'🥈':'🥉'} {farm.farm}</span><strong className="text-rose-800">{farm.recentDelta} pts</strong></div>):<p className="text-xs text-slate-600 mt-2">No hay desmejoras comparables en el filtro actual.</p>}
+              </section>
             </div>
 
             {/* Fleet Master Table */}
@@ -574,7 +603,10 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                           </span>
                         </td>
                         <td>
-                          <StatusBadge value={farm.latestStatus}/>
+                          <div title={metricStatusDescriptions[farm.latestStatus]}>
+                            <StatusBadge value={farm.latestStatus}/>
+                            <span className="block max-w-[210px] mt-1 text-[10px] leading-snug text-slate-500">{metricStatusDescriptions[farm.latestStatus]}</span>
+                          </div>
                         </td>
                         <td>
                           <span className="text-xs text-slate-600 font-medium">{farm.responsible||'Sin asignar'}</span>
@@ -598,6 +630,29 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <span>Metodología oficial AVGUST Crop Protection · Escala 0-100 Puntos</span>
             </div>
           </div>
+
+          <section className="b2b-card-block">
+            <div className="b2b-kicker">Plan de mejora</div>
+            <h3>Acciones correctivas por finca</h3>
+            <p className="sub">Hallazgos de la visita revisada más reciente, con recomendación, responsable, fecha objetivo y estado.</p>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-3">
+              {filteredFleet.filter(farm=>farm.correctiveActions.length>0).map(farm=>(
+                <article key={farm.key} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-2"><h4 className="font-bold text-slate-900">{farm.farm}</h4><span className="text-xs text-slate-500">{farm.latestDate}</span></div>
+                  <ul className="mt-3 space-y-3">
+                    {farm.correctiveActions.map(action=>(
+                      <li key={action.id} className="border-l-2 border-amber-400 pl-3">
+                        <div className="flex flex-wrap items-center gap-2 text-xs"><strong>Criterio {action.id}</strong><span>Cap. {action.chapter} · {action.weightPct}%</span><span className="rounded bg-rose-50 px-2 py-0.5 text-rose-800">Hallazgo: {action.text}</span></div>
+                        <p className="my-1 text-sm text-slate-700"><strong>Acción:</strong> {action.recommendation}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500"><span>Responsable: {action.owner||'Sin asignar'}</span><span>Fecha objetivo: {action.due||'Sin definir'}</span><span>Estado: {actionLabels[action.status as keyof typeof actionLabels]||action.status}</span>{action.closure&&<span>Verificación: {action.closure}</span>}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+              {!filteredFleet.some(farm=>farm.correctiveActions.length>0)&&<p className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">No hay acciones correctivas registradas en las visitas recientes del alcance seleccionado.</p>}
+            </div>
+          </section>
 
           {/* Benchmark / Ranking Comparison entre fincas con igual alcance */}
           <div className="b2b-card-block">
@@ -698,7 +753,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                       {(timelineView==='score'||timelineView==='all') && (
                         <>
                           <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Óptima (≥ 95%)',fill:'#15803d',fontSize:10,fontWeight:700,position:'insideTopRight'}}/>
-                          <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Aceptable (85%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
+                          <ReferenceLine y={80} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Alerta (80%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
                         </>
                       )}
                       {(timelineView==='score'||timelineView==='all') && (

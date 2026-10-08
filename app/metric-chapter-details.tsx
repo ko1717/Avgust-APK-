@@ -32,8 +32,8 @@ import type {ChapterMetricDetail,ConsolidatedMetricAnalysis} from '@/lib/metric-
 function Status({value}:{value:MetricStatus}){
   const labels:Record<MetricStatus,string>={
     healthy:'Saludable',
-    acceptable:'Aceptable',
-    critical:'Crítico',
+    acceptable:'Alerta',
+    critical:'Vulnerable',
     pending:'Sin evaluar'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
@@ -168,7 +168,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                         ? 'bg-slate-100 text-slate-600 border-slate-200'
                         : sc >= 95
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
-                          : sc >= 85
+                          : sc >= 80
                             ? 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
                             : 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
                       return (
@@ -294,7 +294,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                         <span className="w-2.5 h-0.5 bg-emerald-600 inline-block"/> Meta Saludable ≥ 95%
                       </span>
                       <span className="flex items-center gap-1 text-amber-700 font-semibold">
-                        <span className="w-2.5 h-0.5 bg-amber-500 inline-block"/> Rango Aceptable ≥ 85%
+                        <span className="w-2.5 h-0.5 bg-amber-500 inline-block"/> Alerta ≥ 80%
                       </span>
                     </div>
                   </div>
@@ -311,7 +311,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                       <XAxis dataKey="visitName" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#475569'}}/>
                       <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
                       <ReferenceLine y={95} stroke="#16a34a" strokeDasharray="4 4" strokeWidth={1.5}/>
-                      <ReferenceLine y={85} stroke="#d97706" strokeDasharray="4 4" strokeWidth={1.5}/>
+                      <ReferenceLine y={80} stroke="#d97706" strokeDasharray="4 4" strokeWidth={1.5}/>
                       <Tooltip
                         content={({active,payload})=>{
                           if(!active || !payload?.length) return null;
@@ -345,7 +345,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                     <div className="flex items-center flex-wrap gap-1">
                       {visits.map((v, i) => {
                         const sc = v.score ?? 0;
-                        const chipColor = sc >= 95 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : sc >= 85 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-rose-700 bg-rose-50 border-rose-200';
+                        const chipColor = sc >= 95 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : sc >= 80 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-rose-700 bg-rose-50 border-rose-200';
                         return (
                           <span key={v.visitId || i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold ${chipColor}`}>
                             <span>V{i+1} ({shortDate(v.date)}):</span>
@@ -367,8 +367,8 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                     </span>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                       <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#16a34a]"/> ≥ 95%
-                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#f59e0b]"/> 85-94%
-                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#e11d48]"/> &lt; 85%
+                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#f59e0b]"/> 80-94%
+                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#e11d48]"/> &lt; 80%
                     </div>
                   </div>
 
@@ -396,7 +396,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                       <Bar dataKey="complianceRate" radius={[4,4,0,0]} barSize={24} isAnimationActive={false}>
                         {subcriteriaData.map(entry => {
                           const rate = entry.complianceRate;
-                          const fill = rate >= 95 ? '#16a34a' : rate >= 85 ? '#f59e0b' : '#e11d48';
+                          const fill = rate >= 95 ? '#16a34a' : rate  >= 80 ? '#f59e0b' : '#e11d48';
                           return <Cell key={`cell-${entry.id}`} fill={fill}/>;
                         })}
                       </Bar>
@@ -537,7 +537,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                               </span>
                               <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                                 <div
-                                  className={`h-full ${compliancePct >= 95 ? 'bg-emerald-500' : compliancePct >= 85 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                  className={`h-full ${compliancePct >= 95 ? 'bg-emerald-500' : compliancePct  >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                   style={{width:`${compliancePct}%`}}
                                 />
                               </div>

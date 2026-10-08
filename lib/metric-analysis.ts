@@ -1,47 +1,43 @@
-import {catalog,farmKey,findings,metrics,metricStatus,metricTrend,type MetricStatus,type Visit} from './model';
-import {calculateVisitScore} from '../migration/source-core/mipe-scoring.mjs';
+import {catalog,CHAPTER_WEIGHTS,farmKey,findings,metrics,metricStatus,metricTrend,sameChapterScope,type MetricStatus,type Visit} from './model';
 
 export type MetricRecord={visit:Visit;score:number;status:MetricStatus;applicable:number;positive:number;findings:number;date:string;responsible:string;weightedScore:number|null;pointsEarned:number;criteriaCompliance:number|null;weightedCoveragePct:number;evaluatedChapters:number};
 export type ChapterVisitAnswer={date:string;visitId:string;answer:string|null;score:number|null;observation?:string;recommendation?:string};
 export type ChapterMetricItem={id:string;text:string;firstAnswer:string|null;latestAnswer:string|null;firstScore:number|null;latestScore:number|null;allVisits:ChapterVisitAnswer[]};
 export type ChapterVisitEvolution={date:string;visitId:string;score:number|null;pointsEarned:number;findings:number;applicable:number;status:MetricStatus};
 export type ChapterMetricDetail={id:number;title:string;weight:number;weightPct:number;maxPoints:number;pointsEarned:number;firstPointsEarned:number;score:number|null;firstScore:number|null;findings:number;applicable:number;status:MetricStatus;items:ChapterMetricItem[];visitEvolution:ChapterVisitEvolution[]};
-export type FarmMetricProblem={id:string;text:string;recommendation:string;chapter:number;occurrences:number;consecutiveStreak:number;isRecurrent:boolean;isReincident:boolean;isNew:boolean};
+export type FarmMetricProblem={id:string;text:string;recommendation:string;chapter:number;weightPct:number;action:{owner:string;due:string;status:string;closure:string};occurrences:number;consecutiveStreak:number;isRecurrent:boolean;isReincident:boolean;isNew:boolean};
 export type FarmMetricAnalysis={farm:string;records:MetricRecord[];first?:MetricRecord;latest?:MetricRecord;trend:ReturnType<typeof metricTrend>;delta:number|null;recentDelta?:number|null;yearly:{year:string;average:number;closing:number;visits:number;status:MetricStatus}[];chapters:ChapterMetricDetail[];problems:FarmMetricProblem[]};
 export type ConsolidatedMetricAnalysis={records:MetricRecord[];farms:number;applicable:number;findings:number;score:number|null;weightedScore?:number|null;status:MetricStatus;timeline:{period:string;score:number;complianceScore?:number|null;findings:number;reports:number;status:MetricStatus}[];trend:ReturnType<typeof metricTrend>;chapters:{id:number;title:string;applicable:number;findings:number;score:number|null;status:MetricStatus;farms:number}[];items:{id:string;chapter:number;chapterTitle:string;text:string;applicable:number;findings:number;rate:number;farms:number}[];matrix:{farm:string;date:string;responsible:string;chapter:string;item:string;text:string;answer:string;observation:string;recommendation:string}[]};
 export type FarmBenchmarkRecord={farm:string;date:string;score:number;findings:number;applicable:number;chapterIds:number[];rank:number;tied:boolean};
 export type FarmBenchmark={groups:{chapterIds:number[];records:FarmBenchmarkRecord[]}[];singleScopes:{farm:string;date:string;chapterIds:number[]}[];ambiguousFarms:string[]};
 
 function metricRecord(visit:Visit):MetricRecord|null{
- const m=metrics(visit),weighted=calculateVisitScore(visit);
+ const m=metrics(visit);
  if(m.score===null)return null;
- return {visit,score:m.score,status:m.status,applicable:m.applicable,positive:m.positive,findings:m.findings,date:visit.date,responsible:visit.responsible,weightedScore:weighted.weightedScore,pointsEarned:weighted.pointsEarned,criteriaCompliance:weighted.criteriaCompliance,weightedCoveragePct:Math.round(weighted.auditedWeight*100),evaluatedChapters:weighted.evaluatedChapters.length};
+ return {visit,score:m.score,status:m.status,applicable:m.applicable,positive:m.positive,findings:m.findings,date:visit.date,responsible:visit.responsible,weightedScore:m.weightedScore,pointsEarned:m.pointsEarned,criteriaCompliance:m.criteriaCompliance,weightedCoveragePct:Math.round(m.auditedWeight*100),evaluatedChapters:m.evaluatedChapters.length};
 }
 
-const CHAPTER_CONFIG:Record<number,{weight:number;maxPoints:number}>={
- 1:{weight:0.05,maxPoints:5},
- 2:{weight:0.30,maxPoints:30},
- 3:{weight:0.05,maxPoints:5},
- 4:{weight:0.30,maxPoints:30},
- 5:{weight:0.30,maxPoints:30}
-};
+const CHAPTER_CONFIG:Record<number,{weight:number;maxPoints:number}>=Object.fromEntries(
+ Object.entries(CHAPTER_WEIGHTS).map(([id,weight])=>[Number(id),{weight,maxPoints:weight*100}])
+);
 
 function chapterStats(visit:Visit|undefined,chapterId:number){
  const chapter=catalog.find(item=>item.id===chapterId);
- const visitChapters = visit?.chapters && visit.chapters.length ? visit.chapters : [1, 2, 3, 4, 5];
- const included=!!visit && visitChapters.includes(chapterId);
+ const visitChapters=visit?.chapters&&visit.chapters.length?visit.chapters:[1,2,3,4,5];
+ const included=!!visit&&visitChapters.includes(chapterId);
  const applicable=chapter?.items.filter(item=>included&&['SI','NO'].includes(visit?.answers[item.id]?.value||''))||[];
  const positive=applicable.filter(item=>visit?.answers[item.id]?.value==='SI').length;
- const score=applicable.length?Math.round((positive/applicable.length)*100):null;
+ const assessment=visit?metrics(visit):null;
+ const score=included?assessment?.chapterScores[chapterId]??null:null;
  const cfg=CHAPTER_CONFIG[chapterId]||{weight:0.2,maxPoints:20};
- const pointsEarned=applicable.length?Math.round(((positive/applicable.length)*cfg.maxPoints)*10)/10:0;
+ const pointsEarned=included?assessment?.chapterPoints[chapterId]??0:0;
  return {score,findings:applicable.length-positive,applicable:applicable.length,status:metricStatus(score),pointsEarned,weight:cfg.weight,weightPct:Math.round(cfg.weight*100),maxPoints:cfg.maxPoints};
 }
 
 export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis{
  const key=farmKey(farm);
- const records=visits.filter(v=>v.reviewed&&farmKey(v.farm)===key).map(metricRecord).filter((r):r is MetricRecord=>r!==null).sort((a,b)=>a.date.localeCompare(b.date));
- const first=records[0],latest=records.at(-1),trend=latest?metricTrend(records.length>1?first:undefined,latest):'pending';
+ const records=visits.filter(v=>v.reviewed&&farmKey(v.farm)===key).map(metricRecord).filter((r):r is MetricRecord=>r!==null).sort((a,b)=>a.date.localeCompare(b.date)||(a.visit.revision||0)-(b.visit.revision||0)||a.visit.id.localeCompare(b.visit.id));
+ const first=records[0],latest=records.at(-1),sameEndpointScope=!!first&&!!latest&&sameChapterScope(first.visit,latest.visit),trend=latest?records.length>1&&sameEndpointScope?metricTrend(first,latest):records.length===1?'first':'pending':'pending';
  const occurrence=new Map<string,number>();
  for(const record of records)for(const finding of findings(record.visit))occurrence.set(finding.id,(occurrence.get(finding.id)||0)+1);
  
@@ -69,6 +65,8 @@ export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis
    text:f.text,
    recommendation:f.answer.recommendation,
    chapter:Number(f.id.split('.')[0]),
+   weightPct:Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])]||0)*100),
+   action:{owner:f.action.owner,due:f.action.due,status:f.action.status,closure:f.action.closure},
    occurrences:totalOccurrences,
    consecutiveStreak:streak,
    isRecurrent:streak>1,
@@ -103,9 +101,9 @@ export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis
  const byYear=new Map<string,MetricRecord[]>();for(const record of records){const year=record.date.slice(0,4);byYear.set(year,[...(byYear.get(year)||[]),record]);}
  const yearly=Array.from(byYear.entries()).map(([year,items])=>{const closing=items.at(-1)!;const average=Math.round(items.reduce((total,item)=>total+item.score,0)/items.length);return {year,average,closing:closing.score,visits:items.length,status:metricStatus(closing.score)};});
  
- const delta=records.length>1&&first&&latest?latest.score-first.score:null;
+ const delta=records.length>1&&first&&latest&&sameEndpointScope?latest.score-first.score:null;
  const priorRecord=records.length>1?records[records.length-2]:undefined;
- const recentDelta=priorRecord&&latest?latest.score-priorRecord.score:null;
+ const recentDelta=priorRecord&&latest&&sameChapterScope(priorRecord.visit,latest.visit)?latest.score-priorRecord.score:null;
 
  return {farm:latest?.visit.farm||farm,records,first,latest,trend,delta,recentDelta,yearly,chapters,problems};
 }
@@ -128,8 +126,8 @@ export function consolidatedMetricAnalysis(visits:Visit[]):ConsolidatedMetricAna
  const trend=timeline.length>1&&last&&first
   ?metricTrend({score:first.score,status:first.status,applicable:0,positive:0,findings:0,date:first.period,responsible:''},{score:last.score,status:last.status,applicable:0,positive:0,findings:0,date:last.period,responsible:''})
   :(last?'first':'pending');
- const chapters=catalog.map(c=>{let applicable=0,findings=0;const farms=new Set<string>();for(const record of records){for(const item of c.items){const answer=record.visit.answers[item.id]?.value;if(answer==='SI'||answer==='NO'){applicable++;farms.add(farmKey(record.visit.farm));if(answer==='NO')findings++;}}}const score=applicable?Math.round((applicable-findings)/applicable*100):null;return {id:c.id,title:c.title,applicable,findings,score,status:metricStatus(score),farms:farms.size};});
- const items=catalog.flatMap(c=>c.items.map(item=>{let applicable=0,findings=0;const farms=new Set<string>();for(const record of records){const answer=record.visit.answers[item.id]?.value;if(answer==='SI'||answer==='NO'){applicable++;farms.add(farmKey(record.visit.farm));if(answer==='NO')findings++;}}return {id:item.id,chapter:c.id,chapterTitle:c.title,text:item.text,applicable,findings,rate:applicable?Math.round(findings/applicable*100):0,farms:farms.size};})).sort((a,b)=>b.findings-a.findings||b.rate-a.rate||a.id.localeCompare(b.id));
+ const chapters=catalog.map(c=>{let applicable=0,findings=0;const farms=new Set<string>();for(const record of records){const selected=record.visit.chapters?.length?record.visit.chapters:[1,2,3,4,5];if(!selected.includes(c.id))continue;for(const item of c.items){const answer=record.visit.answers[item.id]?.value;if(answer==='SI'||answer==='NO'){applicable++;farms.add(farmKey(record.visit.farm));if(answer==='NO')findings++;}}}const score=applicable?Math.round((applicable-findings)/applicable*100):null;return {id:c.id,title:c.title,applicable,findings,score,status:metricStatus(score),farms:farms.size};});
+ const items=catalog.flatMap(c=>c.items.map(item=>{let applicable=0,findings=0;const farms=new Set<string>();for(const record of records){const selected=record.visit.chapters?.length?record.visit.chapters:[1,2,3,4,5];if(!selected.includes(c.id))continue;const answer=record.visit.answers[item.id]?.value;if(answer==='SI'||answer==='NO'){applicable++;farms.add(farmKey(record.visit.farm));if(answer==='NO')findings++;}}return {id:item.id,chapter:c.id,chapterTitle:c.title,text:item.text,applicable,findings,rate:applicable?Math.round(findings/applicable*100):0,farms:farms.size};})).sort((a,b)=>b.findings-a.findings||b.rate-a.rate||a.id.localeCompare(b.id));
  const matrix=records.flatMap(record=>{
   const vChapters=record.visit.chapters && record.visit.chapters.length ? record.visit.chapters : [1, 2, 3, 4, 5];
   return catalog.filter(c=>vChapters.includes(c.id)).flatMap(c=>c.items.map(item=>{const answer=record.visit.answers[item.id];return answer?.value?{farm:record.visit.farm,date:record.date,responsible:record.responsible,chapter:`${c.id}. ${c.title}`,item:item.id,text:item.text,answer:answer.value==='SI'?'Sí':answer.value==='NO'?'No':'No aplica',observation:answer.observation,recommendation:answer.recommendation}:null;}).filter((row):row is NonNullable<typeof row>=>row!==null));
