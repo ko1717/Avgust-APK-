@@ -3,10 +3,7 @@ import {useState} from 'react';
 import {
   Info,
   Layers,
-  ShieldCheck,
-  TrendingUp,
-  BarChart3,
-  GitCompare
+  ShieldCheck
 } from 'lucide-react';
 import {
   Area,
@@ -41,6 +38,20 @@ function shortDate(dateStr:string){
   const parts=dateStr.split('-');
   if(parts.length===3) return `${parts[2]}/${parts[1]}`;
   return dateStr;
+}
+
+function answerOnVisit(item:{allVisits?:{date:string;visitId:string;answer:string|null;score:number|null}[]},visit?:{date:string;visitId:string}){
+  if(!visit) return undefined;
+  return item.allVisits?.find(entry=>entry.visitId&&entry.visitId===visit.visitId)
+    ?? item.allVisits?.find(entry=>entry.date===visit.date);
+}
+
+function CompareMark(props:{x?:number;y?:number;width?:number;height?:number;fill?:string;payload?:{scoreA:number|null;scoreB:number|null};dataKey?:string}){
+  const {x=0,y=0,width=0,height=0,fill='#007fa3',payload,dataKey}=props;
+  const value=dataKey==='scoreB'?payload?.scoreB:payload?.scoreA;
+  if(value===null||value===undefined) return <g/>;
+  if(value===0) return <Rectangle x={x} y={y-8} width={width} height={8} radius={[3,3,0,0]} fill="#dc2626"/>;
+  return <Rectangle x={x} y={y} width={width} height={Math.max(height,0)} radius={[3,3,0,0]} fill={fill}/>;
 }
 
 function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
@@ -85,7 +96,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
     visitName: `V${idx+1}`,
     fullLabel: `V${idx+1} (${v.date})`,
     date: v.date,
-    score: v.score ?? 0,
+    score: v.score,
     hasScore: v.score !== null,
     points: v.pointsEarned,
     findings: v.findings,
@@ -95,16 +106,16 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
   // 2. Data for Subcriteria Compliance Rate (Single bar per subcriterion)
   const subcriteriaData = displayItems.map(item => {
     const applicableVisits = visits.filter(v => {
-      const a = item.allVisits?.find(av => av.date === v.date || av.visitId === v.visitId)?.answer;
+      const a = answerOnVisit(item, v)?.answer;
       return a === 'SI' || a === 'NO';
     });
     const siVisits = visits.filter(v => {
-      const a = item.allVisits?.find(av => av.date === v.date || av.visitId === v.visitId)?.answer;
+      const a = answerOnVisit(item, v)?.answer;
       return a === 'SI';
     });
     const complianceRate = applicableVisits.length > 0
       ? Math.round((siVisits.length / applicableVisits.length) * 100)
-      : (item.latestAnswer === 'SI' ? 100 : item.latestAnswer === 'NO' ? 0 : 100);
+      : null;
 
     return {
       id: item.id,
@@ -120,13 +131,13 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
   const visitA = visits[visitIndexA] || visits[0];
   const visitB = visits[visitIndexB] || visits[visits.length - 1];
   const compare2Data = displayItems.map(item => {
-    const ansA = item.allVisits?.find(av => av.date === visitA?.date || av.visitId === visitA?.visitId);
-    const ansB = item.allVisits?.find(av => av.date === visitB?.date || av.visitId === visitB?.visitId);
+    const ansA = answerOnVisit(item, visitA);
+    const ansB = answerOnVisit(item, visitB);
     return {
       id: item.id,
       text: item.text,
-      scoreA: ansA ? ansA.score : (item.firstScore ?? 0),
-      scoreB: ansB ? ansB.score : (item.latestScore ?? 0)
+      scoreA: ansA?.score ?? null,
+      scoreB: ansB?.score ?? null
     };
   });
 
@@ -161,69 +172,20 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
         {isEvaluated ? (
           <>
             {/* Multi-Visit Executive Analysis Container */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              {/* Header with Mode Tabs and Filters */}
-              <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 m-0 flex items-center gap-1.5">
-                    <TrendingUp size={15} className="text-[#007fa3]"/>
-                    <span>Detalle del capítulo {chapter.id}</span>
-                  </h4>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    {evaluatedItems.length} criterios evaluados · {naItems.length} no aplican · {visits.length} visita{visits.length === 1 ? '' : 's'} registradas
-                  </span>
-                </div>
-                
-                {/* View Mode Selector */}
+            <div className="chapter-detail-panel">
+              <div className="chapter-detail-toolbar">
+                <p>{evaluatedItems.length} criterios · {naItems.length} no aplican · {visits.length} visita{visits.length===1?'':'s'}</p>
                 <div className="flex items-center flex-wrap gap-2">
                   {visits.length > 1 && (
-                    <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-                      <button
-                        type="button"
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${chartMode === 'trend' ? 'bg-[#007fa3] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
-                        onClick={()=>setChartMode('trend')}
-                        title="Ver línea de evolución del capítulo a través de todas las visitas"
-                      >
-                        <TrendingUp size={12}/>
-                        <span>Evolución Temporal</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${chartMode === 'subcriteria' ? 'bg-[#007fa3] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
-                        onClick={()=>setChartMode('subcriteria')}
-                        title="Ver porcentaje de cumplimiento global por cada subcriterio"
-                      >
-                        <BarChart3 size={12}/>
-                        <span>Tasa por Subcriterio</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${chartMode === 'compare2' ? 'bg-[#007fa3] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
-                        onClick={()=>setChartMode('compare2')}
-                        title="Comparar 2 visitas puntuales lado a lado"
-                      >
-                        <GitCompare size={12}/>
-                        <span>Contrastar 2 Visitas</span>
-                      </button>
+                    <div className="b2b-quick-ranges">
+                      <button type="button" className={`b2b-range-btn ${chartMode==='trend'?'active':''}`} onClick={()=>setChartMode('trend')}>Evolución</button>
+                      <button type="button" className={`b2b-range-btn ${chartMode==='subcriteria'?'active':''}`} onClick={()=>setChartMode('subcriteria')}>Criterios</button>
+                      <button type="button" className={`b2b-range-btn ${chartMode==='compare2'?'active':''}`} onClick={()=>setChartMode('compare2')}>Comparar</button>
                     </div>
                   )}
-
-                  {/* Filter Evaluated / All */}
-                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-                    <button
-                      type="button"
-                      className={`px-2 py-1 text-xs font-semibold rounded-md transition-all ${showOnlyEvaluatedSub ? 'bg-white text-[#007fa3] shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      onClick={()=>setShowOnlyEvaluatedSub(true)}
-                    >
-                      Evaluados ({evaluatedItems.length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`px-2 py-1 text-xs font-semibold rounded-md transition-all ${!showOnlyEvaluatedSub ? 'bg-white text-[#007fa3] shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      onClick={()=>setShowOnlyEvaluatedSub(false)}
-                    >
-                      Todos ({chapter.items.length})
-                    </button>
+                  <div className="b2b-quick-ranges">
+                    <button type="button" className={`b2b-range-btn ${showOnlyEvaluatedSub?'active':''}`} onClick={()=>setShowOnlyEvaluatedSub(true)}>Evaluados ({evaluatedItems.length})</button>
+                    <button type="button" className={`b2b-range-btn ${!showOnlyEvaluatedSub?'active':''}`} onClick={()=>setShowOnlyEvaluatedSub(false)}>Todos ({chapter.items.length})</button>
                   </div>
                 </div>
               </div>
@@ -239,33 +201,25 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
               {/* CHART AREA 1: Trend Mode (Smooth Evolution AreaChart across all visits) */}
               {chartMode === 'trend' && visits.length > 1 && (
                 <div className="py-2">
-                  <div className="flex items-center justify-between mb-2 text-xs">
-                    <span className="text-slate-600 font-semibold">
-                      Comportamiento del proceso a lo largo de las {visits.length} visitas realizadas:
-                    </span>
-                    <div className="flex items-center gap-3 text-[11px] font-medium">
-                      <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-                        <span className="w-2.5 h-0.5 bg-emerald-600 inline-block"/> Meta Saludable ≥ 95%
-                      </span>
-                      <span className="flex items-center gap-1 text-amber-700 font-semibold">
-                        <span className="w-2.5 h-0.5 bg-amber-500 inline-block"/> Rango Aceptable ≥ 85%
-                      </span>
-                    </div>
+                  <div className="b2b-chart-legend mb-2">
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#007fa3]"/><span>Capítulo</span></div>
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#78be20]"/><span>Saludable, desde 95%</span></div>
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#f2a900]"/><span>Aceptable, desde 85%</span></div>
                   </div>
 
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart data={trendData} margin={{top:12,right:16,left:-15,bottom:4}}>
                       <defs>
-                        <linearGradient id="chapterGradient" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id={`chapterGradient-${chapter.id}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#007fa3" stopOpacity={0.3}/>
                           <stop offset="95%" stopColor="#007fa3" stopOpacity={0.02}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid vertical={false} stroke="#f1f5f9" strokeDasharray="3 3"/>
-                      <XAxis dataKey="visitName" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#475569'}}/>
-                      <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
-                      <ReferenceLine y={95} stroke="#16a34a" strokeDasharray="4 4" strokeWidth={1.5}/>
-                      <ReferenceLine y={85} stroke="#d97706" strokeDasharray="4 4" strokeWidth={1.5}/>
+                      <CartesianGrid vertical={false} stroke="#d8e2e2" strokeDasharray="3 3"/>
+                      <XAxis dataKey="visitName" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#58696d'}}/>
+                      <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} tick={{fontSize:11,fill:'#58696d'}}/>
+                      <ReferenceLine y={95} stroke="#78be20" strokeDasharray="4 4" strokeWidth={1.5}/>
+                      <ReferenceLine y={85} stroke="#f2a900" strokeDasharray="4 4" strokeWidth={1.5}/>
                       <Tooltip
                         content={({active,payload})=>{
                           if(!active || !payload?.length) return null;
@@ -273,7 +227,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                           return (
                             <div className="bg-slate-900 text-white p-2.5 rounded-lg text-xs shadow-lg border border-slate-700">
                               <div className="font-bold text-white mb-1">{d.fullLabel}</div>
-                              <div className="text-emerald-400 font-extrabold text-sm mb-1">{d.score}% de cumplimiento</div>
+                              <div className="font-extrabold text-sm mb-1" style={{color:'#78be20'}}>{d.hasScore?`${d.score}%`:'Sin medición'}</div>
                               <div className="text-slate-300 text-[11px]">{d.applicable} criterios aplicables · {d.findings} hallazgo(s)</div>
                               <div className="text-slate-400 text-[10px] mt-0.5">{d.points} puntos aportados</div>
                             </div>
@@ -285,45 +239,23 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                         dataKey="score"
                         stroke="#007fa3"
                         strokeWidth={2.5}
-                        fill="url(#chapterGradient)"
+                        fill={`url(#chapterGradient-${chapter.id})`}
                         dot={{r:4,fill:'#007fa3',stroke:'#ffffff',strokeWidth:2}}
                         activeDot={{r:6,fill:'#78be20',stroke:'#ffffff',strokeWidth:2}}
                         isAnimationActive={false}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
-
-                  {/* Evolution Strip below Chart */}
-                  <div className="flex items-center justify-between flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-100 text-[11px]">
-                    <span className="text-slate-500 font-medium">Secuencia cronológica:</span>
-                    <div className="flex items-center flex-wrap gap-1">
-                      {visits.map((v, i) => {
-                        const sc = v.score ?? 0;
-                        const chipColor = sc >= 95 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : sc >= 85 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-rose-700 bg-rose-50 border-rose-200';
-                        return (
-                          <span key={v.visitId || i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold ${chipColor}`}>
-                            <span>V{i+1} ({shortDate(v.date)}):</span>
-                            <strong>{v.score === null ? '—' : `${v.score}%`}</strong>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
               )}
 
               {/* CHART AREA 2: Subcriteria Compliance Rate (1 clean bar per subcriterion) */}
               {chartMode === 'subcriteria' && (
                 <div className="py-2">
-                  <div className="flex items-center justify-between mb-2 text-xs">
-                    <span className="text-slate-600 font-semibold">
-                      Tasa de conformidad histórica por subcriterio (% de visitas con resultado “Sí”):
-                    </span>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#16a34a]"/> ≥ 95%
-                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#f59e0b]"/> 85-94%
-                      <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#e11d48]"/> &lt; 85%
-                    </div>
+                  <div className="b2b-chart-legend mb-2">
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#78be20]"/><span>Desde 95%</span></div>
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#f2a900]"/><span>85% a 94%</span></div>
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#dc2626]"/><span>Menor de 85%</span></div>
                   </div>
 
                   <ResponsiveContainer width="100%" height={220}>
@@ -353,9 +285,11 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                         barSize={24}
                         isAnimationActive={false}
                         shape={(raw) => {
-                          const bar = raw as {x?:number;y?:number;width?:number;height?:number;payload?:{complianceRate?:number}};
-                          const rate = Number(bar.payload?.complianceRate ?? 0);
-                          const fill = rate >= 95 ? '#16a34a' : rate >= 85 ? '#f59e0b' : '#e11d48';
+                          const bar = raw as {x?:number;y?:number;width?:number;height?:number;payload?:{complianceRate?:number|null}};
+                          const rawRate = bar.payload?.complianceRate;
+                          if(rawRate===null||rawRate===undefined) return <g/>;
+                          const rate = Number(rawRate);
+                          const fill = rate >= 95 ? '#78be20' : rate >= 85 ? '#f2a900' : '#dc2626';
                           return <Rectangle x={bar.x} y={bar.y} width={bar.width} height={bar.height} radius={[4,4,0,0]} fill={fill}/>;
                         }}
                       />
@@ -367,47 +301,39 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
               {/* CHART AREA 3: Contrast 2 Visits Side by Side */}
               {chartMode === 'compare2' && (
                 <div className="py-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2 mb-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-700">Visita A (Base):</span>
-                      <select
-                        aria-label="Seleccionar Visita A de referencia"
-                        className="text-xs bg-white border border-slate-300 rounded px-2 py-1 font-medium text-slate-800"
-                        value={visitIndexA}
-                        onChange={e=>setVisitIndexA(Number(e.target.value))}
-                      >
+                  <div className="chapter-compare-picks">
+                    <label>
+                      <span className="b2b-legend-dot bg-[#007fa3]"/>
+                      Base
+                      <select aria-label="Visita base" value={visitIndexA} onChange={e=>setVisitIndexA(Number(e.target.value))}>
                         {visits.map((v, idx) => (
-                          <option key={idx} value={idx}>V{idx+1} ({v.date}) - {v.score === null ? '—' : `${v.score}%`}</option>
+                          <option key={idx} value={idx}>V{idx+1} · {shortDate(v.date)} · {v.score === null ? 'Sin medición' : `${v.score}%`}</option>
                         ))}
                       </select>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-700">Visita B (Contraste):</span>
-                      <select
-                        aria-label="Seleccionar Visita B de contraste"
-                        className="text-xs bg-white border border-slate-300 rounded px-2 py-1 font-medium text-slate-800"
-                        value={visitIndexB}
-                        onChange={e=>setVisitIndexB(Number(e.target.value))}
-                      >
+                    </label>
+                    <label>
+                      <span className="b2b-legend-dot bg-[#78be20]"/>
+                      Contraste
+                      <select aria-label="Visita de contraste" value={visitIndexB} onChange={e=>setVisitIndexB(Number(e.target.value))}>
                         {visits.map((v, idx) => (
-                          <option key={idx} value={idx}>V{idx+1} ({v.date}) - {v.score === null ? '—' : `${v.score}%`}</option>
+                          <option key={idx} value={idx}>V{idx+1} · {shortDate(v.date)} · {v.score === null ? 'Sin medición' : `${v.score}%`}</option>
                         ))}
                       </select>
-                    </div>
+                    </label>
                   </div>
 
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={compare2Data} margin={{top:10,right:12,left:-15,bottom:4}}>
-                      <CartesianGrid vertical={false} stroke="#f1f5f9" strokeDasharray="3 3"/>
-                      <XAxis dataKey="id" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#475569'}}/>
-                      <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
-                      <Tooltip formatter={(value, name)=>[typeof value === 'number' ? `${value}%` : '—', String(name)]}/>
-                      <Legend wrapperStyle={{fontSize:'12px'}}/>
-                      <Bar dataKey="scoreA" name={`V${visitIndexA+1} (${visitA?.date || ''})`} fill="#007fa3" radius={[3,3,0,0]} barSize={14} isAnimationActive={false}/>
-                      <Bar dataKey="scoreB" name={`V${visitIndexB+1} (${visitB?.date || ''})`} fill="#78be20" radius={[3,3,0,0]} barSize={14} isAnimationActive={false}/>
+                      <CartesianGrid vertical={false} stroke="#d8e2e2" strokeDasharray="3 3"/>
+                      <XAxis dataKey="id" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#58696d'}}/>
+                      <YAxis domain={[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} tick={{fontSize:11,fill:'#58696d'}}/>
+                      <Tooltip formatter={(value,name)=>[value===100?'Sí':value===0?'No':'Sin medición',String(name)]}/>
+                      <Legend wrapperStyle={{fontSize:'12px',color:'#58696d'}}/>
+                      <Bar dataKey="scoreA" name={`Base · V${visitIndexA+1}`} fill="#007fa3" barSize={16} isAnimationActive={false} shape={CompareMark}/>
+                      <Bar dataKey="scoreB" name={`Contraste · V${visitIndexB+1}`} fill="#78be20" barSize={16} isAnimationActive={false} shape={CompareMark}/>
                     </BarChart>
                   </ResponsiveContainer>
+                  <p className="chapter-chart-note">El azul es la visita base y el verde el contraste. Un No se marca en rojo sobre la base. Si no hay barra, ese criterio no se midió.</p>
                 </div>
               )}
             </div>
@@ -417,8 +343,8 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
               <table className="audit-matrix">
                 <thead>
                   <tr>
-                    <th style={{width:'55px'}}>Cód.</th>
-                    <th style={{minWidth:'260px'}}>Criterio Técnico MIPE</th>
+                    <th style={{width:'55px'}}>Código</th>
+                    <th style={{minWidth:'260px'}}>Criterio</th>
                     {visits.length > 1 ? (
                       visits.map((v, idx) => (
                         <th key={v.visitId || idx} style={{width:'68px',textAlign:'center'}}>
@@ -432,8 +358,8 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                         <th style={{width:'110px',textAlign:'center'}}>Última Visita</th>
                       </>
                     )}
-                    <th style={{width:'130px',textAlign:'center'}}>Conformidad Histórica</th>
-                    <th style={{width:'110px',textAlign:'center'}}>Diagnóstico</th>
+                    <th style={{width:'130px',textAlign:'center'}}>Conformidad</th>
+                    <th style={{width:'110px',textAlign:'center'}}>Lectura</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -444,11 +370,11 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                     const worsened = firstV?.answer === 'SI' && lastV?.answer === 'NO';
                     
                     const applicableVisits = visits.filter(v => {
-                      const a = item.allVisits?.find(av => av.date === v.date || av.visitId === v.visitId)?.answer;
+                      const a = answerOnVisit(item, v)?.answer;
                       return a === 'SI' || a === 'NO';
                     });
                     const siVisits = visits.filter(v => {
-                      const a = item.allVisits?.find(av => av.date === v.date || av.visitId === v.visitId)?.answer;
+                      const a = answerOnVisit(item, v)?.answer;
                       return a === 'SI';
                     });
                     const allSi = applicableVisits.length > 0 && applicableVisits.length === siVisits.length;
@@ -473,7 +399,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
 
                         {visits.length > 1 ? (
                           visits.map((v, idx) => {
-                            const vAns = item.allVisits?.find(av => av.date === v.date || av.visitId === v.visitId);
+                            const vAns = answerOnVisit(item, v);
                             return (
                               <td key={v.visitId || idx} style={{textAlign:'center'}}>
                                 {answerChip(vAns ? vAns.answer : null)}
@@ -495,10 +421,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                                 {siVisits.length}/{applicableVisits.length} ({compliancePct}%)
                               </span>
                               <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                                <div
-                                  className={`h-full ${compliancePct >= 95 ? 'bg-emerald-500' : compliancePct >= 85 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                  style={{width:`${compliancePct}%`}}
-                                />
+                                <div className="h-full" style={{width:`${compliancePct}%`,background:compliancePct>=95?'#78be20':compliancePct>=85?'#f2a900':'#dc2626'}}/>
                               </div>
                             </div>
                           ) : (
@@ -509,23 +432,15 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                         {/* Trajectory Diagnosis */}
                         <td style={{textAlign:'center'}}>
                           {improved ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 rounded">
-                              ✓ Subsanado
-                            </span>
+                            <span className="chapter-diagnosis corrected">Corregido</span>
                           ) : worsened ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-50 border border-rose-300 px-1.5 py-0.5 rounded">
-                              ⚠ Retroceso
-                            </span>
+                            <span className="chapter-diagnosis worse">Empeoró</span>
                           ) : allSi ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                              ✓ Consistente
-                            </span>
+                            <span className="chapter-diagnosis stable">Estable</span>
                           ) : allNo ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                              ⚠ Recurrente
-                            </span>
+                            <span className="chapter-diagnosis repeat">Hallazgo</span>
                           ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">Variable</span>
+                            <span className="chapter-diagnosis mixed">Mixto</span>
                           )}
                         </td>
                       </tr>
@@ -561,58 +476,15 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
     <div className="b2b-process-list">
       {/* Evidence & Scope Banner */}
       {unevaluatedChapters.length > 0 ? (
-        <div className="p-4 bg-gradient-to-r from-sky-50 to-white border border-sky-200 rounded-xl mb-1 shadow-xs">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <Layers size={18} className="text-[#007fa3]"/>
-              <strong className="text-xs font-bold text-slate-900 tracking-wide uppercase">
-                Alcance Técnico Evaluado: {evaluatedChapters.length} de {chapters.length} Capítulos ({Math.round(evaluatedChapters.length / chapters.length * 100)}%)
-              </strong>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-slate-500 font-medium">Visualización:</span>
-              <div className="inline-flex rounded-lg border border-sky-300 bg-white p-0.5">
-                <button
-                  type="button"
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${showOnlyEvaluated ? 'bg-[#007fa3] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-                  onClick={()=>setShowOnlyEvaluated(true)}
-                >
-                  Solo evaluados ({evaluatedChapters.length})
-                </button>
-                <button
-                  type="button"
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!showOnlyEvaluated ? 'bg-[#007fa3] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-                  onClick={()=>setShowOnlyEvaluated(false)}
-                >
-                  Ver todos los 5 ({chapters.length})
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-xs text-slate-700 leading-relaxed">
-            <span className="font-semibold text-slate-800">Capítulos no evaluados en esta visita:</span>{' '}
-            <div className="inline-flex flex-wrap gap-1.5 mt-1">
-              {unevaluatedChapters.map(c=>(
-                <span key={c.id} className="inline-flex items-center gap-1 bg-white border border-slate-300 text-slate-700 px-2 py-0.5 rounded text-xs font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                  Cap. {c.id} · {c.title}
-                </span>
-              ))}
-            </div>
-            <p className="mt-2 text-[11px] text-slate-500 italic">
-              Metodología oficial AVGUST MIPE: Los capítulos excluidos no aportan puntos al numerador ni al denominador ponderado. La calificación representa el 100% de los procesos auditados.
-            </p>
+        <div className="chapter-detail-toolbar">
+          <p className="chapter-scope-note">{evaluatedChapters.length} de {chapters.length} capítulos evaluados · sin medir: {unevaluatedChapters.map(c=>c.id).join(', ')}</p>
+          <div className="b2b-quick-ranges">
+            <button type="button" className={`b2b-range-btn ${showOnlyEvaluated?'active':''}`} onClick={()=>setShowOnlyEvaluated(true)}>Evaluados</button>
+            <button type="button" className={`b2b-range-btn ${!showOnlyEvaluated?'active':''}`} onClick={()=>setShowOnlyEvaluated(false)}>Los 5</button>
           </div>
         </div>
       ) : (
-        <div className="p-3 bg-gradient-to-r from-emerald-50 to-white border border-emerald-200 rounded-xl mb-1 flex items-center gap-2 text-xs text-emerald-900 shadow-xs">
-          <ShieldCheck size={18} className="text-[#78be20]"/>
-          <span>
-            <strong>Auditoría Integral Completa:</strong> Los 5 procesos normativos MIPE fueron evaluados en su totalidad (100% del alcance de evaluación).
-          </span>
-        </div>
+        <p className="chapter-scope-note"><ShieldCheck size={14} className="inline mr-1 text-[#78be20]"/>Los cinco procesos están evaluados.</p>
       )}
 
       {/* Chapter Cards */}
