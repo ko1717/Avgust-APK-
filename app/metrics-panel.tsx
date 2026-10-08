@@ -1,9 +1,7 @@
 'use client';
 import {useMemo,useState} from 'react';
 import {
-  BarChart3,
   CheckCircle2,
-  Download,
   FileText,
   Minus,
   Printer,
@@ -31,18 +29,10 @@ import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import {FarmChapterDetails} from './metric-chapter-details';
 import ConsolidatedMetrics from './consolidated-metrics';
-import {KpiSparkline,type SparklinePoint} from './kpi-sparkline';
-import {GuidePresentation,GuideHelpButton} from './guide-presentation';
 import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
-  const labels:Record<MetricStatus,string>={
-    healthy:'Conforme / Saludable',
-    acceptable:'Aceptable con hallazgos',
-    critical:'Crítico / Requiere acción',
-    pending:'Sin medición'
-  };
-  return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
+  return <span className={`b2b-kpi-badge ${value}`}>{metricStatusLabels[value]}</span>;
 }
 
 type TooltipPayloadItem = {
@@ -139,7 +129,6 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
   const [to,setTo]=useState('');
   const [chartView,setChartView]=useState<'score'|'both'|'findings'|'compliance'|'coverage'|'chapters'>('both');
   const [showGuide,setShowGuide]=useState(false);
-  const [showGuideModal,setShowGuideModal]=useState(false);
   
   const activeFarm=farm||farms[0]?.[0]||'';
   const scoped=useMemo(()=>visits.filter(v=>(!from||v.date>=`${from}-01-01`)&&(!to||v.date<=`${to}-12-31`)),[visits,from,to]);
@@ -169,47 +158,6 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
     };
   });
 
-  const scoreSparkline:SparklinePoint[]=useMemo(()=>data.records.map(r=>({
-    date:r.date,
-    label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short'}).format(new Date(`${r.date}T12:00:00`)),
-    value:r.score,
-    formattedValue:`${r.score}% (${r.pointsEarned} pts)`
-  })),[data.records]);
-
-  const deltaSparkline:SparklinePoint[]=useMemo(()=>{
-    const baseScore=data.records[0]?.score??0;
-    return data.records.map(r=>{
-      const delta=r.score-baseScore;
-      return {
-        date:r.date,
-        label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short'}).format(new Date(`${r.date}T12:00:00`)),
-        value:delta,
-        formattedValue:`${delta>0?'+':''}${delta} pts`
-      };
-    });
-  },[data.records]);
-
-  const complianceSparkline:SparklinePoint[]=useMemo(()=>data.records.map(r=>({
-    date:r.date,
-    label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short'}).format(new Date(`${r.date}T12:00:00`)),
-    value:r.criteriaCompliance??r.score,
-    formattedValue:`${r.criteriaCompliance??r.score}% conformes`
-  })),[data.records]);
-
-  const findingsSparkline:SparklinePoint[]=useMemo(()=>data.records.map(r=>({
-    date:r.date,
-    label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short'}).format(new Date(`${r.date}T12:00:00`)),
-    value:r.findings,
-    formattedValue:`${r.findings} hallazgo${r.findings===1?'':'s'}`
-  })),[data.records]);
-
-  const coverageSparkline:SparklinePoint[]=useMemo(()=>data.records.map(r=>({
-    date:r.date,
-    label:new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short'}).format(new Date(`${r.date}T12:00:00`)),
-    value:r.weightedCoveragePct,
-    formattedValue:`${r.weightedCoveragePct}% (${r.evaluatedChapters}/5 caps)`
-  })),[data.records]);
-  
   const current=data.latest;
   const currentYear=new Date().getFullYear();
 
@@ -233,28 +181,20 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
       {/* Executive Command Header */}
       <div className="b2b-header no-print">
         <div className="b2b-header-title">
-          <div className="b2b-kicker flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#00b5e2] inline-block" title="Avgust Cian"/>
-              <span className="w-2 h-2 rounded-full bg-[#78be20] inline-block" title="Avgust Verde Agro"/>
-              <span className="w-2 h-2 rounded-full bg-[#f2a900] inline-block" title="Avgust Oro"/>
-            </span>
-            <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
-          </div>
-          <h2 id="farm-metrics-title">Evolución y Control MIPE por Finca</h2>
-          <p>Supervisión oficial ponderada por procesos: Almacén (5%), Dosificación (30%), Transporte (5%), Mezclas (30%) y Aplicación (30%).</p>
+          <div className="b2b-kicker">Por finca</div>
+          <h2 id="farm-metrics-title">Evolución y control MIPE</h2>
+          <p>Peso oficial: Almacén 5%, Dosificación 30%, Transporte 5%, Mezclas 30% y Aplicación 30%.</p>
         </div>
         {current && (
           <div className="b2b-header-actions">
-            <GuideHelpButton onClick={()=>setShowGuideModal(true)}/>
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>setShowGuide(!showGuide)} aria-expanded={showGuide}>
-              <Info size={16}/> {showGuide?'Ocultar Modelo MIPE':'Modelo MIPE'}
+              <Info size={16}/> {showGuide?'Ocultar modelo':'Modelo MIPE'}
             </button>
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportFarmMetricsWord(data)}>
-              <FileText size={16}/> Informe Ejecutivo Word
+              <FileText size={16}/> Word
             </button>
             <button className="b2b-btn b2b-btn-primary" onClick={()=>window.print()}>
-              <Printer size={16}/> Exportar PDF de Alta Resolución
+              <Printer size={16}/> PDF
             </button>
           </div>
         )}
@@ -339,8 +279,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500">Periodos rápidos:</span>
           <div className="b2b-quick-ranges">
-            <button className={`b2b-range-btn ${!from&&!to?'active':''}`} onClick={()=>setPreset('all')}>Todo el Histórico</button>
-            <button className={`b2b-range-btn ${from===String(currentYear-1)&&to===String(currentYear)?'active':''}`} onClick={()=>setPreset('lastYear')}>Últimos 24m</button>
+            <button className={`b2b-range-btn ${!from&&!to?'active':''}`} onClick={()=>setPreset('all')}>Todo</button>
+            <button className={`b2b-range-btn ${from===String(currentYear-1)&&to===String(currentYear)?'active':''}`} onClick={()=>setPreset('lastYear')}>2 años</button>
             <button className={`b2b-range-btn ${from===String(currentYear)&&to===String(currentYear)?'active':''}`} onClick={()=>setPreset('currentYear')}>{currentYear}</button>
           </div>
         </div>
@@ -360,44 +300,23 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
         <>
           {/* Executive KPI Scorecard with Recharts Trend Lines */}
           <div className="b2b-kpi-grid">
-            <div
-              className={`b2b-kpi-card ${current.status} cursor-pointer transition-all ${chartView==='score'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setChartView('score')}
-              title="Click para enfocar Índice MIPE en la gráfica principal"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setChartView('score');}}
-            >
+            <div className={`b2b-kpi-card ${current.status}`}>
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Índice MIPE Ponderado</span>
+                <span className="b2b-kpi-title">Índice MIPE</span>
                 <StatusBadge value={current.status}/>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{current.score}%</span>
-                <span className="text-xs font-semibold text-slate-500">({current.pointsEarned} / 100 pts)</span>
-              </div>
-              {/* Interactive Recharts Sparkline */}
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={scoreSparkline} color="#007fa3" fillGradientId="sparkMipe" unit="%" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                Puntuación oficial ponderada según matriz de 5 procesos normativos.
+                <span className="text-xs font-semibold text-slate-500">{current.pointsEarned}/100</span>
               </div>
               <div className="b2b-kpi-progress">
                 <div className={`b2b-kpi-progress-fill ${current.status}`} style={{width:`${Math.min(100,Math.max(0,current.score))}%`}}/>
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card highlight cursor-pointer transition-all ${chartView==='both'?'ring-2 ring-[#78be20] shadow-md':''}`}
-              onClick={()=>setChartView('both')}
-              title="Click para comparar Trayectoria y Conformidad en la gráfica principal"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setChartView('both');}}
-            >
+            <div className="b2b-kpi-card highlight">
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Trayectoria Temporal</span>
+                <span className="b2b-kpi-title">Variación</span>
                 <span className={`inline-flex items-center gap-1 text-xs font-bold ${data.trend==='improved'?'text-[#78be20]':data.trend==='declined'?'text-[#dc2626]':'text-slate-600'}`}>
                   {data.trend==='improved'?<TrendingUp size={14}/>:data.trend==='declined'?<TrendingDown size={14}/>:<Minus size={14}/>}
                   {metricTrendLabels[data.trend]}
@@ -405,94 +324,46 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">
-                  {data.delta===null?'—':`${data.delta>0?'+':''}${data.delta} pts`}
+                  {data.delta===null?'—':`${data.delta>0?'+':''}${data.delta}`}
                 </span>
-              </div>
-              {/* Interactive Recharts Sparkline */}
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={deltaSparkline} color={data.trend==='improved'?'#78be20':data.trend==='declined'?'#dc2626':'#007fa3'} fillGradientId="sparkDelta" unit=" pts" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                {data.delta===null?'Línea base inicial':`Variación absoluta desde la primera auditoría técnica.`}
+                <span className="text-xs font-semibold text-slate-500">pts</span>
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${chartView==='compliance'?'ring-2 ring-[#00b5e2] shadow-md':''}`}
-              onClick={()=>setChartView('compliance')}
-              title="Click para enfocar Tasa de Conformidad en la gráfica principal"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setChartView('compliance');}}
-            >
+            <div className="b2b-kpi-card">
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Tasa de Conformidad</span>
-                <span className="text-xs font-bold text-slate-700">{current.positive}/{current.applicable} conformes</span>
+                <span className="b2b-kpi-title">Conformidad</span>
+                <span className="text-xs font-bold text-slate-700">{current.positive}/{current.applicable}</span>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{current.criteriaCompliance!==null?`${current.criteriaCompliance}%`:'—'}</span>
-              </div>
-              {/* Interactive Recharts Sparkline */}
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={complianceSparkline} color="#00b5e2" fillGradientId="sparkCompliance" unit="%" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                Porcentaje de criterios individuales evaluados con respuesta “Sí”.
               </div>
               <div className="b2b-kpi-progress">
                 <div className="b2b-kpi-progress-fill bg-[#00b5e2]" style={{width:`${current.criteriaCompliance||0}%`}}/>
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card ${current.findings>0?'critical':'healthy'} cursor-pointer transition-all ${chartView==='findings'?'ring-2 ring-[#dc2626] shadow-md':''}`}
-              onClick={()=>setChartView('findings')}
-              title="Click para enfocar Hallazgos Abiertos en la gráfica principal"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setChartView('findings');}}
-            >
+            <div className={`b2b-kpi-card ${current.findings>0?'critical':'healthy'}`}>
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Hallazgos Abiertos</span>
+                <span className="b2b-kpi-title">Hallazgos</span>
                 {current.findings>0?<AlertTriangle size={15} className="text-[#dc2626]"/>:<CheckCircle2 size={15} className="text-[#78be20]"/>}
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value" style={{color:current.findings>0?'#dc2626':'#78be20'}}>
                   {current.findings}
                 </span>
-                <span className="text-xs font-semibold text-slate-500">criterios en “No”</span>
-              </div>
-              {/* Interactive Recharts Sparkline */}
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={findingsSparkline} color={current.findings>0?'#dc2626':'#78be20'} fillGradientId="sparkFindings" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                {current.findings===0?'Cero desviaciones detectadas en la última visita.':'Inconformidades técnicas que exigen planes de acción correctiva.'}
+                <span className="text-xs font-semibold text-slate-500">en “No”</span>
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${chartView==='coverage'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setChartView('coverage')}
-              title="Click para enfocar Cobertura Normativa en la gráfica principal"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setChartView('coverage');}}
-            >
+            <div className="b2b-kpi-card">
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Cobertura Normativa</span>
-                <span className="text-xs font-bold text-[#007fa3]">{current.weightedCoveragePct}% Peso</span>
+                <span className="b2b-kpi-title">Cobertura</span>
+                <span className="text-xs font-bold text-[#007fa3]">{current.weightedCoveragePct}%</span>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{current.evaluatedChapters}/5</span>
                 <span className="text-xs font-semibold text-slate-500">capítulos</span>
-              </div>
-              {/* Interactive Recharts Sparkline */}
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={coverageSparkline} color="#007fa3" fillGradientId="sparkCoverage" unit="%" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                {current.evaluatedChapters===5?'Auditoría integral completa (100% de procesos).':'Auditoría de alcance parcial por requerimiento de campo.'}
               </div>
             </div>
           </div>
@@ -501,23 +372,23 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           <div className="b2b-chart-card">
             <div className="b2b-chart-header">
               <div>
-                <h3>Evolución Histórica del Desempeño MIPE</h3>
-                <p>Curva interactiva de comportamiento longitudinal por auditoría técnica en el tiempo.</p>
+                <h3>Evolución</h3>
+                <p>Cada visita revisada en el periodo.</p>
               </div>
 
               <div className="flex items-center gap-3 no-print">
                 <div className="b2b-quick-ranges">
-                  <button className={`b2b-range-btn ${chartView==='both'?'active':''}`} onClick={()=>setChartView('both')}>Ambos Índices</button>
-                  <button className={`b2b-range-btn ${chartView==='score'?'active':''}`} onClick={()=>setChartView('score')}>Solo Índice MIPE</button>
-                  <button className={`b2b-range-btn ${chartView==='chapters'?'active':''}`} onClick={()=>setChartView('chapters')}>5 Procesos MIPE</button>
-                  <button className={`b2b-range-btn ${chartView==='compliance'?'active':''}`} onClick={()=>setChartView('compliance')}>Solo Conformidad</button>
+                  <button className={`b2b-range-btn ${chartView==='both'?'active':''}`} onClick={()=>setChartView('both')}>Ambos</button>
+                  <button className={`b2b-range-btn ${chartView==='score'?'active':''}`} onClick={()=>setChartView('score')}>Índice</button>
+                  <button className={`b2b-range-btn ${chartView==='chapters'?'active':''}`} onClick={()=>setChartView('chapters')}>Procesos</button>
+                  <button className={`b2b-range-btn ${chartView==='compliance'?'active':''}`} onClick={()=>setChartView('compliance')}>Conformidad</button>
                   <button className={`b2b-range-btn ${chartView==='findings'?'active':''}`} onClick={()=>setChartView('findings')}>Hallazgos</button>
                   <button className={`b2b-range-btn ${chartView==='coverage'?'active':''}`} onClick={()=>setChartView('coverage')}>Cobertura</button>
                 </div>
               </div>
             </div>
 
-            <div className="w-full overflow-x-auto">
+            <div className="b2b-chart-scroll">
               <div style={{minWidth:Math.max(680,chart.length*105)}}>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={chart} margin={{top:15,right:20,left:-15,bottom:4}}>
@@ -541,8 +412,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     <Tooltip content={<CustomTooltip view={chartView}/>}/>
                     {chartView!=='findings' && (
                       <>
-                        <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Saludable (≥ 95%)',fill:'#15803d',fontSize:10,fontWeight:700,position:'insideTopRight'}}/>
-                        <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Aceptable (85%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
+                        <ReferenceLine y={95} stroke="#78be20" strokeWidth={1.5} strokeDasharray="4 4"/>
+                        <ReferenceLine y={85} stroke="#f2a900" strokeWidth={1.5} strokeDasharray="3 3"/>
                       </>
                     )}
                     
@@ -573,28 +444,28 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
 
             <div className="b2b-chart-legend mt-3 justify-center">
-              {chartView!=='chapters' && (
-                <>
-                  <div className="b2b-legend-item">
-                    <span className="b2b-legend-dot bg-[#007fa3]"/>
-                    <span>Índice MIPE Ponderado (Oficial)</span>
-                  </div>
-                  <div className="b2b-legend-item">
-                    <span className="b2b-legend-dot bg-[#00b5e2]"/>
-                    <span>Conformidad Criterios (%)</span>
-                  </div>
-                </>
+              {(chartView==='score'||chartView==='both') && (
+                <div className="b2b-legend-item">
+                  <span className="b2b-legend-dot bg-[#007fa3]"/>
+                  <span>Índice MIPE</span>
+                </div>
+              )}
+              {(chartView==='both'||chartView==='compliance') && (
+                <div className="b2b-legend-item">
+                  <span className="b2b-legend-dot bg-[#00b5e2]"/>
+                  <span>Conformidad</span>
+                </div>
               )}
               {chartView==='findings' && (
                 <div className="b2b-legend-item">
                   <span className="b2b-legend-dot bg-[#dc2626]"/>
-                  <span>Hallazgos Abiertos (Inconformidades)</span>
+                  <span>Hallazgos</span>
                 </div>
               )}
               {chartView==='coverage' && (
                 <div className="b2b-legend-item">
                   <span className="b2b-legend-dot bg-[#005f7a]"/>
-                  <span>Cobertura Normativa (% Peso)</span>
+                  <span>Cobertura</span>
                 </div>
               )}
               {chartView==='chapters' && (
@@ -624,12 +495,12 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               {chartView!=='findings' && (
                 <>
                   <div className="b2b-legend-item">
-                    <span className="b2b-legend-dot bg-[#16a34a]"/>
-                    <span>Meta Saludable Oficial MIPE ≥ 95%</span>
+                    <span className="b2b-legend-dot bg-[#78be20]"/>
+                    <span>Saludable, desde 95%</span>
                   </div>
                   <div className="b2b-legend-item">
-                    <span className="b2b-legend-dot bg-[#d97706]"/>
-                    <span>Rango Aceptable 85% a 94%</span>
+                    <span className="b2b-legend-dot bg-[#f2a900]"/>
+                    <span>Aceptable, desde 85%</span>
                   </div>
                 </>
               )}
@@ -658,8 +529,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </div>
 
             <div className="b2b-card-block">
-              <h3>Desglose y Ponderación por Proceso Normativo</h3>
-              <p className="sub">Distribución oficial de los 5 capítulos MIPE con pesos normativos (5%, 30%, 5%, 30%, 30%).</p>
+              <h3>Procesos</h3>
+              <p className="sub">Peso de los cinco capítulos en la última visita.</p>
               <FarmChapterDetails chapters={data.chapters}/>
             </div>
           </div>
@@ -668,8 +539,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           <div className="b2b-card-block">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <div className="b2b-kicker">Gestión de Riesgo Agronómico</div>
-                <h3>Hallazgos Técnicos y Alertas de la Última Visita</h3>
+                <h3>Hallazgos de la última visita</h3>
               </div>
               <span className="text-xs font-bold text-slate-500">{data.problems.length} desviación{data.problems.length===1?'':'es'} identificada{data.problems.length===1?'':'s'}</span>
             </div>
@@ -704,8 +574,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           <div className="b2b-card-block">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3>Historial Cronológico de Auditorías e Informes</h3>
-                <p className="sub">Registro auditado de visitas técnicas, indicadores y responsables.</p>
+                <h3>Historial</h3>
+                <p className="sub">Visitas revisadas, de la más reciente a la primera.</p>
               </div>
             </div>
 
@@ -713,12 +583,12 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               <table className="b2b-table">
                 <thead>
                   <tr>
-                    <th>Fecha Auditoría</th>
-                    <th>Índice MIPE (Ponderado)</th>
-                    <th>Criterios Conformes</th>
-                    <th>Estado de Salud</th>
-                    <th>Comportamiento</th>
-                    <th>Auditor / Responsable</th>
+                    <th>Fecha</th>
+                    <th>Índice MIPE</th>
+                    <th>Conformidad</th>
+                    <th>Estado</th>
+                    <th>Variación</th>
+                    <th>Responsable</th>
                     <th>Hallazgos</th>
                     <th className="no-print">Acción</th>
                   </tr>
@@ -760,7 +630,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                         </td>
                         <td className="no-print">
                           <button className="b2b-btn b2b-btn-secondary text-xs py-1 px-2.5" onClick={()=>onOpen(record.visit)}>
-                            <Download size={13}/> Abrir
+                            Abrir
                           </button>
                         </td>
                       </tr>
@@ -772,7 +642,6 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           </div>
         </>
       )}
-      <GuidePresentation open={showGuideModal} onClose={()=>setShowGuideModal(false)}/>
     </div>
   );
 }
@@ -782,16 +651,12 @@ export default function MetricsPanel(props:{visits:Visit[];loading:boolean;onOpe
   return (
     <section className="metrics-area">
       <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 no-print">
-        <div className="flex items-center gap-2">
-          <BarChart3 size={20} className="text-[#007fa3]"/>
-          <span className="font-bold text-slate-800 text-sm tracking-tight">VISTA ANALÍTICA MIPE:</span>
-        </div>
         <div className="b2b-quick-ranges" role="tablist" aria-label="Tipo de métricas">
           <button role="tab" aria-selected={view==='farm'} className={`b2b-range-btn py-1.5 px-4 text-xs ${view==='farm'?'active':''}`} onClick={()=>setView('farm')}>
-            Evolución por Finca Individual
+            Por finca
           </button>
           <button role="tab" aria-selected={view==='consolidated'} className={`b2b-range-btn py-1.5 px-4 text-xs ${view==='consolidated'?'active':''}`} onClick={()=>setView('consolidated')}>
-            Matriz Consolidada Multi-Finca
+            Consolidado
           </button>
         </div>
       </div>

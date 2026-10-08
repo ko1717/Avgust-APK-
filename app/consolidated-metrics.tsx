@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   FileDown,
   FileSpreadsheet,
+  FileText,
   Filter,
   Layers,
   MapPin,
@@ -35,17 +36,10 @@ import {exportConsolidatedMatrixCsv} from '@/lib/export-matrix-csv';
 import {exportConsolidatedWord} from '@/lib/export-consolidated-word';
 import ImportMatrix from './import-matrix';
 import {ConsolidatedChapterDetails} from './metric-chapter-details';
-import {KpiSparkline,type SparklinePoint} from './kpi-sparkline';
 import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
-  const labels:Record<MetricStatus,string>={
-    healthy:'Saludable',
-    acceptable:'Aceptable',
-    critical:'Crítico',
-    pending:'Sin evaluar'
-  };
-  return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
+  return <span className={`b2b-kpi-badge ${value}`}>{metricStatusLabels[value]}</span>;
 }
 
 const monthLabel=(period:string)=>new Intl.DateTimeFormat('es-CO',{month:'short',year:'numeric'}).format(new Date(`${period}-01T12:00:00`));
@@ -68,26 +62,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
   const chart=data.timeline.map(row=>({...row,label:monthLabel(row.period)}));
   const chapterChart=data.chapters.map(row=>({chapter:`Cap ${row.id}`,hallazgos:row.findings,title:row.title}));
 
-  const scoreSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
-    date:t.period,
-    label:monthLabel(t.period),
-    value:t.score,
-    formattedValue:`${t.score}% MIPE`
-  })),[data.timeline]);
 
-  const reportsSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
-    date:t.period,
-    label:monthLabel(t.period),
-    value:t.reports,
-    formattedValue:`${t.reports} informes`
-  })),[data.timeline]);
 
-  const findingsSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
-    date:t.period,
-    label:monthLabel(t.period),
-    value:t.findings,
-    formattedValue:`${t.findings} hallazgos`
-  })),[data.timeline]);
 
   // Consolidado detallado de todas las fincas de la flota
   const fleetFarms=useMemo(()=>{
@@ -172,30 +148,23 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       {/* Executive Command Header */}
       <div className="b2b-header no-print">
         <div className="b2b-header-title">
-          <div className="b2b-kicker flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#00b5e2] inline-block" title="Avgust Cian"/>
-              <span className="w-2 h-2 rounded-full bg-[#78be20] inline-block" title="Avgust Verde Agro"/>
-              <span className="w-2 h-2 rounded-full bg-[#f2a900] inline-block" title="Avgust Oro"/>
-            </span>
-            <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
-          </div>
-          <h2 id="consolidated-title">Matriz Técnica de Aseguramientos Multi-Finca</h2>
-          <p>Análisis transversal de todas las fincas para identificar procesos críticos, patrones de no conformidad y desempeño relativo.</p>
+          <div className="b2b-kicker">Consolidado</div>
+          <h2 id="consolidated-title">Aseguramientos de todas las fincas</h2>
+          <p>Compara el indicador, los hallazgos y la cobertura sin repetir el mismo dato en cada tarjeta.</p>
         </div>
         {data.records.length>0 && (
           <div className="b2b-header-actions">
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedWord(data,month||`${from||'Inicio'} a ${to||'hoy'}`)}>
-              <FileSpreadsheet size={16}/> Informe Word
+              <FileText size={16}/> Word
             </button>
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedMatrixExcel(data)}>
-              <FileSpreadsheet size={16}/> Matriz Excel
+              <FileSpreadsheet size={16}/> Excel
             </button>
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedMatrixCsv(data)}>
               <FileDown size={16}/> CSV
             </button>
             <button className="b2b-btn b2b-btn-primary" onClick={()=>window.print()}>
-              <Printer size={16}/> Guardar PDF
+              <Printer size={16}/> PDF
             </button>
           </div>
         )}
@@ -233,130 +202,63 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         <>
           {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines */}
           <div className="b2b-kpi-grid">
-            <div
-              className={`b2b-kpi-card ${data.status} cursor-pointer transition-all ${timelineView==='score'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setTimelineView('score')}
-              title="Click para enfocar Índice Consolidado en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('score');}}
-            >
+            <div className={`b2b-kpi-card ${data.status}`}>
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Índice Consolidado</span>
+                <span className="b2b-kpi-title">Índice MIPE</span>
                 <StatusBadge value={data.status}/>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.score}%</span>
-              </div>
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={scoreSparkline} color="#007fa3" fillGradientId="sparkConsolidatedScore" unit="%" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                Promedio ponderado global entre todos los aseguramientos revisados.
               </div>
               <div className="b2b-kpi-progress">
                 <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${data.score||0}%`}}/>
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card highlight cursor-pointer transition-all ${timelineView==='all'?'ring-2 ring-[#78be20] shadow-md':''}`}
-              onClick={()=>setTimelineView('all')}
-              title="Click para comparar Comportamiento Global en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('all');}}
-            >
+            <div className="b2b-kpi-card highlight">
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Comportamiento Global</span>
-                <span className="text-xs font-bold text-[#007fa3]">
-                  {metricTrendLabels[data.trend]}
-                </span>
+                <span className="b2b-kpi-title">Tendencia</span>
+                {data.trend==='improved'?<TrendingUp size={15} className="text-[#78be20]"/>:data.trend==='declined'?<TrendingDown size={15} className="text-[#dc2626]"/>:null}
               </div>
               <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">
-                  {data.trend==='improved'?<TrendingUp size={24} className="text-[#78be20] inline mr-1"/>:data.trend==='declined'?<TrendingDown size={24} className="text-[#dc2626] inline mr-1"/>:null}
-                  {metricTrendLabels[data.trend]}
-                </span>
+                <span className="b2b-kpi-value" style={{fontSize:22}}>{metricTrendLabels[data.trend]}</span>
               </div>
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={scoreSparkline} color={data.trend==='improved'?'#78be20':data.trend==='declined'?'#dc2626':'#007fa3'} fillGradientId="sparkConsolidatedTrend" unit="%" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                Comparación temporal entre el primer y último periodo registrado.
-              </div>
+              <div className="b2b-kpi-footer">Primer periodo contra el último.</div>
             </div>
 
-            <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${timelineView==='reports'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setTimelineView('reports')}
-              title="Click para enfocar Informes y Fincas en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('reports');}}
-            >
+            <div className="b2b-kpi-card">
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Población de Fincas</span>
+                <span className="b2b-kpi-title">Fincas</span>
                 <Users size={15} className="text-[#007fa3]"/>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.farms}</span>
-                <span className="text-xs font-semibold text-slate-500">fincas auditadas</span>
-              </div>
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={reportsSparkline} color="#007fa3" fillGradientId="sparkConsolidatedFarms" height={38}/>
               </div>
               <div className="b2b-kpi-footer">
-                {completeAuditsCount} con auditoría completa (5/5) · {fleetFarms.length - completeAuditsCount} parciales.
+                {completeAuditsCount} completas · {fleetFarms.length - completeAuditsCount} parciales
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card ${data.findings>0?'critical':'healthy'} cursor-pointer transition-all ${timelineView==='findings'?'ring-2 ring-[#dc2626] shadow-md':''}`}
-              onClick={()=>setTimelineView('findings')}
-              title="Click para enfocar Inconformidades Totales en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('findings');}}
-            >
+            <div className={`b2b-kpi-card ${data.findings>0?'critical':'healthy'}`}>
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Inconformidades Totales</span>
-                <ShieldAlert size={15} className="text-[#dc2626]"/>
+                <span className="b2b-kpi-title">Hallazgos</span>
+                {data.findings>0?<ShieldAlert size={15} className="text-[#dc2626]"/>:<CheckCircle2 size={15} className="text-[#78be20]"/>}
               </div>
               <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value text-[#dc2626]">{data.findings}</span>
-                <span className="text-xs font-semibold text-slate-500">en {data.applicable} criterios</span>
-              </div>
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={findingsSparkline} color={data.findings>0?'#dc2626':'#78be20'} fillGradientId="sparkConsolidatedFindings" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                Tasa global de hallazgos: {data.applicable ? Math.round((data.findings/data.applicable)*100) : 0}% de los criterios evaluados.
+                <span className="b2b-kpi-value" style={{color:data.findings>0?'#dc2626':'#78be20'}}>{data.findings}</span>
+                <span className="text-xs font-semibold text-slate-500">de {data.applicable}</span>
               </div>
             </div>
 
-            <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${timelineView==='reports'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setTimelineView('reports')}
-              title="Click para ver Volumen de Aseguramientos"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('reports');}}
-            >
+            <div className="b2b-kpi-card">
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Aseguramientos</span>
+                <span className="b2b-kpi-title">Visitas</span>
                 <Layers size={15} className="text-[#007fa3]"/>
               </div>
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.records.length}</span>
-                <span className="text-xs font-semibold text-slate-500">visitas registradas</span>
               </div>
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={reportsSparkline} color="#007fa3" fillGradientId="sparkConsolidatedVisits" height={38}/>
-              </div>
-              <div className="b2b-kpi-footer">
-                Procesos: Almacén, Dosificación, Transporte, Mezclas y Equipos.
-              </div>
+              <div className="b2b-kpi-footer">Informes revisados en el periodo.</div>
             </div>
           </div>
 
@@ -364,14 +266,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
           <div className="b2b-card-block">
             <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
               <div>
-                <div className="b2b-kicker">Consolidado General de Operación</div>
                 <h3 className="flex items-center gap-2">
                   <Building2 size={19} className="text-[#007fa3]"/>
-                  Directorio Consolidado de Todas las Fincas Auditadas
+                  Fincas
                 </h3>
-                <p className="sub">
-                  Resumen exhaustivo de la auditoría técnica más reciente de cada finca en el periodo, su alcance normativo evaluado, calificación MIPE y desviaciones abiertas.
-                </p>
+                <p className="sub">Última visita revisada de cada finca en el periodo.</p>
               </div>
 
               {/* Fleet Overview Badges */}
@@ -443,15 +342,15 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <table className="b2b-table">
                 <thead>
                   <tr>
-                    <th style={{width:'50px'}} aria-label="Posición">Posición</th>
-                    <th>Finca y Ubicación</th>
-                    <th>Último Aseguramiento</th>
-                    <th>Capítulos Evaluados</th>
+                    <th style={{width:'50px'}} aria-label="Posición">#</th>
+                    <th>Finca</th>
+                    <th>Última visita</th>
+                    <th>Capítulos</th>
                     <th>Índice MIPE</th>
                     <th>Conformidad</th>
-                    <th>Hallazgos (“No”)</th>
-                    <th>Estado Semáforo</th>
-                    <th>Responsable AVGUST</th>
+                    <th>Hallazgos</th>
+                    <th>Estado</th>
+                    <th>Responsable</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -540,9 +439,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
           <div className="b2b-card-block">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <div className="b2b-kicker">Clasificación Comparativa Homogénea</div>
-                <h3>Benchmark de Desempeño entre Fincas con Igual Alcance</h3>
-                <p className="sub">Compara la auditoría revisada más reciente de cada finca dentro del periodo. Solo se agrupan fincas con idénticos capítulos evaluados para garantizar rigor estadístico y equidad.</p>
+                <h3>Comparación por alcance</h3>
+                <p className="sub">Solo agrupa fincas con los mismos capítulos evaluados.</p>
               </div>
             </div>
 
@@ -614,8 +512,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             <div className="b2b-chart-card">
               <div className="b2b-chart-header">
                 <div>
-                  <h3>Evolución Mensual Consolidada</h3>
-                  <p>Comportamiento longitudinal ponderado de la flota de fincas.</p>
+                  <h3>Evolución</h3>
+                  <p>Promedio mensual del periodo.</p>
                 </div>
                 <div className="b2b-quick-ranges no-print">
                   <button className={`b2b-range-btn ${timelineView==='score'?'active':''}`} onClick={()=>setTimelineView('score')}>Índice MIPE</button>
@@ -624,7 +522,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   <button className={`b2b-range-btn ${timelineView==='all'?'active':''}`} onClick={()=>setTimelineView('all')}>Todos</button>
                 </div>
               </div>
-              <div className="w-full overflow-x-auto">
+              <div className="b2b-chart-scroll">
                 <div style={{minWidth:Math.max(400,chart.length*60)}}>
                   <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={chart} margin={{top:15,right:20,left:-15,bottom:4}}>
@@ -634,8 +532,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                       <Tooltip formatter={(value,name)=>[timelineView==='score'||name==='Índice MIPE'?`${value}%`:value,String(name)]}/>
                       {(timelineView==='score'||timelineView==='all') && (
                         <>
-                          <ReferenceLine y={95} stroke="#78be20" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Saludable (≥ 95%)',fill:'#15803d',fontSize:10,position:'insideTopRight'}}/>
-                          <ReferenceLine y={50} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="4 4" label={{value:'Crítico (50%)',fill:'#dc2626',fontSize:10,position:'insideBottomRight'}}/>
+                          <ReferenceLine y={95} stroke="#78be20" strokeWidth={1.5} strokeDasharray="4 4"/>
+                          <ReferenceLine y={85} stroke="#f2a900" strokeWidth={1.5} strokeDasharray="3 3"/>
                         </>
                       )}
                       {(timelineView==='score'||timelineView==='all') && (
@@ -651,13 +549,30 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   </ResponsiveContainer>
                 </div>
               </div>
+              <div className="b2b-chart-legend mt-3">
+                {(timelineView==='score'||timelineView==='all') && (
+                  <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#007fa3]"/><span>Índice MIPE</span></div>
+                )}
+                {(timelineView==='findings'||timelineView==='all') && (
+                  <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#dc2626]"/><span>Hallazgos</span></div>
+                )}
+                {(timelineView==='reports'||timelineView==='all') && (
+                  <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#005f7a]"/><span>Informes</span></div>
+                )}
+                {(timelineView==='score'||timelineView==='all') && (
+                  <>
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#78be20]"/><span>Saludable, desde 95%</span></div>
+                    <div className="b2b-legend-item"><span className="b2b-legend-dot bg-[#f2a900]"/><span>Aceptable, desde 85%</span></div>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="b2b-chart-card">
               <div className="b2b-chart-header">
                 <div>
-                  <h3>Concentración de Hallazgos por Proceso</h3>
-                  <p>Número total de incumplimientos por capítulo MIPE.</p>
+                  <h3>Hallazgos por proceso</h3>
+                  <p>Incumplimientos de cada capítulo.</p>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={260}>
@@ -666,7 +581,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   <XAxis dataKey="chapter" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
                   <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
                   <Tooltip formatter={(value,_name,item)=>[value,`Hallazgos en ${item.payload.title}`]}/>
-                  <Bar dataKey="hallazgos" name="Hallazgos" fill="#f2a900" radius={[6,6,0,0]} isAnimationActive={false}/>
+                  <Bar dataKey="hallazgos" name="Hallazgos" fill="#dc2626" radius={[6,6,0,0]} isAnimationActive={false}/>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -676,9 +591,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
           <div className="b2b-card-block">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <div className="b2b-kicker">Priorización de Intervención</div>
-                <h3>Criterios con Mayor Frecuencia de No Conformidad</h3>
-                <p className="sub">Listado ordenado por volumen de respuestas “No” acumuladas en todas las fincas.</p>
+                <h3>Criterios más frecuentes</h3>
+                <p className="sub">Respuestas “No”, de mayor a menor.</p>
               </div>
             </div>
 
@@ -688,10 +602,10 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   <tr>
                     <th>Capítulo</th>
                     <th style={{width:'80px'}}>Código</th>
-                    <th>Criterio Técnico / Inconveniente</th>
-                    <th>Hallazgos Totales</th>
-                    <th>Frecuencia Relativa</th>
-                    <th>Fincas Afectadas</th>
+                    <th>Criterio</th>
+                    <th>Hallazgos</th>
+                    <th>Frecuencia</th>
+                    <th>Fincas</th>
                   </tr>
                 </thead>
                 <tbody>
