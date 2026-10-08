@@ -14,7 +14,10 @@ import {
   TrendingDown,
   TrendingUp,
   Trophy,
-  Users
+  Users,
+  Target,
+  Sparkles,
+  BarChart3
 } from 'lucide-react';
 import {
   Bar,
@@ -40,9 +43,9 @@ import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
   const labels:Record<MetricStatus,string>={
-    healthy:'Saludable',
-    acceptable:'Aceptable',
-    critical:'Crítico',
+    healthy:'Óptimo (≥ 95%)',
+    acceptable:'Aceptable (85-94%)',
+    critical:'Crítico (< 85%)',
     pending:'Sin evaluar'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
@@ -89,62 +92,59 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
     formattedValue:`${t.findings} hallazgos`
   })),[data.timeline]);
 
-  // Consolidado detallado de todas las fincas de la flota
+  // Robustly calculate fleet farm summaries with chronological ordering & disambiguation
   const fleetFarms=useMemo(()=>{
-    const map=new Map<string,{
-      farm:string;
-      key:string;
-      city:string;
-      zone:string;
-      totalVisits:number;
-      latestDate:string;
-      latestScore:number;
-      latestFindings:number;
-      latestApplicable:number;
-      latestStatus:MetricStatus;
-      latestCompliance:number|null;
-      latestWeightedScore:number|null;
-      latestPointsEarned:number;
-      evaluatedChapters:number[];
-      responsible:string;
-      technician:string;
-    }>();
-
+    const farmGroups=new Map<string,typeof data.records>();
     for(const r of data.records){
       const key=farmKey(r.visit.farm);
-      const existing=map.get(key);
-      if(!existing||r.date>existing.latestDate){
-        map.set(key,{
-          farm:r.visit.farm,
-          key,
-          city:r.visit.city||'',
-          zone:r.visit.zone||'',
-          totalVisits:(existing?.totalVisits||0)+1,
-          latestDate:r.date,
-          latestScore:r.score,
-          latestFindings:r.findings,
-          latestApplicable:r.applicable,
-          latestStatus:r.status,
-          latestCompliance:r.criteriaCompliance,
-          latestWeightedScore:r.weightedScore,
-          latestPointsEarned:r.pointsEarned,
-          evaluatedChapters:[...r.visit.chapters].sort((a,b)=>a-b),
-          responsible:r.responsible,
-          technician:r.visit.technician||''
-        });
-      }else{
-        existing.totalVisits+=1;
-      }
+      const list=farmGroups.get(key)||[];
+      list.push(r);
+      farmGroups.set(key,list);
     }
 
-    return Array.from(map.values()).sort((a,b)=>b.latestScore-a.latestScore||a.farm.localeCompare(b.farm,'es'));
+    const result = Array.from(farmGroups.entries()).map(([key, records])=>{
+      // Sort chronologically by date and revision/updated
+      records.sort((a,b)=>{
+        const dateCmp=a.date.localeCompare(b.date);
+        if(dateCmp!==0) return dateCmp;
+        const updA=a.visit.updated||'';
+        const updB=b.visit.updated||'';
+        if(updA&&updB) return updA.localeCompare(updB);
+        return (a.visit.revision||0) - (b.visit.revision||0);
+      });
+
+      const latest=records[records.length-1];
+      const evaluatedChapters=latest.evaluatedChapters ? latest.evaluatedChapters : latest.visit.chapters.length;
+
+      return {
+        farm:latest.visit.farm,
+        key,
+        city:latest.visit.city||'',
+        zone:latest.visit.zone||'',
+        totalVisits:records.length,
+        latestDate:latest.date,
+        latestScore:latest.score,
+        latestFindings:latest.findings,
+        latestApplicable:latest.applicable,
+        latestStatus:latest.status,
+        latestCompliance:latest.criteriaCompliance,
+        latestWeightedScore:latest.weightedScore,
+        latestPointsEarned:latest.pointsEarned,
+        evaluatedChaptersCount:evaluatedChapters,
+        evaluatedChaptersList:[...latest.visit.chapters].sort((a,b)=>a-b),
+        responsible:latest.responsible,
+        technician:latest.visit.technician||''
+      };
+    });
+
+    return result.sort((a,b)=>b.latestScore-a.latestScore||a.farm.localeCompare(b.farm,'es'));
   },[data.records]);
 
   const filteredFleet=useMemo(()=>{
     return fleetFarms.filter(f=>{
       if(fleetStatusFilter!=='all'&&f.latestStatus!==fleetStatusFilter) return false;
-      if(fleetScopeFilter==='complete'&&f.evaluatedChapters.length!==5) return false;
-      if(fleetScopeFilter==='partial'&&f.evaluatedChapters.length===5) return false;
+      if(fleetScopeFilter==='complete'&&f.evaluatedChaptersCount!==5) return false;
+      if(fleetScopeFilter==='partial'&&f.evaluatedChaptersCount===5) return false;
       if(fleetSearch){
         const q=fleetSearch.toLowerCase();
         return f.farm.toLowerCase().includes(q)||f.zone.toLowerCase().includes(q)||f.city.toLowerCase().includes(q)||f.responsible.toLowerCase().includes(q);
@@ -153,10 +153,13 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
     });
   },[fleetFarms,fleetSearch,fleetStatusFilter,fleetScopeFilter]);
 
-  const completeAuditsCount=useMemo(()=>fleetFarms.filter(f=>f.evaluatedChapters.length===5).length,[fleetFarms]);
+  const completeAuditsCount=useMemo(()=>fleetFarms.filter(f=>f.evaluatedChaptersCount===5).length,[fleetFarms]);
   const healthyCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='healthy').length,[fleetFarms]);
   const acceptableCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='acceptable').length,[fleetFarms]);
   const criticalCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='critical').length,[fleetFarms]);
+
+  // Official fleet average weighted score
+  const fleetAverageScore = data.weightedScore ?? data.score ?? 0;
 
   return (
     <div className="b2b-metrics-wrapper" aria-labelledby="consolidated-title">
@@ -181,8 +184,9 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
           <h2 id="consolidated-title">Matriz Técnica de Aseguramientos Multi-Finca</h2>
-          <p>Análisis transversal de todas las fincas para identificar procesos críticos, patrones de no conformidad y desempeño relativo.</p>
+          <p>Análisis transversal de la flota de fincas: procesos críticos, patrones de no conformidad y ranking comparativo homogéneo.</p>
         </div>
+
         {data.records.length>0 && (
           <div className="b2b-header-actions">
             <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedWord(data,month||`${from||'Inicio'} a ${to||'hoy'}`)}>
@@ -208,10 +212,12 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             <span>Mes Específico</span>
             <input type="month" value={month} onChange={e=>setMonth(e.target.value)} className="b2b-input"/>
           </label>
+
           <label className="b2b-filter-label">
             <span>Año Desde</span>
             <input type="number" min="2020" max="2100" placeholder="2022" value={from} onChange={e=>setFrom(e.target.value)} className="b2b-input w-24"/>
           </label>
+
           <label className="b2b-filter-label">
             <span>Año Hasta</span>
             <input type="number" min="2020" max="2100" placeholder="2026" value={to} onChange={e=>setTo(e.target.value)} className="b2b-input w-24"/>
@@ -231,8 +237,9 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         </div>
       ) : (
         <>
-          {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines */}
+          {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines & Well-Written Cards */}
           <div className="b2b-kpi-grid">
+            {/* KPI 1: Índice MIPE Promedio de la Flota */}
             <div
               className={`b2b-kpi-card ${data.status} cursor-pointer transition-all ${timelineView==='score'?'ring-2 ring-[#007fa3] shadow-md':''}`}
               onClick={()=>setTimelineView('score')}
@@ -242,23 +249,39 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('score');}}
             >
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Índice Consolidado</span>
+                <div>
+                  <span className="b2b-kpi-category text-[#007fa3] flex items-center gap-1">
+                    <Target size={12}/> Flota Integral MIPE
+                  </span>
+                  <span className="b2b-kpi-title">Índice MIPE Promedio</span>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">Media ponderada de la flota</span>
+                </div>
                 <StatusBadge value={data.status}/>
               </div>
+
               <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">{data.score}%</span>
+                <span className="b2b-kpi-value">{fleetAverageScore}%</span>
+                <span className="text-xs font-semibold text-slate-500">puntos promedio</span>
               </div>
+
               <div className="mt-1 mb-2">
                 <KpiSparkline data={scoreSparkline} color="#007fa3" fillGradientId="sparkConsolidatedScore" unit="%" height={38}/>
               </div>
+
               <div className="b2b-kpi-footer">
-                Promedio ponderado global entre todos los aseguramientos revisados.
+                {healthyCount} fincas en nivel óptimo (≥95%) · {acceptableCount} en aceptable (85-94%) · {criticalCount} en crítico (&lt;85%).
               </div>
-              <div className="b2b-kpi-progress">
-                <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${data.score||0}%`}}/>
+
+              <div className="b2b-kpi-progress-wrap">
+                <div className="b2b-kpi-progress">
+                  <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${fleetAverageScore||0}%`}}/>
+                </div>
+                <div className="b2b-kpi-target-mark acceptable" style={{left:'85%'}} title="Umbral Aceptable: 85%"/>
+                <div className="b2b-kpi-target-mark" style={{left:'95%'}} title="Meta Óptima: 95%"/>
               </div>
             </div>
 
+            {/* KPI 2: Comportamiento Global de la Red */}
             <div
               className={`b2b-kpi-card highlight cursor-pointer transition-all ${timelineView==='all'?'ring-2 ring-[#78be20] shadow-md':''}`}
               onClick={()=>setTimelineView('all')}
@@ -268,25 +291,36 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('all');}}
             >
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Comportamiento Global</span>
-                <span className="text-xs font-bold text-[#007fa3]">
+                <div>
+                  <span className="b2b-kpi-category text-[#78be20] flex items-center gap-1">
+                    <TrendingUp size={12}/> Evolución Longitudinal
+                  </span>
+                  <span className="b2b-kpi-title">Tendencia de la Red</span>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">Primer vs último periodo</span>
+                </div>
+                <span className={`inline-flex items-center gap-1 text-xs font-bold ${data.trend==='improved'?'text-[#78be20]':data.trend==='declined'?'text-[#dc2626]':'text-slate-600'}`}>
+                  {data.trend==='improved'?<TrendingUp size={14}/>:data.trend==='declined'?<TrendingDown size={14}/>:null}
                   {metricTrendLabels[data.trend]}
                 </span>
               </div>
+
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">
-                  {data.trend==='improved'?<TrendingUp size={24} className="text-[#78be20] inline mr-1"/>:data.trend==='declined'?<TrendingDown size={24} className="text-[#dc2626] inline mr-1"/>:null}
                   {metricTrendLabels[data.trend]}
                 </span>
+                <span className="text-xs font-semibold text-slate-500">{data.timeline.length} periodos analizados</span>
               </div>
+
               <div className="mt-1 mb-2">
                 <KpiSparkline data={scoreSparkline} color={data.trend==='improved'?'#78be20':data.trend==='declined'?'#dc2626':'#007fa3'} fillGradientId="sparkConsolidatedTrend" unit="%" height={38}/>
               </div>
+
               <div className="b2b-kpi-footer">
-                Comparación temporal entre el primer y último periodo registrado.
+                Comportamiento longitudinal ponderado a través de las evaluaciones registradas.
               </div>
             </div>
 
+            {/* KPI 3: Cobertura de Fincas */}
             <div
               className={`b2b-kpi-card cursor-pointer transition-all ${timelineView==='reports'?'ring-2 ring-[#007fa3] shadow-md':''}`}
               onClick={()=>setTimelineView('reports')}
@@ -296,21 +330,31 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('reports');}}
             >
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Población de Fincas</span>
+                <div>
+                  <span className="b2b-kpi-category text-[#007fa3] flex items-center gap-1">
+                    <Users size={12}/> Alcance Multi-Finca
+                  </span>
+                  <span className="b2b-kpi-title">Población Auditada</span>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">Fincas con aseguramiento</span>
+                </div>
                 <Users size={15} className="text-[#007fa3]"/>
               </div>
+
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.farms}</span>
-                <span className="text-xs font-semibold text-slate-500">fincas auditadas</span>
+                <span className="text-xs font-semibold text-slate-500">fincas activas</span>
               </div>
+
               <div className="mt-1 mb-2">
                 <KpiSparkline data={reportsSparkline} color="#007fa3" fillGradientId="sparkConsolidatedFarms" height={38}/>
               </div>
+
               <div className="b2b-kpi-footer">
-                {completeAuditsCount} con auditoría completa (5/5) · {fleetFarms.length - completeAuditsCount} parciales.
+                {completeAuditsCount} con auditoría completa (5/5 procesos) · {fleetFarms.length - completeAuditsCount} focalizadas.
               </div>
             </div>
 
+            {/* KPI 4: Inconformidades Totales */}
             <div
               className={`b2b-kpi-card ${data.findings>0?'critical':'healthy'} cursor-pointer transition-all ${timelineView==='findings'?'ring-2 ring-[#dc2626] shadow-md':''}`}
               onClick={()=>setTimelineView('findings')}
@@ -320,21 +364,31 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('findings');}}
             >
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Inconformidades Totales</span>
+                <div>
+                  <span className="b2b-kpi-category text-rose-600 flex items-center gap-1">
+                    <ShieldAlert size={12}/> Riesgo Agregado
+                  </span>
+                  <span className="b2b-kpi-title">Hallazgos Totales</span>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">Respuestas “No” en la flota</span>
+                </div>
                 <ShieldAlert size={15} className="text-[#dc2626]"/>
               </div>
+
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value text-[#dc2626]">{data.findings}</span>
                 <span className="text-xs font-semibold text-slate-500">en {data.applicable} criterios</span>
               </div>
+
               <div className="mt-1 mb-2">
                 <KpiSparkline data={findingsSparkline} color={data.findings>0?'#dc2626':'#78be20'} fillGradientId="sparkConsolidatedFindings" height={38}/>
               </div>
+
               <div className="b2b-kpi-footer">
                 Tasa global de hallazgos: {data.applicable ? Math.round((data.findings/data.applicable)*100) : 0}% de los criterios evaluados.
               </div>
             </div>
 
+            {/* KPI 5: Aseguramientos Realizados */}
             <div
               className={`b2b-kpi-card cursor-pointer transition-all ${timelineView==='reports'?'ring-2 ring-[#007fa3] shadow-md':''}`}
               onClick={()=>setTimelineView('reports')}
@@ -344,18 +398,27 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('reports');}}
             >
               <div className="b2b-kpi-header">
-                <span className="b2b-kpi-title">Aseguramientos</span>
+                <div>
+                  <span className="b2b-kpi-category text-[#007fa3] flex items-center gap-1">
+                    <Layers size={12}/> Cobertura de Operación
+                  </span>
+                  <span className="b2b-kpi-title">Aseguramientos</span>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">Informes técnicos revisados</span>
+                </div>
                 <Layers size={15} className="text-[#007fa3]"/>
               </div>
+
               <div className="b2b-kpi-body">
                 <span className="b2b-kpi-value">{data.records.length}</span>
-                <span className="text-xs font-semibold text-slate-500">visitas registradas</span>
+                <span className="text-xs font-semibold text-slate-500">visitas documentadas</span>
               </div>
+
               <div className="mt-1 mb-2">
                 <KpiSparkline data={reportsSparkline} color="#007fa3" fillGradientId="sparkConsolidatedVisits" height={38}/>
               </div>
+
               <div className="b2b-kpi-footer">
-                Procesos: Almacén, Dosificación, Transporte, Mezclas y Equipos.
+                Auditorías que validan Almacén, Dosificación, Transporte, Mezclas y Aplicación.
               </div>
             </div>
           </div>
@@ -378,7 +441,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
                   <span className="w-2 h-2 rounded-full bg-[#78be20]"></span>
-                  {healthyCount} Saludables (≥95%)
+                  {healthyCount} Óptimas (≥95%)
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold">
                   <span className="w-2 h-2 rounded-full bg-[#f2a900]"></span>
@@ -416,7 +479,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                     className="b2b-input py-1 text-xs"
                   >
                     <option value="all">Todos los estados</option>
-                    <option value="healthy">Saludable (≥95%)</option>
+                    <option value="healthy">Óptimo (≥95%)</option>
                     <option value="acceptable">Aceptable (85-94%)</option>
                     <option value="critical">Crítico (&lt;85%)</option>
                   </select>
@@ -459,7 +522,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                     filteredFleet.map((farm,idx)=>(
                       <tr key={farm.key}>
                         <td>
-                          <span className="font-bold text-xs text-slate-500">#{idx+1}</span>
+                          <span className="font-bold text-xs text-slate-500 tabular-nums">#{idx+1}</span>
                         </td>
                         <td>
                           <div>
@@ -477,21 +540,21 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                           <span className="block text-[11px] text-slate-400">{farm.totalVisits} visita{farm.totalVisits===1?'':'s'} en histórico</span>
                         </td>
                         <td>
-                          {farm.evaluatedChapters.length === 5 ? (
+                          {farm.evaluatedChaptersCount === 5 ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#78be20]/15 text-[#245b3a] border border-[#78be20]/30">
                               <CheckCircle2 size={12} className="text-[#78be20]"/>
                               5/5 Completa
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-50 text-[#007fa3] border border-sky-200" title={`Capítulos evaluados: ${farm.evaluatedChapters.join(', ')}`}>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-50 text-[#007fa3] border border-sky-200" title={`Capítulos evaluados: ${farm.evaluatedChaptersList.join(', ')}`}>
                               <Layers size={12} className="text-[#007fa3]"/>
-                              {farm.evaluatedChapters.length}/5 (Caps: {farm.evaluatedChapters.join(', ')})
+                              {farm.evaluatedChaptersCount}/5 (Caps: {farm.evaluatedChaptersList.join(', ')})
                             </span>
                           )}
                         </td>
                         <td aria-label={`Índice MIPE ${farm.latestScore}%`}>
                           <div className="flex items-center gap-2">
-                            <strong className="text-sm font-extrabold text-[#0f172a] min-w-[38px]">{farm.latestScore}%</strong>
+                            <strong className="text-sm font-extrabold text-[#0f172a] min-w-[38px] tabular-nums">{farm.latestScore}%</strong>
                             <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden hidden sm:block">
                               <div
                                 className={`h-full rounded-full ${farm.latestStatus==='healthy'?'bg-[#78be20]':farm.latestStatus==='acceptable'?'bg-[#f2a900]':'bg-[#dc2626]'}`}
@@ -501,12 +564,12 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                           </div>
                         </td>
                         <td>
-                          <span className="text-xs font-semibold text-slate-700">
+                          <span className="text-xs font-semibold text-slate-700 tabular-nums">
                             {farm.latestCompliance!==null ? `${farm.latestCompliance}%` : '—'}
                           </span>
                         </td>
                         <td>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${farm.latestFindings>0?'bg-rose-100 text-rose-800 border border-rose-200':'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold tabular-nums ${farm.latestFindings>0?'bg-rose-100 text-rose-800 border border-rose-200':'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
                             {farm.latestFindings}
                           </span>
                         </td>
@@ -573,15 +636,15 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                             {group.records.map(record=>(
                               <tr key={record.farm}>
                                 <td>
-                                  <span className={`inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-xs ${record.rank===1?'bg-amber-100 text-amber-800 border border-amber-300':record.rank===2?'bg-slate-200 text-slate-800':'bg-slate-100 text-slate-600'}`}>
+                                  <span className={`inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-xs tabular-nums ${record.rank===1?'bg-amber-100 text-amber-800 border border-amber-300':record.rank===2?'bg-slate-200 text-slate-800':'bg-slate-100 text-slate-600'}`}>
                                     {record.tied ? `Empate #${record.rank}` : `#${record.rank}`}
                                   </span>
                                 </td>
                                 <td><strong className="text-slate-900">{record.farm}</strong></td>
                                 <td><span className="text-slate-600">{record.date}</span></td>
-                                <td><strong className="text-[#007fa3] text-sm">{record.score}%</strong></td>
-                                <td><span className={`font-bold ${record.findings>0?'text-[#dc2626]':'text-[#78be20]'}`}>{record.findings}</span></td>
-                                <td><span className="text-slate-600">{record.applicable}</span></td>
+                                <td><strong className="text-[#007fa3] text-sm tabular-nums">{record.score}%</strong></td>
+                                <td><span className={`font-bold tabular-nums ${record.findings>0?'text-[#dc2626]':'text-[#78be20]'}`}>{record.findings}</span></td>
+                                <td><span className="text-slate-600 tabular-nums">{record.applicable}</span></td>
                               </tr>
                             ))}
                           </tbody>
@@ -634,8 +697,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                       <Tooltip formatter={(value,name)=>[timelineView==='score'||name==='Índice MIPE'?`${value}%`:value,String(name)]}/>
                       {(timelineView==='score'||timelineView==='all') && (
                         <>
-                          <ReferenceLine y={95} stroke="#78be20" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Saludable (≥ 95%)',fill:'#15803d',fontSize:10,position:'insideTopRight'}}/>
-                          <ReferenceLine y={50} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="4 4" label={{value:'Crítico (50%)',fill:'#dc2626',fontSize:10,position:'insideBottomRight'}}/>
+                          <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Óptima (≥ 95%)',fill:'#15803d',fontSize:10,fontWeight:700,position:'insideTopRight'}}/>
+                          <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Aceptable (85%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
                         </>
                       )}
                       {(timelineView==='score'||timelineView==='all') && (
@@ -700,13 +763,13 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                       <td><span className="font-semibold text-slate-700">Cap. {item.chapter} · {item.chapterTitle}</span></td>
                       <td><strong className="text-slate-900">{item.id}</strong></td>
                       <td><span className="text-slate-700 text-xs">{item.text}</span></td>
-                      <td><strong className="text-[#dc2626] text-sm">{item.findings}</strong></td>
+                      <td><strong className="text-[#dc2626] text-sm tabular-nums">{item.findings}</strong></td>
                       <td>
-                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${item.rate>=50?'bg-rose-100 text-rose-800 border border-rose-200':item.rate>=25?'bg-amber-100 text-amber-800 border border-amber-200':'bg-slate-100 text-slate-700'}`}>
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold tabular-nums ${item.rate>=50?'bg-rose-100 text-rose-800 border border-rose-200':item.rate>=25?'bg-amber-100 text-amber-800 border border-amber-200':'bg-slate-100 text-slate-700'}`}>
                           {item.rate}%
                         </span>
                       </td>
-                      <td><span className="font-bold text-slate-800">{item.farms}</span></td>
+                      <td><span className="font-bold text-slate-800 tabular-nums">{item.farms}</span></td>
                     </tr>
                   ))}
                 </tbody>

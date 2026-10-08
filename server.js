@@ -17,16 +17,19 @@ if (!fs.existsSync(indexHtml)) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
 
-// Set proper MIME types
-express.static.mime.define({
-  'application/wasm': ['wasm'],
-  'application/manifest+json': ['webmanifest'],
-  'font/woff2': ['woff2'],
-  'image/svg+xml': ['svg']
-});
+// Parse CLI flags (--port 3000 --host 0.0.0.0) or environment variables
+let PORT = process.env.PORT || 3000;
+let HOST = process.env.HOST || '0.0.0.0';
+const args = process.argv.slice(2);
+for (let i = 0; i < args.length; i++) {
+  if ((args[i] === '--port' || args[i] === '-p') && args[i + 1]) {
+    PORT = parseInt(args[i + 1], 10);
+  }
+  if ((args[i] === '--host' || args[i] === '-h') && args[i + 1]) {
+    HOST = args[i + 1];
+  }
+}
 
 // Middleware for relaxed headers suited for iframe embedding and WASM execution
 app.use((req, res, next) => {
@@ -57,6 +60,12 @@ app.use(express.static(distDir, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.wasm')) {
       res.setHeader('Content-Type', 'application/wasm');
+    } else if (filePath.endsWith('.webmanifest') || filePath.endsWith('.manifest')) {
+      res.setHeader('Content-Type', 'application/manifest+json');
+    } else if (filePath.endsWith('.woff2')) {
+      res.setHeader('Content-Type', 'font/woff2');
+    } else if (filePath.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
     } else if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     }
@@ -64,7 +73,7 @@ app.use(express.static(distDir, {
 }));
 
 // SPA routing fallback
-app.get('*', (req, res) => {
+app.use((req, res) => {
   if (fs.existsSync(indexHtml)) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.sendFile(indexHtml);

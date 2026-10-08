@@ -6,8 +6,8 @@
     "node": ">=22.16.0"
   },
   "scripts": {
-    "dev": "vinext dev",
-    "build": "vinext build",
+    "dev": "node server.js",
+    "build": "node build.js",
     "test:unit": "node --test",
     "test:integration": "node tests/team.mjs",
     "start": "wrangler dev --config dist/server/wrangler.json",

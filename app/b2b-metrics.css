@@ -1,5 +1,20 @@
 /* B2B Executive Metrics Stylesheet - AVGUST CARE 360 */
 
+:root {
+  --avgust-cyan: #007fa3;
+  --avgust-cyan-dark: #005f7a;
+  --avgust-cyan-light: #00b5e2;
+  --avgust-cyan-subtle: #f0f9ff;
+  --avgust-green: #78be20;
+  --avgust-green-dark: #5c9914;
+  --avgust-green-subtle: #f4fbf0;
+  --avgust-gold: #f2a900;
+  --avgust-gold-dark: #b45309;
+  --avgust-gold-subtle: #fffbeb;
+  --avgust-red: #dc2626;
+  --avgust-red-subtle: #fef2f2;
+}
+
 .b2b-metrics-wrapper {
   display: flex;
   flex-direction: column;
@@ -214,7 +229,7 @@
 
 .b2b-kpi-card:hover, .metric-summary > div:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 10px 20px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
   transform: translateY(-2px);
 }
 
@@ -232,14 +247,32 @@
 
 .b2b-kpi-card.healthy {
   border-left: 4px solid #78be20;
+  box-shadow: 0 1px 3px 0 rgba(120, 190, 32, 0.1), 0 1px 2px -1px rgba(120, 190, 32, 0.06);
+}
+
+.b2b-kpi-card.healthy:hover {
+  border-color: #a3e635;
+  box-shadow: 0 10px 20px -4px rgba(120, 190, 32, 0.18), 0 4px 6px -2px rgba(120, 190, 32, 0.08);
 }
 
 .b2b-kpi-card.acceptable, .b2b-kpi-card.warning {
   border-left: 4px solid #f2a900;
+  box-shadow: 0 1px 3px 0 rgba(242, 169, 0, 0.1), 0 1px 2px -1px rgba(242, 169, 0, 0.06);
+}
+
+.b2b-kpi-card.acceptable:hover, .b2b-kpi-card.warning:hover {
+  border-color: #fcd34d;
+  box-shadow: 0 10px 20px -4px rgba(242, 169, 0, 0.18), 0 4px 6px -2px rgba(242, 169, 0, 0.08);
 }
 
 .b2b-kpi-card.critical {
   border-left: 4px solid #dc2626;
+  box-shadow: 0 1px 3px 0 rgba(220, 38, 38, 0.1), 0 1px 2px -1px rgba(220, 38, 38, 0.06);
+}
+
+.b2b-kpi-card.critical:hover {
+  border-color: #fca5a5;
+  box-shadow: 0 10px 20px -4px rgba(220, 38, 38, 0.18), 0 4px 6px -2px rgba(220, 38, 38, 0.08);
 }
 
 .b2b-kpi-header {
@@ -307,6 +340,37 @@
 .b2b-kpi-progress-fill.critical { background: #dc2626; }
 
 /* Status Badges */
+.b2b-kpi-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.b2b-kpi-progress-wrap {
+  position: relative;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.b2b-kpi-target-mark {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 8px;
+  background: #15803d;
+  z-index: 2;
+  border-radius: 1px;
+}
+
+.b2b-kpi-target-mark.acceptable {
+  background: #b45309;
+}
+
 .b2b-kpi-badge, .metric-status {
   display: inline-flex;
   align-items: center;
