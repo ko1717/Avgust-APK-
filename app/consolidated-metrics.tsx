@@ -168,6 +168,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
 
   const improvingFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta>0).sort((a,b)=>(b.recentDelta||0)-(a.recentDelta||0)).slice(0,3),[filteredFleet]);
   const decliningFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta<0).sort((a,b)=>(a.recentDelta||0)-(b.recentDelta||0)).slice(0,3),[filteredFleet]);
+  const priorityFarms=useMemo(()=>filteredFleet.filter(f=>f.correctiveActions.length>0).sort((a,b)=>a.latestScore-b.latestScore||b.correctiveActions.length-a.correctiveActions.length),[filteredFleet]);
   const completeAuditsCount=useMemo(()=>fleetFarms.filter(f=>f.evaluatedChaptersCount===5).length,[fleetFarms]);
   const healthyCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='healthy').length,[fleetFarms]);
   const acceptableCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='acceptable').length,[fleetFarms]);
@@ -198,8 +199,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             </span>
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
-          <h2 id="consolidated-title">Matriz Técnica de Aseguramientos Multi-Finca</h2>
-          <p>Análisis transversal de la flota de fincas: procesos críticos, patrones de no conformidad y ranking comparativo homogéneo.</p>
+          <h2 id="consolidated-title">Panorama MIPE de todas las fincas</h2>
+          <p>Estado de salud, cambios entre visitas y acciones correctivas pendientes en una sola vista.</p>
         </div>
 
         {data.records.length>0 && (
@@ -252,6 +253,99 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         </div>
       ) : (
         <>
+          <div className="metrics-executive-dashboard">
+            <section className={`metrics-outcome ${data.status}`} aria-label="Conclusión consolidada de las fincas">
+              <div className="metrics-outcome-main">
+                <div className="metrics-section-kicker">Resultado de la flota · {data.farms} fincas · {data.records.length} visitas revisadas</div>
+                <h3>Estado fitosanitario de las fincas</h3>
+                <StatusBadge value={data.status}/>
+                <p className="metrics-outcome-copy">{metricStatusDescriptions[data.status]}</p>
+              </div>
+              <div className="metrics-outcome-score" aria-label={`Índice MIPE promedio ${fleetAverageScore} por ciento`}>
+                <strong>{fleetAverageScore}<span>%</span></strong>
+                <small>Promedio MIPE</small>
+                <div className="metrics-score-track"><span style={{width:`${Math.min(100,Math.max(0,fleetAverageScore))}%`}}/></div>
+              </div>
+              <div className="metrics-fleet-status-counts">
+                <div className="healthy"><strong>{healthyCount}</strong><span>Saludables</span><small>95–100%</small></div>
+                <div className="acceptable"><strong>{acceptableCount}</strong><span>En alerta</span><small>80–94%</small></div>
+                <div className="critical"><strong>{criticalCount}</strong><span>Vulnerables</span><small>Menos de 80%</small></div>
+                <div className="total"><strong>{fleetFarms.length}</strong><span>Fincas evaluadas</span><small>En el periodo</small></div>
+              </div>
+            </section>
+
+            <section className="metrics-podium-panel">
+              <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Cambio entre visitas comparables</div><h3>Podios de evolución</h3></div><span className="metrics-note">Mismo alcance de capítulos</span></div>
+              <div className="metrics-podium-columns">
+                <div className="metrics-podium-group improve"><h4><TrendingUp size={17}/> Mejoras</h4>{improvingFarms.length?improvingFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>+{farm.recentDelta} pts</strong></div>):<p>No hay mejoras comparables en el periodo.</p>}</div>
+                <div className="metrics-podium-group decline"><h4><TrendingDown size={17}/> Desmejoras</h4>{decliningFarms.length?decliningFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>{farm.recentDelta} pts</strong></div>):<p>No hay desmejoras comparables en el periodo.</p>}</div>
+              </div>
+            </section>
+
+            <section className="metrics-weights-panel">
+              <div className="metrics-section-kicker">Modelo oficial de calificación</div>
+              <h3>Peso de los cinco capítulos</h3>
+              <div className="metrics-weight-list metrics-fleet-weight-list">
+                {catalog.map(chapter=>(
+                  <div className="metrics-weight-row" key={chapter.id}>
+                    <div className="metrics-weight-label"><span><b>Cap. {chapter.id}</b> {chapter.title}</span><strong>{Math.round(CHAPTER_WEIGHTS[chapter.id]*100)}%</strong></div>
+                    <div className="metrics-score-track"><span style={{width:`${CHAPTER_WEIGHTS[chapter.id]*100}%`}}/></div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="metrics-fleet-panel">
+              <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Lectura rápida · ordenadas por puntaje</div><h3>Estado por finca</h3></div><span className="metrics-note">{filteredFleet.length} de {fleetFarms.length}</span></div>
+              <div className="metrics-fleet-filters">
+                <input type="search" aria-label="Buscar finca, municipio o responsable AVGUST" placeholder="Buscar finca, municipio o responsable…" value={fleetSearch} onChange={e=>setFleetSearch(e.target.value)}/>
+                <select aria-label="Filtrar por estado" value={fleetStatusFilter} onChange={e=>setFleetStatusFilter(e.target.value as 'all'|'healthy'|'acceptable'|'critical')}>
+                  <option value="all">Todos los estados</option><option value="healthy">Saludable</option><option value="acceptable">Alerta</option><option value="critical">Vulnerable</option>
+                </select>
+                <select aria-label="Filtrar por alcance de auditoría" value={fleetScopeFilter} onChange={e=>setFleetScopeFilter(e.target.value as 'all'|'complete'|'partial')}>
+                  <option value="all">Todos los alcances</option><option value="complete">Auditoría completa</option><option value="partial">Auditoría parcial</option>
+                </select>
+              </div>
+              <div className="metrics-farm-list">
+                {filteredFleet.map((farm,index)=>(
+                  <article className={`metrics-farm-row ${farm.latestStatus}`} key={farm.key}>
+                    <span className="metrics-farm-rank">{String(index+1).padStart(2,'0')}</span>
+                    <div className="metrics-farm-identity"><strong>{farm.farm}</strong><small>{[farm.city,farm.zone].filter(Boolean).join(' · ')||'Ubicación sin registrar'} · Última visita {farm.latestDate}</small></div>
+                    <div className="metrics-farm-score"><strong>{farm.latestScore}%</strong><small>MIPE</small></div>
+                    <div><StatusBadge value={farm.latestStatus}/><small className="metrics-farm-conclusion">{metricStatusDescriptions[farm.latestStatus]}</small></div>
+                    <div className="metrics-farm-findings"><strong>{farm.latestFindings}</strong><small>hallazgos</small></div>
+                    <div className={`metrics-farm-delta ${farm.recentDelta===null?'neutral':farm.recentDelta>0?'positive':farm.recentDelta<0?'negative':'neutral'}`}>{farm.recentDelta===null?'Sin comparación':`${farm.recentDelta>0?'+':''}${farm.recentDelta} pts`}</div>
+                  </article>
+                ))}
+                {!filteredFleet.length&&<p className="metrics-empty">No hay fincas que coincidan con la búsqueda y los filtros.</p>}
+              </div>
+            </section>
+
+            <section className="metrics-priority-panel">
+              <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Plan de trabajo</div><h3>Acciones correctivas por finca</h3></div><span className="metrics-count risk">{priorityFarms.reduce((sum,farm)=>sum+farm.correctiveActions.length,0)}</span></div>
+              <p className="metrics-note">Primero aparecen las fincas con menor calificación. Abre cada finca para consultar todos los hallazgos, responsables, plazos y acciones.</p>
+              <div className="metrics-farm-actions-list">
+                {priorityFarms.map(farm=>(
+                  <details className="metrics-farm-actions" key={farm.key}>
+                    <summary><span><strong>{farm.farm}</strong><small>{farm.latestDate} · {farm.latestFindings} hallazgos · {farm.correctiveActions.length} acciones</small></span><span className={`metrics-farm-action-score ${farm.latestStatus}`}>{farm.latestScore}%</span></summary>
+                    <ul className="metrics-action-list">
+                      {farm.correctiveActions.map(action=>(
+                        <li key={action.id}>
+                          <div className="metrics-action-title"><strong>{action.id} · {action.text}</strong><span>Cap. {action.chapter} · {action.weightPct}%</span></div>
+                          <p>{action.recommendation}</p>
+                          <div className="metrics-action-meta"><span>Responsable: <b>{action.owner||'Sin asignar'}</b></span><span>Fecha: <b>{action.due||'Sin definir'}</b></span><span>Estado: <b>{actionLabels[action.status as keyof typeof actionLabels]||action.status}</b></span>{action.closure&&<span>Verificación: <b>{action.closure}</b></span>}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+                {!priorityFarms.length&&<p className="metrics-empty">No se encontraron acciones correctivas para las fincas filtradas.</p>}
+              </div>
+            </section>
+          </div>
+
+          <details className="metrics-deep-dive">
+            <summary>Ver indicadores históricos, matriz de hallazgos e informes</summary>
           {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines & Well-Written Cards */}
           <div className="b2b-kpi-grid">
             {/* KPI 1: Índice MIPE Promedio de la Flota */}
@@ -843,8 +937,10 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             </div>
             <ConsolidatedChapterDetails chapters={data.chapters} items={data.items}/>
           </div>
+          </details>
         </>
       )}
     </div>
   );
 }
+

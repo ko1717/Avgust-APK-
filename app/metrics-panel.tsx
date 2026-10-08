@@ -271,8 +271,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </span>
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
-          <h2 id="farm-metrics-title">Evolución y Control MIPE por Finca</h2>
-          <p>Ponderación por capítulo: Almacén (5%), Dosificación (25%), Transporte (10%), Mezclas (30%) y Aplicación (30%).</p>
+          <h2 id="farm-metrics-title">Indicadores y acciones de la finca</h2>
+          <p>Conclusión de la visita, cambios frente a mediciones anteriores y acciones para mejorar el proceso MIPE.</p>
         </div>
 
         {current && (
@@ -392,6 +392,80 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
         </div>
       ) : (
         <>
+          <div className="metrics-executive-dashboard">
+            <section className={`metrics-outcome ${current.status}`} aria-label="Conclusión de la finca">
+              <div className="metrics-outcome-main">
+                <div className="metrics-section-kicker">Resultado de la última visita · {current.date}</div>
+                <h3>{data.farm}</h3>
+                <StatusBadge value={current.status}/>
+                <p className="metrics-outcome-copy">{metricStatusDescriptions[current.status]}</p>
+              </div>
+              <div className="metrics-outcome-score" aria-label={`Índice MIPE ${current.score} por ciento`}>
+                <strong>{current.score}<span>%</span></strong>
+                <small>Índice MIPE ponderado</small>
+                <div className="metrics-score-track"><span style={{width:`${Math.min(100,Math.max(0,current.score))}%`}}/></div>
+              </div>
+              <div className="metrics-outcome-facts">
+                <div><span>Puntaje</span><strong>{current.pointsEarned} / 100</strong></div>
+                <div><span>Hallazgos</span><strong>{current.findings}</strong></div>
+                <div><span>Cobertura</span><strong>{current.evaluatedChapters}/5 capítulos</strong></div>
+                <div><span>Variación reciente</span><strong className={data.recentDelta===null?'':data.recentDelta>0?'positive':data.recentDelta<0?'negative':''}>{data.recentDelta===null?'Sin comparación':`${data.recentDelta>0?'+':''}${data.recentDelta} pts`}</strong></div>
+              </div>
+            </section>
+
+            <div className="metrics-overview-grid">
+              <section className="metrics-priority-panel">
+                <div className="metrics-section-heading">
+                  <div><div className="metrics-section-kicker">Qué corregir</div><h3>Hallazgos y acciones</h3></div>
+                  <span className={`metrics-count ${data.problems.length?'risk':'clear'}`}>{data.problems.length}</span>
+                </div>
+                {data.problems.length ? (
+                  <ul className="metrics-action-list">
+                    {data.problems.map(problem=>(
+                      <li key={problem.id}>
+                        <div className="metrics-action-title"><strong>{problem.id} · {problem.text}</strong><span>Cap. {problem.chapter} · {problem.weightPct}%</span></div>
+                        <p>{problem.recommendation||'Definir y documentar la acción correctiva.'}</p>
+                        <div className="metrics-action-meta"><span>Responsable: <b>{problem.action.owner||'Sin asignar'}</b></span><span>Fecha: <b>{problem.action.due||'Sin definir'}</b></span><span>Estado: <b>{actionLabels[problem.action.status as keyof typeof actionLabels]||problem.action.status}</b></span></div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="metrics-empty">No hay hallazgos en la última visita revisada.</p>}
+              </section>
+
+              <section className="metrics-weights-panel">
+                <div className="metrics-section-kicker">Ponderación de la calificación</div>
+                <h3>Resultado por capítulo</h3>
+                <div className="metrics-weight-list">
+                  {data.chapters.map(chapter=>(
+                    <div className="metrics-weight-row" key={chapter.id}>
+                      <div className="metrics-weight-label"><span><b>Cap. {chapter.id}</b> {chapter.title}</span><strong>{chapter.weightPct}%</strong></div>
+                      <div className="metrics-score-track"><span className={chapter.status} style={{width:`${chapter.score??0}%`}}/></div>
+                      <small>{chapter.score===null?'Sin evaluar':`${chapter.pointsEarned.toFixed(1)} / ${chapter.maxPoints} pts · ${chapter.score}%`}</small>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {podium.length>0&&(
+              <section className="metrics-podium-panel">
+                <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Evolución de la finca</div><h3>Últimas visitas</h3></div><span className="metrics-note">Solo comparamos visitas con el mismo alcance</span></div>
+                <div className="metrics-podium-list">
+                  {podium.map((point,index)=>(
+                    <article key={point.record.visit.id} className={index===podium.length-1?'current':''}>
+                      <span className="metrics-podium-rank">0{index+1}</span>
+                      <div><small>{point.label} · {point.record.date}</small><StatusBadge value={point.record.status}/></div>
+                      <strong className="metrics-podium-score">{point.record.score}%</strong>
+                      <span className={`metrics-podium-delta ${point.delta===null?'neutral':point.delta>0?'positive':point.delta<0?'negative':'neutral'}`}>{point.delta===null?(point.hasPrevious?'Sin comparación':'Línea base'):point.delta>0?`+${point.delta} pts`:point.delta<0?`${point.delta} pts`:'Sin cambio'}</span>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <details className="metrics-deep-dive">
+            <summary>Ver gráficos, desglose técnico e historial completo</summary>
           {/* Executive KPI Scorecard with Recharts Trend Lines & Clear Well-Written Cards */}
           <div className="b2b-kpi-grid">
             {/* Card 1: Índice MIPE Ponderado */}
@@ -988,6 +1062,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </table>
             </div>
           </div>
+          </details>
         </>
       )}
 
@@ -1025,3 +1100,4 @@ export default function MetricsPanel(props:{visits:Visit[];loading:boolean;onOpe
     </section>
   );
 }
+
