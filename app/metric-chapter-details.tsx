@@ -6,10 +6,7 @@ import {
   ShieldCheck,
   TrendingUp,
   BarChart3,
-  GitCompare,
-  CheckCircle2,
-  AlertTriangle,
-  Calendar
+  GitCompare
 } from 'lucide-react';
 import {
   Area,
@@ -17,7 +14,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Rectangle,
   ReferenceLine,
@@ -363,7 +359,7 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                 <div className="py-2">
                   <div className="flex items-center justify-between mb-2 text-xs">
                     <span className="text-slate-600 font-semibold">
-                      Tasa de conformidad histórica por subcriterio (% de visitas con resultado "Sí"):
+                      Tasa de conformidad histórica por subcriterio (% de visitas con resultado “Sí”):
                     </span>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                       <span className="inline-block w-2.5 h-2.5 rounded-xs bg-[#16a34a]"/> ≥ 95%
@@ -393,13 +389,18 @@ function FarmChapterCard({chapter}:{chapter:ChapterMetricDetail}){
                           );
                         }}
                       />
-                      <Bar dataKey="complianceRate" radius={[4,4,0,0]} barSize={24} isAnimationActive={false}>
-                        {subcriteriaData.map(entry => {
-                          const rate = entry.complianceRate;
+                      <Bar
+                        dataKey="complianceRate"
+                        radius={[4,4,0,0]}
+                        barSize={24}
+                        isAnimationActive={false}
+                        shape={(raw) => {
+                          const bar = raw as {x?:number;y?:number;width?:number;height?:number;payload?:{complianceRate?:number}};
+                          const rate = Number(bar.payload?.complianceRate ?? 0);
                           const fill = rate >= 95 ? '#16a34a' : rate >= 85 ? '#f59e0b' : '#e11d48';
-                          return <Cell key={`cell-${entry.id}`} fill={fill}/>;
-                        })}
-                      </Bar>
+                          return <Rectangle x={bar.x} y={bar.y} width={bar.width} height={bar.height} radius={[4,4,0,0]} fill={fill}/>;
+                        }}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
