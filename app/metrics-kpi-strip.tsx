@@ -31,7 +31,7 @@ export default function MetricsKpiStrip({count,scope,chapterTrends,comparisonLab
           <div className="metrics-chapter-trend-change"><span className={`metrics-chapter-trend-delta ${chapter.delta===null?'neutral':chapter.delta>0?'positive':chapter.delta<0?'negative':'neutral'}`} title={chapter.delta===null?'Sin una comparación comparable':`${chapter.comparisons} ${chapter.comparisons===1?'comparación':'comparaciones'}`}>{chapter.delta===null?'Sin base':chapter.delta===0?'Sin cambio':<>{chapter.delta>0?<TrendingUp size={13}/>:<TrendingDown size={13}/>} {chapter.delta>0?'+':''}{formatPoints(chapter.delta)} pts</>}</span>{chapter.delta!==null&&<small>{chapter.comparisons} {chapter.comparisons===1?'finca':'fincas'}</small>}</div>
         </div>)}
       </div>
-      <p className="metrics-chapter-trend-note">El resultado muestra el último aseguramiento; la variación solo compara visitas con el mismo alcance de capítulos.</p>
+      <p className="metrics-chapter-trend-note">El resultado corresponde al aseguramiento consultado; la variación solo compara con el anterior cuando tienen el mismo alcance de capítulos.</p>
     </section>
   </div>;
 }

@@ -2,7 +2,7 @@
 import {useMemo,useState} from 'react';
 import {BarChart3 as BarChartIcon,FileText as FileTextIcon,Printer as PrinterIcon,Building2 as Building2Icon,Info as InfoIcon} from 'lucide-react';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
-import {actionLabels,farmKey,sameChapterScope,metricStatusDescriptions,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {actionLabels,CHAPTER_WEIGHTS,farmKey,findings,sameChapterScope,metricStatusDescriptions,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import ConsolidatedMetrics from './consolidated-metrics';
@@ -23,6 +23,7 @@ function StatusBadge({value}:{value:MetricStatus}){
 function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onOpen:(visit:Visit)=>void}){
   const farms=useMemo(()=>Array.from(new Map(visits.map(v=>[farmKey(v.farm),v.farm.trim()])).entries()).filter(([,name])=>name).sort((a,b)=>a[1].localeCompare(b[1],'es')),[visits]);
   const [farm,setFarm]=useState('');
+  const [selectedVisitId,setSelectedVisitId]=useState('');
   const [from,setFrom]=useState('');
   const [to,setTo]=useState('');
   const [expandedActionsForFarm,setExpandedActionsForFarm]=useState('');
@@ -33,14 +34,18 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
   const scoped=useMemo(()=>visits.filter(v=>(!v.serviceKind||v.serviceKind==='assurance')&&(!from||v.date>=`${from}-01-01`)&&(!to||v.date<=`${to}-12-31`)),[visits,from,to]);
   const data=useMemo(()=>farmMetricHistory(scoped,activeFarm),[scoped,activeFarm]);
 
-  const current=data.latest;
-  const previous=data.records.at(-2);
+  const current=data.records.find(record=>record.visit.id===selectedVisitId)||data.latest;
+  const currentIndex=current?data.records.findIndex(record=>record.visit.id===current.visit.id):-1;
+  const previous=currentIndex>0?data.records[currentIndex-1]:undefined;
   const comparableChapterPair=!!current&&!!previous&&sameChapterScope(previous.visit,current.visit);
   const chapterTrends=data.chapters.map(chapter=>{
-    const latestPoint=chapter.visitEvolution.at(-1),previousPoint=chapter.visitEvolution.at(-2);
-    const delta=comparableChapterPair&&latestPoint?.score!==null&&latestPoint?.score!==undefined&&previousPoint?.score!==null&&previousPoint?.score!==undefined?Math.round((latestPoint.score-previousPoint.score)*10)/10:null;
-    return {id:chapter.id,title:chapter.title,weightPct:chapter.weightPct,score:chapter.score,delta,comparisons:delta===null?0:1};
+    const currentPoint=chapter.visitEvolution.find(point=>point.visitId===current?.visit.id);
+    const previousPoint=chapter.visitEvolution.find(point=>point.visitId===previous?.visit.id);
+    const delta=comparableChapterPair&&currentPoint?.score!==null&&currentPoint?.score!==undefined&&previousPoint?.score!==null&&previousPoint?.score!==undefined?Math.round((currentPoint.score-previousPoint.score)*10)/10:null;
+    return {id:chapter.id,title:chapter.title,weightPct:chapter.weightPct,score:currentPoint?.score??null,delta,comparisons:delta===null?0:1};
   });
+  const selectedProblems=current?findings(current.visit).map(f=>({id:f.id,text:f.text,recommendation:f.answer.recommendation,chapter:Number(f.id.split('.')[0]),weightPct:Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])]||0)*100),action:{owner:f.action.owner,due:f.action.due,status:f.action.status}})):[];
+  const selectedDelta=comparableChapterPair&&current&&previous?current.score-previous.score:null;
   const podium=data.records.slice(-3).map((record,index,items)=>{const previous=index>0?items[index-1]:undefined;return {record,label:index===items.length-1?'Último aseguramiento':index===items.length-2?'Aseguramiento anterior':'Inicio del periodo',delta:previous&&sameChapterScope(previous.visit,record.visit)?record.score-previous.score:null,hasPrevious:!!previous};});
   const currentYear=new Date().getFullYear();
 
@@ -162,6 +167,18 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           </label>
 
           <label className="b2b-filter-label">
+            <span>Aseguramiento a consultar</span>
+            <Select value={current?.visit.id||''} onValueChange={value=>setSelectedVisitId(String(value))} items={data.records.slice().reverse().map(record=>({value:record.visit.id,label:`${record.date} · ${record.score}% · ${record.responsible||'Sin responsable'}`}))}>
+              <SelectTrigger aria-label="Aseguramiento de la finca para consultar" className="b2b-select-trigger min-w-[260px]">
+                <SelectValue placeholder="Selecciona un aseguramiento"/>
+              </SelectTrigger>
+              <SelectContent>
+                {data.records.slice().reverse().map(record=><SelectItem key={record.visit.id} value={record.visit.id}>{record.date} · {record.score}% · {record.responsible||'Sin responsable'}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </label>
+
+          <label className="b2b-filter-label">
             <span>Año Desde</span>
             <input type="number" min="2020" max="2100" placeholder="2022" value={from} onChange={e=>setFrom(e.target.value)} className="b2b-input w-24"/>
           </label>
@@ -197,7 +214,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           <div className="metrics-executive-dashboard">
             <section className={`metrics-outcome ${current.status}`} aria-label="Conclusión de la finca">
               <div className="metrics-outcome-main">
-                <div className="metrics-section-kicker">Último aseguramiento · {current.date}</div>
+                <div className="metrics-section-kicker">Aseguramiento consultado · {current.date}</div>
                 <h3>{data.farm}</h3>
                 <StatusBadge value={current.status}/>
                 <p className="metrics-outcome-copy">{metricStatusDescriptions[current.status]}</p>
@@ -211,7 +228,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <div><span>Puntaje</span><strong>{current.pointsEarned} / 100</strong></div>
                 <div><span>Desviaciones</span><strong>{current.findings}</strong></div>
                 <div><span>Cobertura</span><strong>{current.evaluatedChapters}/5 capítulos</strong></div>
-                <div><span>Variación reciente</span><strong className={data.recentDelta===null?'':data.recentDelta>0?'positive':data.recentDelta<0?'negative':''}>{data.recentDelta===null?'Sin comparación':`${data.recentDelta>0?'+':''}${data.recentDelta} pts`}</strong></div>
+                <div><span>Variación vs. anterior</span><strong className={selectedDelta===null?'':selectedDelta>0?'positive':selectedDelta<0?'negative':''}>{selectedDelta===null?'Sin comparación':`${selectedDelta>0?'+':''}${selectedDelta} pts`}</strong></div>
               </div>
             </section>
 
@@ -221,20 +238,20 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               <section className="metrics-priority-panel">
                 <div className="metrics-section-heading">
                   <div><div className="metrics-section-kicker">Qué corregir</div><h3>Desviaciones y acciones</h3></div>
-                  <span className={`metrics-count ${data.problems.length?'risk':'clear'}`}>{data.problems.length}</span>
+                  <span className={`metrics-count ${selectedProblems.length?'risk':'clear'}`}>{selectedProblems.length}</span>
                 </div>
-                {data.problems.length ? (
+                {selectedProblems.length ? (
                   <ul className="metrics-action-list">
-                    {(expandedActionsForFarm===activeFarm?data.problems:data.problems.slice(0,3)).map(problem=>(
+                    {(expandedActionsForFarm===activeFarm?selectedProblems:selectedProblems.slice(0,3)).map(problem=>(
                       <li key={problem.id}>
                         <div className="metrics-action-title"><strong>{problem.id} · {problem.text}</strong><span>Cap. {problem.chapter} · {problem.weightPct}%</span></div>
                         <p>{problem.recommendation||'Definir y documentar la acción correctiva.'}</p>
                         <div className="metrics-action-meta"><span>Responsable: <b>{problem.action.owner||'Sin asignar'}</b></span><span>Fecha: <b>{problem.action.due||'Sin definir'}</b></span><span>Estado: <b>{actionLabels[problem.action.status as keyof typeof actionLabels]||problem.action.status}</b></span></div>
                       </li>
                     ))}
-                    {data.problems.length>3&&<button className="metrics-more-button" onClick={()=>setExpandedActionsForFarm(expandedActionsForFarm===activeFarm?'':activeFarm)}>{expandedActionsForFarm===activeFarm?'Mostrar menos':`Ver las ${data.problems.length-3} acciones restantes`}</button>}
+                    {selectedProblems.length>3&&<button className="metrics-more-button" onClick={()=>setExpandedActionsForFarm(expandedActionsForFarm===activeFarm?'':activeFarm)}>{expandedActionsForFarm===activeFarm?'Mostrar menos':`Ver las ${selectedProblems.length-3} acciones restantes`}</button>}
                   </ul>
-                ) : <p className="metrics-empty">No se identificaron desviaciones en el último aseguramiento.</p>}
+                ) : <p className="metrics-empty">No se identificaron desviaciones en este aseguramiento.</p>}
               </section>
 
             </div>
@@ -244,7 +261,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Cambio reciente</div><h3>Últimos aseguramientos</h3></div><span className="metrics-note">Comparamos solo con el mismo alcance</span></div>
                 <div className="metrics-podium-list">
                   {podium.map((point,index)=>(
-                    <article key={point.record.visit.id} className={index===podium.length-1?'current':''}>
+                    <article key={point.record.visit.id} className={point.record.visit.id===current.visit.id?'current':''}>
                       <span className="metrics-podium-rank">0{index+1}</span>
                       <div><small>{point.label} · {point.record.date}</small><StatusBadge value={point.record.status}/></div>
                       <strong className="metrics-podium-score">{point.record.score}%</strong>
