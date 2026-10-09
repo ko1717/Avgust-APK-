@@ -61,8 +61,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
       <div className="metrics-print-brand hidden print:flex">
         <img src="/avgust-logo.svg" alt="Avgust Crop Protection" className="h-10"/>
         <div>
-          <strong className="text-lg">AVGUST CARE 360 · Business Intelligence MIPE</strong>
-          <span className="block text-xs text-slate-500">Informe de Aseguramiento MIPE</span>
+          <strong className="text-lg">AVGUST CARE 360 · Indicadores de aseguramiento</strong>
+          <span className="block text-xs text-slate-500">Informe de aseguramiento de fincas</span>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
             </span>
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
-          <h2 id="farm-metrics-title">Aseguramiento MIPE de la finca</h2>
+          <h2 id="farm-metrics-title">Aseguramiento técnico de la finca</h2>
           <p>Resultado, prioridad de atención y avance reciente, en una sola lectura.</p>
         </div>
 
@@ -104,7 +104,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <InfoIcon size={18} className="text-[#007fa3]"/>
-              <strong className="text-sm font-bold text-slate-900 dark:text-slate-100">Guía Oficial de Ponderación Normativa MIPE (37 Criterios · 100 Puntos)</strong>
+              <strong className="text-sm font-bold text-slate-900 dark:text-slate-100">Modelo AVGUST de aseguramiento (37 criterios · 100 puntos)</strong>
             </div>
             <button onClick={()=>setShowGuide(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold px-2 py-0.5">✕</button>
           </div>
@@ -219,9 +219,9 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <StatusBadge value={current.status}/>
                 <p className="metrics-outcome-copy">{metricStatusDescriptions[current.status]}</p>
               </div>
-              <div className="metrics-outcome-score" aria-label={`Índice MIPE ${current.score} por ciento`}>
+              <div className="metrics-outcome-score" aria-label={`Resultado de aseguramiento ${current.score} por ciento`}>
                 <strong>{current.score}<span>%</span></strong>
-                <small>Índice MIPE ponderado</small>
+                <small>Resultado ponderado</small>
                 <div className="metrics-score-track"><span style={{width:`${Math.min(100,Math.max(0,current.score))}%`}}/></div>
               </div>
               <div className="metrics-outcome-facts">
@@ -291,7 +291,7 @@ export default function MetricsPanel(props:{visits:Visit[];loading:boolean;onOpe
       <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 no-print">
         <div className="flex items-center gap-2">
           <BarChartIcon size={20} className="text-[#007fa3]"/>
-          <span className="font-bold text-slate-800 text-sm tracking-tight">ASEGURAMIENTO MIPE:</span>
+          <span className="font-bold text-slate-800 text-sm tracking-tight">ASEGURAMIENTO DE FINCAS:</span>
         </div>
 
         <div className="b2b-quick-ranges" role="tablist" aria-label="Tipo de métricas">

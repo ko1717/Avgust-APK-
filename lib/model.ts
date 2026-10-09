@@ -11,7 +11,7 @@ export const MAX_PHOTO_BYTES=8*1024*1024;
 export type MetricStatus='healthy'|'acceptable'|'critical'|'pending';
 export type VisitMetric={score:number|null;status:MetricStatus;applicable:number;positive:number;findings:number;date:string;responsible:string};
 export type Visit = {
- id:string; revision:number; farmId?:string; requestId?:string; canEdit?:boolean; serviceKind?:string; farm:string; date:string; city:string; zone:string; technician:string; responsible:string; rtc:string;
+ id:string; revision:number; updated?:string; farmId?:string; requestId?:string; canEdit?:boolean; serviceKind?:string; farm:string; date:string; city:string; zone:string; technician:string; responsible:string; rtc:string;
  chapters:number[]; answers:Record<string,Answer>; notes:Record<string,string>; recommendations:Record<string,string>;
  measurements:Record<string,string>; delivery:string; followup:string; conclusion:string; photos:Photo[]; reviewed:boolean; actions?:Record<string,Action>;
 };

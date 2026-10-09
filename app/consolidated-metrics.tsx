@@ -139,8 +139,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       <div className="metrics-print-brand hidden print:flex">
         <img src="/avgust-logo.svg" alt="Avgust Crop Protection" className="h-10"/>
         <div>
-          <strong className="text-lg">AVGUST CARE 360 · Business Intelligence MIPE</strong>
-          <span className="block text-xs text-slate-500">Resumen de Aseguramiento MIPE · Multi-Finca</span>
+          <strong className="text-lg">AVGUST CARE 360 · Indicadores de aseguramiento</strong>
+          <span className="block text-xs text-slate-500">Resumen del aseguramiento técnico · Multi-finca</span>
         </div>
       </div>
 
@@ -155,7 +155,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             </span>
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
-          <h2 id="consolidated-title">Aseguramiento MIPE de todas las fincas</h2>
+          <h2 id="consolidated-title">Aseguramiento técnico de fincas</h2>
           <p>Estado fitosanitario, cambios recientes y prioridades de atención, en una sola lectura.</p>
         </div>
 
@@ -216,9 +216,9 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                 <StatusBadge value={data.status}/>
                 <p className="metrics-outcome-copy">{metricStatusDescriptions[data.status]}</p>
               </div>
-              <div className="metrics-outcome-score" aria-label={`Índice MIPE promedio ${fleetAverageScore} por ciento`}>
+              <div className="metrics-outcome-score" aria-label={`Promedio de aseguramiento ${fleetAverageScore} por ciento`}>
                 <strong>{fleetAverageScore}<span>%</span></strong>
-                <small>Promedio MIPE</small>
+                <small>Promedio de aseguramiento</small>
                 <div className="metrics-score-track"><span style={{width:`${Math.min(100,Math.max(0,fleetAverageScore))}%`}}/></div>
               </div>
               <div className="metrics-fleet-status-counts">
@@ -255,7 +255,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   <article className={`metrics-farm-row ${farm.latestStatus}`} key={farm.key}>
                     <span className="metrics-farm-rank">{String(index+1).padStart(2,'0')}</span>
                     <div className="metrics-farm-identity"><strong>{farm.farm}</strong><small>{[farm.city,farm.zone].filter(Boolean).join(' · ')||'Ubicación sin registrar'} · Último aseguramiento {farm.latestDate}</small></div>
-                    <div className="metrics-farm-score"><strong>{farm.latestScore}%</strong><small>MIPE · {farm.evaluatedChaptersCount}/5 cap.</small></div>
+                    <div className="metrics-farm-score"><strong>{farm.latestScore}%</strong><small>Aseguramiento · {farm.evaluatedChaptersCount}/5 cap.</small></div>
                     <div><StatusBadge value={farm.latestStatus}/><small className="metrics-farm-conclusion">{metricStatusDescriptions[farm.latestStatus]}</small></div>
                     <div className="metrics-farm-findings"><strong>{farm.latestFindings}</strong><small>desviaciones</small></div>
                     <div className={`metrics-farm-delta ${farm.recentDelta===null?'neutral':farm.recentDelta>0?'positive':farm.recentDelta<0?'negative':'neutral'}`}>{farm.recentDelta===null?'Sin comparación':`${farm.recentDelta>0?'+':''}${farm.recentDelta} pts`}</div>
