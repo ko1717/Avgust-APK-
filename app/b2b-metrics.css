@@ -1057,18 +1057,20 @@ html.dark .b2b-alert-card p {
 .metrics-chapter-bar-item:hover, .metrics-chapter-bar-item:focus-visible { outline: none; border-color: #b9e3ec; background: #f3fbfd; }
 .metrics-chapter-bar-item.selected { border-color: #8bd3e1; background: #f0fbfd; }
 .metrics-chapter-bar-value { display: flex; align-items: center; justify-content: center; gap: 3px; align-self: center; font-size: 10px; font-weight: 850; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.metrics-chapter-bar-plot { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; }
-.metrics-chapter-bar-plot::before { position: absolute; top: 50%; right: 0; left: 0; height: 1px; background: #d9e2e5; content: ''; }
-.metrics-chapter-bar { position: absolute; left: 50%; width: min(48px,62%); min-width: 14px; transform: translateX(-50%); border-radius: 5px; }
-.metrics-chapter-bar.positive { bottom: 50%; background: linear-gradient(180deg,#78be20,#4b9b32); border-radius: 5px 5px 2px 2px; }
-.metrics-chapter-bar.negative { top: 50%; background: linear-gradient(180deg,#f07a78,#d94b59); border-radius: 2px 2px 5px 5px; }
-.metrics-chapter-bar.neutral { top: calc(50% - 2px); background: #9aa9ae; }
+.metrics-chapter-bar-value b { font-size: 9px; }
+.metrics-chapter-bar-plot { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 9px; width: 100%; height: 100%; overflow: hidden; }
+.metrics-chapter-bar-plot::before { position: absolute; right: 8%; bottom: 0; left: 8%; height: 1px; background: #d9e2e5; content: ''; }
+.metrics-chapter-bar { position: relative; z-index: 1; width: min(30px,28%); min-width: 14px; border-radius: 5px 5px 2px 2px; }
+.metrics-chapter-bar.previous { background: linear-gradient(180deg,#82d5e3,#4aaabc); }
+.metrics-chapter-bar.current { background: linear-gradient(180deg,#9bcf54,#62a92d); }
 .metrics-chapter-bar-label { display: grid; align-content: start; justify-items: center; gap: 3px; width: 100%; padding-top: 5px; text-align: center; }
 .metrics-chapter-bar-label strong { color: #1e3a43; font-size: 10px; }
 .metrics-chapter-bar-label small { display: -webkit-box; max-width: 100%; overflow: hidden; color: #829197; font-size: 9px; line-height: 1.2; text-overflow: ellipsis; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .metrics-chapter-chart-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 8px 2px 12px; border-bottom: 1px solid #edf0f2; color: #64748b; font-size: 9px; }
 .metrics-chapter-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .metrics-chapter-chart-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.metrics-chapter-chart-legend i.previous { background: #4aaabc; }
+.metrics-chapter-chart-legend i.current { background: #78be20; }
 .metrics-chapter-chart-legend i.positive { background: #65aa36; }
 .metrics-chapter-chart-legend i.negative { background: #dc5962; }
 .metrics-chapter-chart-legend i.neutral { background: #9aa9ae; }
@@ -1134,7 +1136,8 @@ html.dark .metrics-chapter-evolution-summary > span.positive { color: #86d99a; b
 html.dark .metrics-chapter-evolution-summary > span.negative { color: #f2a0a4; border-color: #63333a; background: #2b171b; }
 html.dark .metrics-chapter-evolution-summary > span.metrics-chapter-comparison-total { color: #81d4e4; background: #102b35; }
 html.dark .metrics-chapter-bar-item:hover, html.dark .metrics-chapter-bar-item:focus-visible, html.dark .metrics-chapter-bar-item.selected { background: #102b35; border-color: #24515c; }
-html.dark .metrics-chapter-bar-plot::before, html.dark .metrics-chapter-chart-legend, html.dark .metrics-chapter-contributors li { border-color: #293a43; }
+html.dark .metrics-chapter-bar-plot::before { background: #475569; }
+html.dark .metrics-chapter-chart-legend, html.dark .metrics-chapter-contributors li { border-color: #293a43; }
 html.dark .metrics-chapter-bar-label strong, html.dark .metrics-chapter-contributors-heading > div strong { color: #e2e8f0; }
 html.dark .metrics-export-menu > summary, html.dark .metrics-export-options { color: #dbe7ea; background: #0f172a; border-color: #334155; }
 html.dark .metrics-export-options button { color: #dbe7ea; }
@@ -1161,8 +1164,8 @@ html.dark .metrics-export-options button { color: #dbe7ea; }
   .metrics-outcome { gap: 14px; padding: 18px; }
   .metrics-chapter-evolution { padding: 16px; }
   .metrics-chapter-chart { gap: 3px; }
-  .metrics-chapter-bar-item { grid-template-rows: 37px 112px 38px; padding-right: 2px; padding-left: 2px; }
-  .metrics-chapter-bar-value { flex-direction: column; gap: 0; font-size: 8px; }
+  .metrics-chapter-bar-item { grid-template-rows: 43px 112px 38px; padding-right: 2px; padding-left: 2px; }
+  .metrics-chapter-bar-value { flex-wrap: wrap; gap: 1px 3px; font-size: 8px; white-space: normal; }
   .metrics-chapter-bar-label { gap: 2px; }
   .metrics-chapter-bar-label strong { font-size: 9px; }
   .metrics-chapter-bar-label small { font-size: 8px; }

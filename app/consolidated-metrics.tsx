@@ -71,7 +71,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         const score=latestChapterScores[chapter.id]??null;
         const previousScore=previousChapterScores?.[chapter.id]??null;
         const delta=comparable&&score!==null&&previousScore!==null?Math.round((score-previousScore)*10)/10:null;
-        return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score,delta,comparisons:delta===null?0:1};
+        return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score,previousScore,delta,comparisons:delta===null?0:1};
       });
       const correctiveActions=findings(latest.visit).map(problem=>({
         id:problem.id,
@@ -121,13 +121,14 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
 
   const fleetChapterTrends=useMemo(()=>catalog.map(chapter=>{
     const chapterValues=fleetFarms.map(farm=>farm.chapterTrends.find(item=>item.id===chapter.id)!);
-    const scores=chapterValues.flatMap(item=>item.score===null?[]:[item.score]);
-    const farms=chapterValues.flatMap((item,index)=>item.delta===null?[]:[{farm:fleetFarms[index].farm,key:fleetFarms[index].key,date:fleetFarms[index].latestDate,delta:item.delta}]);
+    const farms=chapterValues.flatMap((item,index)=>item.delta===null||item.score===null||item.previousScore===null?[]:[{farm:fleetFarms[index].farm,key:fleetFarms[index].key,date:fleetFarms[index].latestDate,previousScore:item.previousScore,score:item.score,delta:item.delta}]);
     const deltas=farms.map(item=>item.delta);
-    return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score:scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length*10)/10:null,delta:deltas.length?Math.round(deltas.reduce((sum,value)=>sum+value,0)/deltas.length*10)/10:null,comparisons:deltas.length,improvedCount:deltas.filter(value=>value>0).length,declinedCount:deltas.filter(value=>value<0).length,unchangedCount:deltas.filter(value=>value===0).length,farms};
+    const average=(values:number[])=>values.length?Math.round(values.reduce((sum,value)=>sum+value,0)/values.length*10)/10:null;
+    const priorScores=farms.map(item=>item.previousScore);
+    const currentScores=farms.map(item=>item.score);
+    return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score:average(currentScores),previousScore:average(priorScores),delta:deltas.length?Math.round(deltas.reduce((sum,value)=>sum+value,0)/deltas.length*10)/10:null,comparisons:deltas.length,improvedCount:deltas.filter(value=>value>0).length,declinedCount:deltas.filter(value=>value<0).length,unchangedCount:deltas.filter(value=>value===0).length,farms};
   }),[fleetFarms]);
   const selectedTrend=fleetChapterTrends.find(chapter=>chapter.id===selectedTrendChapter)??fleetChapterTrends.find(chapter=>chapter.comparisons>0)??fleetChapterTrends[0];
-  const trendScale=Math.max(5,...fleetChapterTrends.flatMap(chapter=>chapter.delta===null?[]:[Math.abs(chapter.delta)]));
   const improvingChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta!==null&&chapter.delta>0).length;
   const decliningChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta!==null&&chapter.delta<0).length;
   const unchangedChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta===0).length;
@@ -245,7 +246,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                 <div><div className="metrics-section-kicker">{data.records.length} aseguramientos · {data.farms} fincas</div><h3 id="metrics-chapter-evolution-title">¿Qué capítulos mejoraron?</h3></div>
                 <span className="metrics-note">Comparación entre aseguramientos</span>
               </div>
-              <p className="metrics-chapter-evolution-intro">Comparamos los dos últimos aseguramientos de cada finca cuando tienen el mismo alcance. Un valor positivo significa que subió el puntaje promedio; uno negativo, que bajó.</p>
+              <p className="metrics-chapter-evolution-intro">Cada capítulo muestra el promedio anterior y el actual de las fincas comparables. Azul = anterior; verde = actual. La diferencia aparece en puntos.</p>
               <div className="metrics-chapter-evolution-summary" aria-label="Resumen de tendencia por capítulo">
                 <span className="positive"><ArrowUpRight size={15}/><strong>{improvingChapterCount}</strong> mejoraron</span>
                 <span className="negative"><ArrowDownRight size={15}/><strong>{decliningChapterCount}</strong> bajaron</span>
@@ -258,19 +259,19 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                   const delta=chapter.delta;
                   const selected=selectedTrend?.id===chapter.id;
                   const tone=delta===null||delta===0?'neutral':delta>0?'positive':'negative';
-                  const barHeight=delta===null?0:Math.max(delta===0?3:6,Math.abs(delta)/trendScale*42);
-                  const movement=delta===null?'Sin comparación':delta===0?'Sin cambio':delta>0?'Subió':'Bajó';
-                  return <button type="button" key={chapter.id} className={`metrics-chapter-bar-item ${selected?'selected':''}`} aria-pressed={selected} aria-label={`Capítulo ${chapter.id}, ${chapter.title}: ${delta===null?'sin comparación':`${delta>0?'+':''}${delta} puntos porcentuales`}, ${chapter.comparisons} fincas comparables`} onClick={()=>setSelectedTrendChapter(chapter.id)}>
-                    <span className={`metrics-chapter-bar-value ${tone}`}>{delta===null?<Minus size={15}/>:delta>0?<ArrowUpRight size={16}/>:delta<0?<ArrowDownRight size={16}/>:<Minus size={14}/>} {movement} · {delta===null?'—':`${delta>0?'+':''}${delta} pts`}</span>
-                    <span className="metrics-chapter-bar-plot"><span className={`metrics-chapter-bar ${tone}`} style={delta===null?undefined:{height:`${barHeight}%`}} /></span>
+                  const previousHeight=chapter.previousScore===null?0:Math.max(2,chapter.previousScore);
+                  const currentHeight=chapter.score===null?0:Math.max(2,chapter.score);
+                  return <button type="button" key={chapter.id} className={`metrics-chapter-bar-item ${selected?'selected':''}`} aria-pressed={selected} aria-label={`Capítulo ${chapter.id}, ${chapter.title}: ${delta===null?'sin comparación':`antes ${chapter.previousScore} por ciento, actual ${chapter.score} por ciento, cambio ${delta>0?'+':''}${delta} puntos`}, ${chapter.comparisons} fincas comparables`} onClick={()=>setSelectedTrendChapter(chapter.id)}>
+                    <span className={`metrics-chapter-bar-value ${tone}`}>{delta===null?'Sin comparación':<>{chapter.previousScore}% <span aria-hidden="true">→</span> {chapter.score}% <b>({delta>0?'+':''}{delta} pts)</b></>}</span>
+                    <span className="metrics-chapter-bar-plot">{delta!==null&&<><span className="metrics-chapter-bar previous" title={`Anterior: ${chapter.previousScore}%`} style={{height:`${previousHeight}%`}}/><span className="metrics-chapter-bar current" title={`Actual: ${chapter.score}%`} style={{height:`${currentHeight}%`}}/></>}</span>
                     <span className="metrics-chapter-bar-label"><strong>Capítulo {chapter.id}</strong><small>{chapter.title}</small></span>
                   </button>;
                 })}
               </div>
-              <div className="metrics-chapter-chart-legend"><span><i className="positive"/>La barra sube: aumentó el puntaje</span><span><i className="negative"/>La barra baja: disminuyó el puntaje</span><span><i className="neutral"/>Sin comparación: alcance distinto o datos insuficientes</span></div>
+              <div className="metrics-chapter-chart-legend"><span><i className="previous"/>Anterior</span><span><i className="current"/>Actual</span><span><i className="positive"/>Puntaje subió</span><span><i className="negative"/>Puntaje bajó</span></div>
               {selectedTrend&&<div className="metrics-chapter-contributors" aria-live="polite">
                 <div className="metrics-chapter-contributors-heading"><div><strong>Capítulo {selectedTrend.id} · {selectedTrend.title}</strong><small>{selectedTrend.comparisons} fincas incluidas en el promedio</small></div><strong className={`metrics-chapter-contributors-average ${selectedTrend.delta===null||selectedTrend.delta===0?'neutral':selectedTrend.delta>0?'positive':'negative'}`}>{selectedTrend.delta===null?'Sin base':`${selectedTrend.delta>0?'+':''}${selectedTrend.delta} pts`}</strong></div>
-                {selectedTrend.farms.length?<ul>{selectedTrend.farms.slice().sort((a,b)=>b.delta-a.delta).map(farm=><li key={farm.key}><span>{farm.farm}<small>Último aseguramiento · {farm.date}</small></span><strong className={farm.delta===0?'neutral':farm.delta>0?'positive':'negative'}>{farm.delta>0?'+':''}{farm.delta} pts</strong></li>)}</ul>:<p className="metrics-empty">No hay dos aseguramientos comparables para este capítulo en el periodo.</p>}
+                {selectedTrend.farms.length?<ul>{selectedTrend.farms.slice().sort((a,b)=>b.delta-a.delta).map(farm=><li key={farm.key}><span>{farm.farm}<small>{farm.previousScore}% anterior → {farm.score}% actual · {farm.date}</small></span><strong className={farm.delta===0?'neutral':farm.delta>0?'positive':'negative'}>{farm.delta>0?'+':''}{farm.delta} pts</strong></li>)}</ul>:<p className="metrics-empty">No hay dos aseguramientos comparables para este capítulo en el periodo.</p>}
               </div>}
             </section>
 
