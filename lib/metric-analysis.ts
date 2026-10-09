@@ -5,7 +5,7 @@ export type ChapterVisitAnswer={date:string;visitId:string;answer:string|null;sc
 export type ChapterMetricItem={id:string;text:string;firstAnswer:string|null;latestAnswer:string|null;firstScore:number|null;latestScore:number|null;allVisits:ChapterVisitAnswer[]};
 export type ChapterVisitEvolution={date:string;visitId:string;score:number|null;pointsEarned:number;findings:number;applicable:number;status:MetricStatus};
 export type ChapterMetricDetail={id:number;title:string;weight:number;weightPct:number;maxPoints:number;pointsEarned:number;firstPointsEarned:number;score:number|null;firstScore:number|null;findings:number;applicable:number;status:MetricStatus;items:ChapterMetricItem[];visitEvolution:ChapterVisitEvolution[]};
-export type FarmMetricProblem={id:string;text:string;recommendation:string;chapter:number;weightPct:number;action:{owner:string;due:string;status:string;closure:string};occurrences:number;consecutiveStreak:number;isRecurrent:boolean;isReincident:boolean;isNew:boolean};
+export type FarmMetricProblem={id:string;text:string;observation:string;recommendation:string;chapter:number;weightPct:number;action:{owner:string;due:string;status:string;closure:string};occurrences:number;consecutiveStreak:number;isRecurrent:boolean;isReincident:boolean;isNew:boolean};
 export type FarmMetricAnalysis={farm:string;records:MetricRecord[];first?:MetricRecord;latest?:MetricRecord;trend:ReturnType<typeof metricTrend>;delta:number|null;recentDelta?:number|null;yearly:{year:string;average:number;closing:number;visits:number;status:MetricStatus}[];chapters:ChapterMetricDetail[];problems:FarmMetricProblem[]};
 export type ConsolidatedMetricAnalysis={records:MetricRecord[];farms:number;applicable:number;findings:number;score:number|null;weightedScore?:number|null;status:MetricStatus;timeline:{period:string;score:number;complianceScore?:number|null;findings:number;reports:number;status:MetricStatus}[];trend:ReturnType<typeof metricTrend>;chapters:{id:number;title:string;applicable:number;findings:number;score:number|null;status:MetricStatus;farms:number}[];items:{id:string;chapter:number;chapterTitle:string;text:string;applicable:number;findings:number;rate:number;farms:number}[];matrix:{farm:string;date:string;responsible:string;chapter:string;item:string;text:string;answer:string;observation:string;recommendation:string}[]};
 export type FarmBenchmarkRecord={farm:string;date:string;score:number;findings:number;applicable:number;chapterIds:number[];rank:number;tied:boolean};
@@ -63,6 +63,7 @@ export function farmMetricHistory(visits:Visit[],farm:string):FarmMetricAnalysis
   return {
    id:f.id,
    text:f.text,
+   observation:f.answer.observation,
    recommendation:f.answer.recommendation,
    chapter:Number(f.id.split('.')[0]),
    weightPct:Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])]||0)*100),

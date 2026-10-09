@@ -75,6 +75,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         chapter:Number(problem.id.split('.')[0]),
         weightPct:Math.round((CHAPTER_WEIGHTS[Number(problem.id.split('.')[0])]||0)*100),
         text:problem.text,
+        observation:problem.answer.observation,
         recommendation:problem.answer.recommendation||'Definir y documentar la acción correctiva.',
         owner:problem.action.owner,
         due:problem.action.due,
@@ -275,7 +276,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
                     {(expandedActionFarms[farm.key]?farm.correctiveActions:farm.correctiveActions.slice(0,3)).map(action=>(
                         <li key={action.id}>
                           <div className="metrics-action-title"><strong>{action.id} · {action.text}</strong><span>Cap. {action.chapter} · {action.weightPct}%</span></div>
-                          <p>{action.recommendation}</p>
+                          <p className="metrics-action-observation"><strong>Hallazgo / observación:</strong> {action.observation||'Sin observación registrada en este informe.'}</p>
+                          <p className="metrics-action-recommendation"><strong>Recomendación sugerida:</strong> {action.recommendation}</p>
                           <div className="metrics-action-meta"><span>Responsable: <b>{action.owner||'Sin asignar'}</b></span><span>Fecha: <b>{action.due||'Sin definir'}</b></span><span>Estado: <b>{actionLabels[action.status as keyof typeof actionLabels]||action.status}</b></span>{action.closure&&<span>Verificación: <b>{action.closure}</b></span>}</div>
                         </li>
                       ))}

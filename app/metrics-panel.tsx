@@ -44,7 +44,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
     const delta=comparableChapterPair&&currentPoint?.score!==null&&currentPoint?.score!==undefined&&previousPoint?.score!==null&&previousPoint?.score!==undefined?Math.round((currentPoint.score-previousPoint.score)*10)/10:null;
     return {id:chapter.id,title:chapter.title,weightPct:chapter.weightPct,score:currentPoint?.score??null,delta,comparisons:delta===null?0:1};
   });
-  const selectedProblems=current?findings(current.visit).map(f=>({id:f.id,text:f.text,recommendation:f.answer.recommendation,chapter:Number(f.id.split('.')[0]),weightPct:Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])]||0)*100),action:{owner:f.action.owner,due:f.action.due,status:f.action.status}})):[];
+  const selectedProblems=current?findings(current.visit).map(f=>({id:f.id,text:f.text,observation:f.answer.observation,recommendation:f.answer.recommendation,chapter:Number(f.id.split('.')[0]),weightPct:Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])]||0)*100),action:{owner:f.action.owner,due:f.action.due,status:f.action.status}})):[];
   const selectedDelta=comparableChapterPair&&current&&previous?current.score-previous.score:null;
   const podium=data.records.slice(-3).map((record,index,items)=>{const previous=index>0?items[index-1]:undefined;return {record,label:index===items.length-1?'Último aseguramiento':index===items.length-2?'Aseguramiento anterior':'Inicio del periodo',delta:previous&&sameChapterScope(previous.visit,record.visit)?record.score-previous.score:null,hasPrevious:!!previous};});
   const currentYear=new Date().getFullYear();
@@ -245,7 +245,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     {(expandedActionsForFarm===activeFarm?selectedProblems:selectedProblems.slice(0,3)).map(problem=>(
                       <li key={problem.id}>
                         <div className="metrics-action-title"><strong>{problem.id} · {problem.text}</strong><span>Cap. {problem.chapter} · {problem.weightPct}%</span></div>
-                        <p>{problem.recommendation||'Definir y documentar la acción correctiva.'}</p>
+                        <p className="metrics-action-observation"><strong>Hallazgo / observación:</strong> {problem.observation||'Sin observación registrada en este informe.'}</p>
+                        <p className="metrics-action-recommendation"><strong>Recomendación sugerida:</strong> {problem.recommendation||'Definir y documentar la acción correctiva.'}</p>
                         <div className="metrics-action-meta"><span>Responsable: <b>{problem.action.owner||'Sin asignar'}</b></span><span>Fecha: <b>{problem.action.due||'Sin definir'}</b></span><span>Estado: <b>{actionLabels[problem.action.status as keyof typeof actionLabels]||problem.action.status}</b></span></div>
                       </li>
                     ))}
