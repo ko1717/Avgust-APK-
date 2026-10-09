@@ -340,6 +340,11 @@ export function GuidePresentation({open,onClose}:GuidePresentationProps){
                     <strong>Wilson Castro</strong>
                     <p>Este programa fue creado con la ayuda de Wilson Castro.</p>
                   </div>
+                  <div className="c360-credit">
+                    <small>Ingeniera</small>
+                    <strong>Sandra Galvis</strong>
+                    <p>AVGUST CARE 360</p>
+                  </div>
                 </div>
                 <p className="c360-version">
                   AVGUST CARE 360 · versión {VERSION}
