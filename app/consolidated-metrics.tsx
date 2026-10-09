@@ -345,7 +345,9 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
           </div>
 
           <details className="metrics-deep-dive">
-            <summary>Ver indicadores históricos, matriz de hallazgos e informes</summary>
+            <summary><span>Explorar análisis e historial</span><small>Elige una sección para consultar su detalle.</small></summary>
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Indicadores históricos</span><small>Lecturas adicionales de la evolución de la flota</small></summary>
           {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines & Well-Written Cards */}
           <div className="b2b-kpi-grid">
             {/* KPI 1: Índice MIPE Promedio de la Flota */}
@@ -532,8 +534,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </div>
             </div>
           </div>
+          </details>
 
           {/* MASTER FLEET DIRECTORY: CONSOLIDADO DE TODAS LAS FINCAS */}
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Detalle histórico por finca</span><small>Alcance, conformidad, hallazgos y responsables</small></summary>
           <div className="b2b-card-block">
             <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
               <div>
@@ -724,7 +729,10 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <span>Metodología oficial AVGUST Crop Protection · Escala 0-100 Puntos</span>
             </div>
           </div>
+          </details>
 
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Acciones registradas en informes</span><small>Recomendaciones con responsables y fechas objetivo</small></summary>
           <section className="b2b-card-block">
             <div className="b2b-kicker">Plan de mejora</div>
             <h3>Acciones correctivas por finca</h3>
@@ -747,8 +755,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               {!filteredFleet.some(farm=>farm.correctiveActions.length>0)&&<p className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">No hay acciones correctivas registradas en las visitas recientes del alcance seleccionado.</p>}
             </div>
           </section>
+          </details>
 
           {/* Benchmark / Ranking Comparison entre fincas con igual alcance */}
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Comparación entre fincas</span><small>Compara solo auditorías con el mismo alcance</small></summary>
           <div className="b2b-card-block">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -820,8 +831,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </details>
             )}
           </div>
+          </details>
 
           {/* Charts Row: Timeline & Findings by Chapter */}
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Tendencias e incidencias por capítulo</span><small>Gráficos de evolución, hallazgos e informes</small></summary>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="b2b-chart-card">
               <div className="b2b-chart-header">
@@ -883,8 +897,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </ResponsiveContainer>
             </div>
           </div>
+          </details>
 
           {/* Pareto / Top Inconvenientes */}
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Hallazgos más frecuentes</span><small>Criterios con mayor recurrencia entre fincas</small></summary>
           <div className="b2b-card-block">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -928,8 +945,11 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               <div className="p-6 text-center text-emerald-800 text-xs">No hay hallazgos registrados en el periodo.</div>
             )}
           </div>
+          </details>
 
           {/* Consolidated Chapter Deep Dive with scope evidence and evaluated filter */}
+          <details className="metrics-archive-section" name="fleet-metrics-archive">
+            <summary><span>Auditoría técnica por capítulo</span><small>Abre un capítulo para revisar sus criterios y evidencias</small></summary>
           <div className="b2b-card-block">
             <div className="mb-2">
               <h3>Estado y Auditoría por Capítulo Normativo</h3>
@@ -937,6 +957,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             </div>
             <ConsolidatedChapterDetails chapters={data.chapters} items={data.items}/>
           </div>
+          </details>
           </details>
         </>
       )}

@@ -987,10 +987,17 @@ html.dark .b2b-alert-card p {
 .metrics-podium-delta { grid-column: 2 / -1; font-size: 11px; font-weight: 800; }
 .metrics-podium-delta.neutral { color: #64748b; }
 .metrics-deep-dive { border: 1px solid #d8e1e5; border-radius: 14px; background: #f8fafb; }
-.metrics-deep-dive > summary { cursor: pointer; padding: 16px 20px; color: #31515d; font-size: 13px; font-weight: 800; list-style-position: inside; }
+.metrics-deep-dive > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; padding: 16px 20px; color: #31515d; font-size: 13px; font-weight: 800; list-style-position: inside; }
+.metrics-deep-dive > summary small { color: #71818a; font-size: 10px; font-weight: 500; text-align: right; }
 .metrics-deep-dive[open] { padding-bottom: 18px; }
 .metrics-deep-dive[open] > summary { margin-bottom: 18px; border-bottom: 1px solid #e2e8f0; }
 .metrics-deep-dive[open] > :not(summary) { margin-right: 18px; margin-left: 18px; }
+.metrics-archive-section { margin-top: 9px; border: 1px solid #e2e8f0; border-radius: 11px; background: #fff; overflow: clip; }
+.metrics-archive-section > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; padding: 13px 15px; color: #274653; font-size: 12px; font-weight: 750; list-style-position: inside; }
+.metrics-archive-section > summary small { color: #71818a; font-size: 10px; font-weight: 450; text-align: right; }
+.metrics-archive-section[open] { padding-bottom: 8px; }
+.metrics-archive-section[open] > summary { margin-bottom: 12px; border-bottom: 1px solid #edf1f3; background: #f8fafb; }
+.metrics-archive-section[open] > :not(summary) { margin-right: 13px; margin-left: 13px; }
 .metrics-fleet-status-counts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .metrics-fleet-status-counts > div { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 8px; padding: 9px 11px; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; }
 .metrics-fleet-status-counts strong { grid-row: span 2; font-size: 22px; line-height: 1; }
@@ -1039,6 +1046,10 @@ html.dark .b2b-alert-card p {
 .metrics-farm-action-score.critical { color: #9f1239; background: #fff1f2; }
 .metrics-farm-actions > .metrics-action-list { padding: 0 15px 8px; }
 html.dark .metrics-outcome, html.dark .metrics-priority-panel, html.dark .metrics-weights-panel, html.dark .metrics-podium-panel, html.dark .metrics-fleet-panel, html.dark .metrics-deep-dive, html.dark .metrics-farm-actions { color: #e2e8f0; background: #0f172a; border-color: #334155; }
+html.dark .metrics-archive-section { background: #111c2d; border-color: #334155; }
+html.dark .metrics-archive-section > summary { color: #e2e8f0; }
+html.dark .metrics-archive-section > summary small, html.dark .metrics-deep-dive > summary small { color: #94a3b8; }
+html.dark .metrics-archive-section[open] > summary { background: #172235; border-color: #334155; }
 html.dark .metrics-outcome.healthy { background: linear-gradient(110deg,#142510 0,#0f172a 58%); }
 html.dark .metrics-outcome.acceptable { background: linear-gradient(110deg,#2a210f 0,#0f172a 58%); }
 html.dark .metrics-outcome.critical { background: linear-gradient(110deg,#2b1519 0,#0f172a 58%); }

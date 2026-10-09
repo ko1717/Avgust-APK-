@@ -465,7 +465,9 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
           </div>
 
           <details className="metrics-deep-dive">
-            <summary>Ver gráficos, desglose técnico e historial completo</summary>
+            <summary><span>Más análisis e historial</span><small>Abre únicamente la sección que necesitas.</small></summary>
+          <details className="metrics-archive-section" name="farm-metrics-archive">
+            <summary><span>Indicadores históricos</span><small>Conformidad, cobertura y variación de las visitas</small></summary>
           {/* Executive KPI Scorecard with Recharts Trend Lines & Clear Well-Written Cards */}
           <div className="b2b-kpi-grid">
             {/* Card 1: Índice MIPE Ponderado */}
@@ -730,8 +732,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </button>
             </div>
           )}
+          </details>
 
           {/* Interactive Chart Section */}
+          <details className="metrics-archive-section" name="farm-metrics-archive">
+            <summary><span>Gráfico de evolución</span><small>Explora el índice, los capítulos, hallazgos y cobertura</small></summary>
           <div className="b2b-chart-card">
             <div className="b2b-chart-header">
               <div>
@@ -869,8 +874,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               )}
             </div>
           </div>
+          </details>
 
           {/* Dual Column: Annual Closes & Process Health Radar */}
+          <details className="metrics-archive-section" name="farm-metrics-archive">
+            <summary><span>Cierres anuales y desglose técnico</span><small>Consulta resultados por año y por capítulo MIPE</small></summary>
           <div className="b2b-dual-grid">
             <div className="b2b-card-block">
               <h3>Cierre por Año</h3>
@@ -897,8 +905,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               <FarmChapterDetails chapters={data.chapters}/>
             </div>
           </div>
+          </details>
 
           {/* Priority Risk Alerts - Redesigned Cards */}
+          <details className="metrics-archive-section" name="farm-metrics-archive">
+            <summary><span>Hallazgos y acciones prioritarias</span><small>Recomendaciones, responsables, plazos y recurrencias</small></summary>
           <div className="b2b-card-block">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
@@ -979,8 +990,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
             )}
           </div>
+          </details>
 
           {/* High-Density Audit History Table */}
+          <details className="metrics-archive-section" name="farm-metrics-archive">
+            <summary><span>Historial de visitas e informes</span><small>Registro completo y acceso a cada informe</small></summary>
           <div className="b2b-card-block">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -1062,6 +1076,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </table>
             </div>
           </div>
+          </details>
           </details>
         </>
       )}
