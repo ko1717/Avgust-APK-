@@ -7,12 +7,13 @@ import {
   TrendingDown,
   TrendingUp
 } from 'lucide-react';
-import {actionLabels,catalog,CHAPTER_WEIGHTS,findings,farmKey,metricStatusDescriptions,sameChapterScope,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {actionLabels,catalog,CHAPTER_WEIGHTS,findings,farmKey,metrics as calculateMetrics,metricStatusDescriptions,sameChapterScope,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {consolidatedMetricAnalysis} from '@/lib/metric-analysis';
 import {exportConsolidatedMatrixExcel} from '@/lib/export-matrix-excel';
 import {exportConsolidatedMatrixCsv} from '@/lib/export-matrix-csv';
 import {exportConsolidatedWord} from '@/lib/export-consolidated-word';
 import ImportMatrix from './import-matrix';
+import MetricsKpiStrip from './metrics-kpi-strip';
 import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
@@ -61,6 +62,14 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       const comparable=!!previous&&sameChapterScope(previous.visit,latest.visit);
       const recentDelta=comparable?latest.score-previous!.score:null;
       const evaluatedChapters=latest.evaluatedChapters;
+      const latestChapterScores=calculateMetrics(latest.visit).chapterScores;
+      const previousChapterScores=comparable?calculateMetrics(previous!.visit).chapterScores:null;
+      const chapterTrends=catalog.map(chapter=>{
+        const score=latestChapterScores[chapter.id]??null;
+        const previousScore=previousChapterScores?.[chapter.id]??null;
+        const delta=comparable&&score!==null&&previousScore!==null?Math.round((score-previousScore)*10)/10:null;
+        return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score,delta,comparisons:delta===null?0:1};
+      });
       const correctiveActions=findings(latest.visit).map(problem=>({
         id:problem.id,
         chapter:Number(problem.id.split('.')[0]),
@@ -85,7 +94,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         latestFindings:latest.findings,
         latestStatus:latest.status,
         evaluatedChaptersCount:evaluatedChapters,
-        responsible:latest.responsible
+        responsible:latest.responsible,
+        chapterTrends
       };
     });
 
@@ -104,6 +114,13 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       return true;
     });
   },[fleetFarms,fleetSearch,fleetStatusFilter,fleetScopeFilter]);
+
+  const fleetChapterTrends=useMemo(()=>catalog.map(chapter=>{
+    const chapterValues=fleetFarms.map(farm=>farm.chapterTrends.find(item=>item.id===chapter.id)!);
+    const scores=chapterValues.flatMap(item=>item.score===null?[]:[item.score]);
+    const deltas=chapterValues.flatMap(item=>item.delta===null?[]:[item.delta]);
+    return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score:scores.length?Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length*10)/10:null,delta:deltas.length?Math.round(deltas.reduce((sum,value)=>sum+value,0)/deltas.length*10)/10:null,comparisons:deltas.length};
+  }),[fleetFarms]);
 
   const improvingFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta>0).sort((a,b)=>(b.recentDelta||0)-(a.recentDelta||0)).slice(0,3),[filteredFleet]);
   const decliningFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta<0).sort((a,b)=>(a.recentDelta||0)-(b.recentDelta||0)).slice(0,3),[filteredFleet]);
@@ -143,18 +160,17 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
 
         {data.records.length>0 && (
           <div className="b2b-header-actions">
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedWord(data,month||`${from||'Inicio'} a ${to||'hoy'}`)}>
+            <button className="b2b-btn b2b-btn-primary" onClick={()=>void exportConsolidatedWord(data,month||`${from||'Inicio'} a ${to||'hoy'}`)}>
               <FileSpreadsheet size={16}/> Informe Word
             </button>
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedMatrixExcel(data)}>
-              <FileSpreadsheet size={16}/> Matriz Excel
-            </button>
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedMatrixCsv(data)}>
-              <FileDown size={16}/> CSV
-            </button>
-            <button className="b2b-btn b2b-btn-primary" onClick={()=>window.print()}>
-              <Printer size={16}/> Guardar PDF
-            </button>
+            <details className="metrics-export-menu">
+              <summary><FileDown size={16}/> Más formatos</summary>
+              <div className="metrics-export-options">
+                <button onClick={()=>void exportConsolidatedMatrixExcel(data)}><FileSpreadsheet size={15}/> Matriz Excel</button>
+                <button onClick={()=>void exportConsolidatedMatrixCsv(data)}><FileDown size={15}/> Descargar CSV</button>
+                <button onClick={()=>window.print()}><Printer size={15}/> Guardar como PDF</button>
+              </div>
+            </details>
           </div>
         )}
       </div>
@@ -194,7 +210,7 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
           <div className="metrics-executive-dashboard">
             <section className={`metrics-outcome ${data.status}`} aria-label="Conclusión consolidada de las fincas">
               <div className="metrics-outcome-main">
-                <div className="metrics-section-kicker">Último periodo · {data.farms} fincas · {data.records.length} aseguramientos</div>
+                <div className="metrics-section-kicker">Estado actual · {data.farms} fincas evaluadas</div>
                 <h3>Estado fitosanitario de las fincas</h3>
                 <StatusBadge value={data.status}/>
                 <p className="metrics-outcome-copy">{metricStatusDescriptions[data.status]}</p>
@@ -212,24 +228,13 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </div>
             </section>
 
+            <MetricsKpiStrip count={data.records.length} scope={`${data.farms} fincas · aseguramientos revisados`} chapterTrends={fleetChapterTrends} comparisonLabel="Promedio de fincas comparables"/>
+
             <section className="metrics-podium-panel">
               <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Cambio entre aseguramientos comparables</div><h3>Podios de evolución</h3></div><span className="metrics-note">Mismo alcance de capítulos</span></div>
               <div className="metrics-podium-columns">
                 <div className="metrics-podium-group improve"><h4><TrendingUp size={17}/> Mejoras</h4>{improvingFarms.length?improvingFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>+{farm.recentDelta} pts</strong></div>):<p>No hay mejoras comparables en el periodo.</p>}</div>
                 <div className="metrics-podium-group decline"><h4><TrendingDown size={17}/> Desmejoras</h4>{decliningFarms.length?decliningFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>{farm.recentDelta} pts</strong></div>):<p>No hay desmejoras comparables en el periodo.</p>}</div>
-              </div>
-            </section>
-
-            <section className="metrics-weights-panel">
-              <div className="metrics-section-kicker">Modelo oficial de calificación</div>
-              <h3>Peso de los cinco capítulos</h3>
-              <div className="metrics-weight-list metrics-fleet-weight-list">
-                {catalog.map(chapter=>(
-                  <div className="metrics-weight-row" key={chapter.id}>
-                    <div className="metrics-weight-label"><span><b>Cap. {chapter.id}</b> {chapter.title}</span><strong>{Math.round(CHAPTER_WEIGHTS[chapter.id]*100)}%</strong></div>
-                    <div className="metrics-score-track"><span style={{width:`${CHAPTER_WEIGHTS[chapter.id]*100}%`}}/></div>
-                  </div>
-                ))}
               </div>
             </section>
 

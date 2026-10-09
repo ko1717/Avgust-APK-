@@ -6,6 +6,7 @@ import {actionLabels,farmKey,sameChapterScope,metricStatusDescriptions,metricSta
 import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import ConsolidatedMetrics from './consolidated-metrics';
+import MetricsKpiStrip from './metrics-kpi-strip';
 import {GuidePresentation,GuideHelpButton} from './guide-presentation';
 import './b2b-metrics.css';
 
@@ -29,10 +30,17 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
   const [showGuideModal,setShowGuideModal]=useState(false);
 
   const activeFarm=farm||farms[0]?.[0]||'';
-  const scoped=useMemo(()=>visits.filter(v=>(!from||v.date>=`${from}-01-01`)&&(!to||v.date<=`${to}-12-31`)),[visits,from,to]);
+  const scoped=useMemo(()=>visits.filter(v=>(!v.serviceKind||v.serviceKind==='assurance')&&(!from||v.date>=`${from}-01-01`)&&(!to||v.date<=`${to}-12-31`)),[visits,from,to]);
   const data=useMemo(()=>farmMetricHistory(scoped,activeFarm),[scoped,activeFarm]);
 
   const current=data.latest;
+  const previous=data.records.at(-2);
+  const comparableChapterPair=!!current&&!!previous&&sameChapterScope(previous.visit,current.visit);
+  const chapterTrends=data.chapters.map(chapter=>{
+    const latestPoint=chapter.visitEvolution.at(-1),previousPoint=chapter.visitEvolution.at(-2);
+    const delta=comparableChapterPair&&latestPoint?.score!==null&&latestPoint?.score!==undefined&&previousPoint?.score!==null&&previousPoint?.score!==undefined?Math.round((latestPoint.score-previousPoint.score)*10)/10:null;
+    return {id:chapter.id,title:chapter.title,weightPct:chapter.weightPct,score:chapter.score,delta,comparisons:delta===null?0:1};
+  });
   const podium=data.records.slice(-3).map((record,index,items)=>{const previous=index>0?items[index-1]:undefined;return {record,label:index===items.length-1?'Último aseguramiento':index===items.length-2?'Aseguramiento anterior':'Inicio del periodo',delta:previous&&sameChapterScope(previous.visit,record.visit)?record.score-previous.score:null,hasPrevious:!!previous};});
   const currentYear=new Date().getFullYear();
 
@@ -71,15 +79,16 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
         {current && (
           <div className="b2b-header-actions">
             <GuideHelpButton onClick={()=>setShowGuideModal(true)}/>
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>setShowGuide(!showGuide)} aria-expanded={showGuide}>
-              <InfoIcon size={16}/> {showGuide?'Ocultar Modelo MIPE':'Modelo MIPE'}
+            <button className="b2b-btn b2b-btn-secondary metrics-utility-action" onClick={()=>setShowGuide(!showGuide)} aria-expanded={showGuide}>
+              <InfoIcon size={16}/> {showGuide?'Ocultar modelo de aseguramiento':'Modelo de aseguramiento'}
             </button>
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportFarmMetricsWord(data)}>
+            <button className="b2b-btn b2b-btn-primary" onClick={()=>void exportFarmMetricsWord(data)}>
               <FileTextIcon size={16}/> Informe Ejecutivo Word
             </button>
-            <button className="b2b-btn b2b-btn-primary" onClick={()=>window.print()}>
-              <PrinterIcon size={16}/> Exportar PDF de Alta Resolución
-            </button>
+            <details className="metrics-export-menu">
+              <summary><PrinterIcon size={16}/> Exportar</summary>
+              <div className="metrics-export-options"><button onClick={()=>window.print()}>Guardar como PDF</button></div>
+            </details>
           </div>
         )}
       </div>
@@ -206,6 +215,8 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
               </div>
             </section>
 
+            <MetricsKpiStrip count={data.records.length} scope={`${data.farm} · aseguramientos revisados`} chapterTrends={chapterTrends} comparisonLabel={comparableChapterPair?'Vs. aseguramiento anterior':'Sin comparación comparable'}/>
+
             <div className="metrics-overview-grid">
               <section className="metrics-priority-panel">
                 <div className="metrics-section-heading">
@@ -226,19 +237,6 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 ) : <p className="metrics-empty">No se identificaron desviaciones en el último aseguramiento.</p>}
               </section>
 
-              <section className="metrics-weights-panel">
-                <div className="metrics-section-kicker">Ponderación de la calificación</div>
-                <h3>Resultado por capítulo</h3>
-                <div className="metrics-weight-list">
-                  {data.chapters.map(chapter=>(
-                    <div className="metrics-weight-row" key={chapter.id}>
-                      <div className="metrics-weight-label"><span><b>Cap. {chapter.id}</b> {chapter.title}</span><strong>{chapter.weightPct}%</strong></div>
-                      <div className="metrics-score-track"><span className={chapter.status} style={{width:`${chapter.score??0}%`}}/></div>
-                      <small>{chapter.score===null?'Sin evaluar':`${chapter.pointsEarned.toFixed(1)} / ${chapter.maxPoints} pts · ${chapter.score}%`}</small>
-                    </div>
-                  ))}
-                </div>
-              </section>
             </div>
 
             {podium.length>0&&(

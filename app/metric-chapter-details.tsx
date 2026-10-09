@@ -643,7 +643,7 @@ export function FarmChapterDetails({chapters}:{chapters:ChapterMetricDetail[]}){
               ))}
             </div>
             <p className="mt-2 text-[11px] text-slate-500 italic">
-              Metodología oficial AVGUST MIPE: Los capítulos excluidos no aportan puntos al numerador ni al denominador ponderado. La calificación representa el 100% de los procesos auditados.
+              Modelo de aseguramiento AVGUST: Los capítulos excluidos no aportan puntos al numerador ni al denominador ponderado. La calificación representa el 100% de los procesos evaluados.
             </p>
           </div>
         </div>
@@ -871,7 +871,7 @@ export function ConsolidatedChapterDetails({chapters,items}:{chapters:Consolidat
         <div className="p-3 bg-gradient-to-r from-emerald-50 to-white border border-emerald-200 rounded-xl mb-1 flex items-center gap-2 text-xs text-emerald-900 shadow-xs">
           <ShieldCheck size={18} className="text-[#78be20]"/>
           <span>
-            <strong>Cobertura Multi-Finca Completa:</strong> Todos los 5 procesos del catálogo oficial fueron auditados en al menos una finca durante el periodo.
+            <strong>Cobertura Multi-Finca Completa:</strong> Los 5 procesos del catálogo oficial fueron evaluados en al menos una finca durante el periodo.
           </span>
         </div>
       )}
