@@ -1,11 +1,14 @@
 'use client';
 import {useMemo,useState} from 'react';
 import {
+  ArrowDownRight,
+  ArrowUpRight,
   FileDown,
   FileSpreadsheet,
   Printer,
   TrendingDown,
-  TrendingUp
+  TrendingUp,
+  Minus
 } from 'lucide-react';
 import {actionLabels,catalog,CHAPTER_WEIGHTS,findings,farmKey,metrics as calculateMetrics,metricStatusDescriptions,sameChapterScope,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {consolidatedMetricAnalysis} from '@/lib/metric-analysis';
@@ -13,7 +16,6 @@ import {exportConsolidatedMatrixExcel} from '@/lib/export-matrix-excel';
 import {exportConsolidatedMatrixCsv} from '@/lib/export-matrix-csv';
 import {exportConsolidatedWord} from '@/lib/export-consolidated-word';
 import ImportMatrix from './import-matrix';
-import MetricsKpiStrip from './metrics-kpi-strip';
 import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
@@ -127,6 +129,9 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
   const selectedTrend=fleetChapterTrends.find(chapter=>chapter.id===selectedTrendChapter)??fleetChapterTrends.find(chapter=>chapter.comparisons>0)??fleetChapterTrends[0];
   const trendScale=Math.max(5,...fleetChapterTrends.flatMap(chapter=>chapter.delta===null?[]:[Math.abs(chapter.delta)]));
   const improvingChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta!==null&&chapter.delta>0).length;
+  const decliningChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta!==null&&chapter.delta<0).length;
+  const unchangedChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta===0).length;
+  const uncomparableChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta===null).length;
   const comparableFarmCount=fleetFarms.filter(farm=>farm.recentDelta!==null).length;
 
   const improvingFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta>0).sort((a,b)=>(b.recentDelta||0)-(a.recentDelta||0)).slice(0,3),[filteredFleet]);
@@ -235,29 +240,34 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
               </div>
             </section>
 
-            <MetricsKpiStrip count={data.records.length} scope={`${data.farms} fincas · aseguramientos revisados`} chapterTrends={fleetChapterTrends} comparisonLabel="Promedio de fincas comparables"/>
-
             <section className="metrics-chapter-evolution" aria-labelledby="metrics-chapter-evolution-title">
               <div className="metrics-section-heading">
-                <div><div className="metrics-section-kicker">Consolidado de cambios recientes</div><h3 id="metrics-chapter-evolution-title">Evolución por capítulos</h3></div>
-                <span className="metrics-note">{comparableFarmCount} {comparableFarmCount===1?'finca comparable':'fincas comparables'}</span>
+                <div><div className="metrics-section-kicker">{data.records.length} aseguramientos · {data.farms} fincas</div><h3 id="metrics-chapter-evolution-title">¿Qué capítulos mejoraron?</h3></div>
+                <span className="metrics-note">Comparación entre aseguramientos</span>
               </div>
-              <p className="metrics-chapter-evolution-intro">Variación promedio en puntos porcentuales entre los dos últimos aseguramientos de cada finca, comparados con el mismo alcance.</p>
-              <div className="metrics-chapter-evolution-summary"><strong>{improvingChapterCount} de 5 capítulos</strong><span>presentan mejora promedio</span></div>
+              <p className="metrics-chapter-evolution-intro">Comparamos los dos últimos aseguramientos de cada finca cuando tienen el mismo alcance. Un valor positivo significa que subió el puntaje promedio; uno negativo, que bajó.</p>
+              <div className="metrics-chapter-evolution-summary" aria-label="Resumen de tendencia por capítulo">
+                <span className="positive"><ArrowUpRight size={15}/><strong>{improvingChapterCount}</strong> mejoraron</span>
+                <span className="negative"><ArrowDownRight size={15}/><strong>{decliningChapterCount}</strong> bajaron</span>
+                <span className="neutral"><Minus size={14}/><strong>{unchangedChapterCount}</strong> sin cambio</span>
+                {uncomparableChapterCount>0&&<span className="neutral"><strong>{uncomparableChapterCount}</strong> sin comparación</span>}
+                <span className="metrics-chapter-comparison-total">En {comparableFarmCount} {comparableFarmCount===1?'finca comparable':'fincas comparables'}</span>
+              </div>
               <div className="metrics-chapter-chart" role="group" aria-label="Variación promedio por capítulo. Selecciona una barra para consultar las fincas incluidas.">
                 {fleetChapterTrends.map(chapter=>{
                   const delta=chapter.delta;
                   const selected=selectedTrend?.id===chapter.id;
                   const tone=delta===null||delta===0?'neutral':delta>0?'positive':'negative';
                   const barHeight=delta===null?0:Math.max(delta===0?3:6,Math.abs(delta)/trendScale*42);
+                  const movement=delta===null?'Sin comparación':delta===0?'Sin cambio':delta>0?'Subió':'Bajó';
                   return <button type="button" key={chapter.id} className={`metrics-chapter-bar-item ${selected?'selected':''}`} aria-pressed={selected} aria-label={`Capítulo ${chapter.id}, ${chapter.title}: ${delta===null?'sin comparación':`${delta>0?'+':''}${delta} puntos porcentuales`}, ${chapter.comparisons} fincas comparables`} onClick={()=>setSelectedTrendChapter(chapter.id)}>
-                    <span className={`metrics-chapter-bar-value ${tone}`}>{delta===null?'—':`${delta>0?'+':''}${delta}`}</span>
+                    <span className={`metrics-chapter-bar-value ${tone}`}>{delta===null?<Minus size={15}/>:delta>0?<ArrowUpRight size={16}/>:delta<0?<ArrowDownRight size={16}/>:<Minus size={14}/>} {movement} · {delta===null?'—':`${delta>0?'+':''}${delta} pts`}</span>
                     <span className="metrics-chapter-bar-plot"><span className={`metrics-chapter-bar ${tone}`} style={delta===null?undefined:{height:`${barHeight}%`}} /></span>
-                    <span className="metrics-chapter-bar-label"><strong>Cap. {chapter.id}</strong><small>{chapter.weightPct}%</small></span>
+                    <span className="metrics-chapter-bar-label"><strong>Capítulo {chapter.id}</strong><small>{chapter.title}</small></span>
                   </button>;
                 })}
               </div>
-              <div className="metrics-chapter-chart-legend"><span><i className="positive"/>Mejora</span><span><i className="negative"/>Desmejora</span><span><i className="neutral"/>Sin cambio o sin base comparable</span></div>
+              <div className="metrics-chapter-chart-legend"><span><i className="positive"/>La barra sube: aumentó el puntaje</span><span><i className="negative"/>La barra baja: disminuyó el puntaje</span><span><i className="neutral"/>Sin comparación: alcance distinto o datos insuficientes</span></div>
               {selectedTrend&&<div className="metrics-chapter-contributors" aria-live="polite">
                 <div className="metrics-chapter-contributors-heading"><div><strong>Capítulo {selectedTrend.id} · {selectedTrend.title}</strong><small>{selectedTrend.comparisons} fincas incluidas en el promedio</small></div><strong className={`metrics-chapter-contributors-average ${selectedTrend.delta===null||selectedTrend.delta===0?'neutral':selectedTrend.delta>0?'positive':'negative'}`}>{selectedTrend.delta===null?'Sin base':`${selectedTrend.delta>0?'+':''}${selectedTrend.delta} pts`}</strong></div>
                 {selectedTrend.farms.length?<ul>{selectedTrend.farms.slice().sort((a,b)=>b.delta-a.delta).map(farm=><li key={farm.key}><span>{farm.farm}<small>Último aseguramiento · {farm.date}</small></span><strong className={farm.delta===0?'neutral':farm.delta>0?'positive':'negative'}>{farm.delta>0?'+':''}{farm.delta} pts</strong></li>)}</ul>:<p className="metrics-empty">No hay dos aseguramientos comparables para este capítulo en el periodo.</p>}
