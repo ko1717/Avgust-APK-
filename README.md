@@ -2,9 +2,9 @@
 
 Aplicación para registrar visitas y preparar informes técnicos por finca. Permite completar los 37 criterios de los cinco capítulos, adjuntar fotos, consultar métricas históricas por finca y descargar Word editable o imprimir a PDF.
 
-Los objetivos y la metodología provienen del protocolo Word suministrado. Las preguntas se extrajeron de las listas de chequeo sin cambiar sus criterios técnicos. El indicador usa respuestas “Sí” sobre criterios aplicables (“Sí” + “No”), excluye “No aplica” y clasifica cada visita como Saludable (80–100), Aceptable (50–79) o Crítico (menos de 50). El diseño del Word es nuevo, conserva la estructura y el contenido institucional pero no reproduce exactamente la diagramación del original.
+Los objetivos y la metodología provienen del protocolo Word suministrado. Las preguntas se extrajeron de las listas de chequeo sin cambiar sus criterios técnicos. El indicador usa respuestas “Sí” sobre criterios aplicables (“Sí” + “No”), excluye “No aplica” y pondera los capítulos así: 1 (5%), 2 (25%), 3 (10%), 4 (30%) y 5 (30%). Clasifica cada visita como Saludable (95–100%), Alerta (80–94%) o Vulnerable (menos de 80%). El diseño del Word es nuevo, conserva la estructura y el contenido institucional pero no reproduce exactamente la diagramación del original.
 
-Este repositorio ya incluye el proyecto fuente recuperado de `D:\WILSON\avgust-care` (versión 1.5.35), con sus aplicaciones web, Windows y Android. La APK 1.5.32 y la antigua capa `enhance/src` se conservan como referencias; no son la fuente principal ni se debe generar un release de producción con el flujo de APK semilla.
+Este repositorio incluye el proyecto fuente (versión 1.5.35) para web, Windows y Android. El motor de métricas anterior basado en `enhance` ya no se carga: la puntuación, el estado y la evolución usan `lib/model.ts` y `lib/metric-analysis.ts`, y las vistas actuales viven en `app/metrics-panel.tsx` y `app/consolidated-metrics.tsx`. El resto de la capa `enhance/src` permanece para otras funciones de interfaz. La APK 1.5.32 se conserva como referencia; no se debe generar un release de producción con el flujo de APK semilla.
 
 ## Datos y acceso
 

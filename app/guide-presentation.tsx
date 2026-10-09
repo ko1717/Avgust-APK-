@@ -336,9 +336,10 @@ export function GuidePresentation({open,onClose}:GuidePresentationProps){
                     <p>Diseño, desarrollo y puesta en marcha de AVGUST CARE 360.</p>
                   </div>
                   <div className="c360-credit">
-                    <small>Con la ayuda de</small>
+                    <small>Con la colaboración de</small>
                     <strong>Wilson Castro</strong>
-                    <p>Este programa fue creado con la ayuda de Wilson Castro.</p>
+                    <strong>Ing. Sandra Galvis</strong>
+                    <p>Apoyo para la creación de AVGUST CARE 360.</p>
                   </div>
                 </div>
                 <p className="c360-version">

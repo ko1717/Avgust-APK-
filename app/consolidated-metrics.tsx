@@ -1,97 +1,47 @@
 'use client';
 import {useMemo,useState} from 'react';
 import {
-  Building2,
-  CheckCircle2,
+  ArrowDownRight,
+  ArrowUpRight,
   FileDown,
   FileSpreadsheet,
-  Filter,
-  Layers,
-  MapPin,
   Printer,
-  Search,
-  ShieldAlert,
   TrendingDown,
   TrendingUp,
-  Trophy,
-  Users,
-  Target,
-  Sparkles,
-  BarChart3
+  Minus
 } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from 'recharts';
-import {catalog,farmKey,metricStatusLabels,metricTrendLabels,type MetricStatus,type Visit} from '@/lib/model';
-import {compareFarmBenchmarks,consolidatedMetricAnalysis} from '@/lib/metric-analysis';
+import {actionLabels,catalog,CHAPTER_WEIGHTS,findings,farmKey,metrics as calculateMetrics,metricStatusDescriptions,sameChapterScope,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
+import {consolidatedMetricAnalysis} from '@/lib/metric-analysis';
 import {exportConsolidatedMatrixExcel} from '@/lib/export-matrix-excel';
 import {exportConsolidatedMatrixCsv} from '@/lib/export-matrix-csv';
 import {exportConsolidatedWord} from '@/lib/export-consolidated-word';
 import ImportMatrix from './import-matrix';
-import {ConsolidatedChapterDetails} from './metric-chapter-details';
-import {KpiSparkline,type SparklinePoint} from './kpi-sparkline';
 import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
   const labels:Record<MetricStatus,string>={
-    healthy:'Óptimo (≥ 95%)',
-    acceptable:'Aceptable (85-94%)',
-    critical:'Crítico (< 85%)',
+    healthy:'Saludable (95-100%)',
+    acceptable:'Alerta (80-94%)',
+    critical:'Vulnerable (<80%)',
     pending:'Sin evaluar'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
 }
 
-const monthLabel=(period:string)=>new Intl.DateTimeFormat('es-CO',{month:'short',year:'numeric'}).format(new Date(`${period}-01T12:00:00`));
-
 export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Visit[];loading:boolean;onImport:(visits:Visit[])=>Promise<void>}){
   const [from,setFrom]=useState('');
   const [to,setTo]=useState('');
   const [month,setMonth]=useState('');
-  const [timelineView,setTimelineView]=useState<'score'|'findings'|'reports'|'all'>('score');
-  
+
   // Fleet directory search and filter state
   const [fleetSearch,setFleetSearch]=useState('');
   const [fleetStatusFilter,setFleetStatusFilter]=useState<'all'|'healthy'|'acceptable'|'critical'>('all');
   const [fleetScopeFilter,setFleetScopeFilter]=useState<'all'|'complete'|'partial'>('all');
+  const [expandedActionFarms,setExpandedActionFarms]=useState<Record<string,boolean>>({});
+  const [selectedTrendChapter,setSelectedTrendChapter]=useState<number|null>(null);
 
   const scoped=useMemo(()=>visits.filter(v=>(!from||v.date>=`${from}-01-01`)&&(!to||v.date<=`${to}-12-31`)&&(!month||v.date.startsWith(month))),[visits,from,to,month]);
   const data=useMemo(()=>consolidatedMetricAnalysis(scoped),[scoped]);
-  const benchmark=useMemo(()=>compareFarmBenchmarks(scoped),[scoped]);
-  
-  const chart=data.timeline.map(row=>({...row,label:monthLabel(row.period)}));
-  const chapterChart=data.chapters.map(row=>({chapter:`Cap ${row.id}`,hallazgos:row.findings,title:row.title}));
-
-  const scoreSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
-    date:t.period,
-    label:monthLabel(t.period),
-    value:t.score,
-    formattedValue:`${t.score}% MIPE`
-  })),[data.timeline]);
-
-  const reportsSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
-    date:t.period,
-    label:monthLabel(t.period),
-    value:t.reports,
-    formattedValue:`${t.reports} informes`
-  })),[data.timeline]);
-
-  const findingsSparkline:SparklinePoint[]=useMemo(()=>data.timeline.map(t=>({
-    date:t.period,
-    label:monthLabel(t.period),
-    value:t.findings,
-    formattedValue:`${t.findings} hallazgos`
-  })),[data.timeline]);
-
   // Robustly calculate fleet farm summaries with chronological ordering & disambiguation
   const fleetFarms=useMemo(()=>{
     const farmGroups=new Map<string,typeof data.records>();
@@ -106,34 +56,50 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       // Sort chronologically by date and revision/updated
       records.sort((a,b)=>{
         const dateCmp=a.date.localeCompare(b.date);
-        if(dateCmp!==0) return dateCmp;
-        const updA=a.visit.updated||'';
-        const updB=b.visit.updated||'';
-        if(updA&&updB) return updA.localeCompare(updB);
-        return (a.visit.revision||0) - (b.visit.revision||0);
+        if(dateCmp!==0)return dateCmp;
+        return (a.visit.revision||0)-(b.visit.revision||0)||a.visit.id.localeCompare(b.visit.id);
       });
 
       const latest=records[records.length-1];
-      const evaluatedChapters=latest.evaluatedChapters ? latest.evaluatedChapters : latest.visit.chapters.length;
+      const previous=records.length>1?records[records.length-2]:undefined;
+      const comparable=!!previous&&sameChapterScope(previous.visit,latest.visit);
+      const recentDelta=comparable?latest.score-previous!.score:null;
+      const evaluatedChapters=latest.evaluatedChapters;
+      const latestChapterScores=calculateMetrics(latest.visit).chapterScores;
+      const previousChapterScores=comparable?calculateMetrics(previous!.visit).chapterScores:null;
+      const chapterTrends=catalog.map(chapter=>{
+        const score=latestChapterScores[chapter.id]??null;
+        const previousScore=previousChapterScores?.[chapter.id]??null;
+        const delta=comparable&&score!==null&&previousScore!==null?Math.round((score-previousScore)*10)/10:null;
+        return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score,previousScore,delta,comparisons:delta===null?0:1};
+      });
+      const correctiveActions=findings(latest.visit).map(problem=>({
+        id:problem.id,
+        chapter:Number(problem.id.split('.')[0]),
+        weightPct:Math.round((CHAPTER_WEIGHTS[Number(problem.id.split('.')[0])]||0)*100),
+        text:problem.text,
+        observation:problem.answer.observation,
+        recommendation:problem.answer.recommendation||'Definir y documentar la acción correctiva.',
+        owner:problem.action.owner,
+        due:problem.action.due,
+        status:problem.action.status,
+        closure:problem.action.closure
+      }));
 
       return {
         farm:latest.visit.farm,
         key,
         city:latest.visit.city||'',
         zone:latest.visit.zone||'',
-        totalVisits:records.length,
         latestDate:latest.date,
         latestScore:latest.score,
+        recentDelta,
+        correctiveActions,
         latestFindings:latest.findings,
-        latestApplicable:latest.applicable,
         latestStatus:latest.status,
-        latestCompliance:latest.criteriaCompliance,
-        latestWeightedScore:latest.weightedScore,
-        latestPointsEarned:latest.pointsEarned,
         evaluatedChaptersCount:evaluatedChapters,
-        evaluatedChaptersList:[...latest.visit.chapters].sort((a,b)=>a-b),
         responsible:latest.responsible,
-        technician:latest.visit.technician||''
+        chapterTrends
       };
     });
 
@@ -153,7 +119,25 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
     });
   },[fleetFarms,fleetSearch,fleetStatusFilter,fleetScopeFilter]);
 
-  const completeAuditsCount=useMemo(()=>fleetFarms.filter(f=>f.evaluatedChaptersCount===5).length,[fleetFarms]);
+  const fleetChapterTrends=useMemo(()=>catalog.map(chapter=>{
+    const chapterValues=fleetFarms.map(farm=>farm.chapterTrends.find(item=>item.id===chapter.id)!);
+    const farms=chapterValues.flatMap((item,index)=>item.delta===null||item.score===null||item.previousScore===null?[]:[{farm:fleetFarms[index].farm,key:fleetFarms[index].key,date:fleetFarms[index].latestDate,previousScore:item.previousScore,score:item.score,delta:item.delta}]);
+    const deltas=farms.map(item=>item.delta);
+    const average=(values:number[])=>values.length?Math.round(values.reduce((sum,value)=>sum+value,0)/values.length*10)/10:null;
+    const priorScores=farms.map(item=>item.previousScore);
+    const currentScores=farms.map(item=>item.score);
+    return {id:chapter.id,title:chapter.title,weightPct:Math.round(CHAPTER_WEIGHTS[chapter.id]*100),score:average(currentScores),previousScore:average(priorScores),delta:deltas.length?Math.round(deltas.reduce((sum,value)=>sum+value,0)/deltas.length*10)/10:null,comparisons:deltas.length,improvedCount:deltas.filter(value=>value>0).length,declinedCount:deltas.filter(value=>value<0).length,unchangedCount:deltas.filter(value=>value===0).length,farms};
+  }),[fleetFarms]);
+  const selectedTrend=fleetChapterTrends.find(chapter=>chapter.id===selectedTrendChapter)??fleetChapterTrends.find(chapter=>chapter.comparisons>0)??fleetChapterTrends[0];
+  const improvingChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta!==null&&chapter.delta>0).length;
+  const decliningChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta!==null&&chapter.delta<0).length;
+  const unchangedChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta===0).length;
+  const uncomparableChapterCount=fleetChapterTrends.filter(chapter=>chapter.delta===null).length;
+  const comparableFarmCount=fleetFarms.filter(farm=>farm.recentDelta!==null).length;
+
+  const improvingFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta>0).sort((a,b)=>(b.recentDelta||0)-(a.recentDelta||0)).slice(0,3),[filteredFleet]);
+  const decliningFarms=useMemo(()=>filteredFleet.filter(f=>f.recentDelta!==null&&f.recentDelta<0).sort((a,b)=>(a.recentDelta||0)-(b.recentDelta||0)).slice(0,3),[filteredFleet]);
+  const priorityFarms=useMemo(()=>filteredFleet.filter(f=>f.correctiveActions.length>0).sort((a,b)=>a.latestScore-b.latestScore||b.correctiveActions.length-a.correctiveActions.length),[filteredFleet]);
   const healthyCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='healthy').length,[fleetFarms]);
   const acceptableCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='acceptable').length,[fleetFarms]);
   const criticalCount=useMemo(()=>fleetFarms.filter(f=>f.latestStatus==='critical').length,[fleetFarms]);
@@ -167,8 +151,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
       <div className="metrics-print-brand hidden print:flex">
         <img src="/avgust-logo.svg" alt="Avgust Crop Protection" className="h-10"/>
         <div>
-          <strong className="text-lg">AVGUST CARE 360 · Business Intelligence MIPE</strong>
-          <span className="block text-xs text-slate-500">Informe Técnico Consolidado Multi-Finca</span>
+          <strong className="text-lg">AVGUST CARE 360 · Indicadores de aseguramiento</strong>
+          <span className="block text-xs text-slate-500">Resumen del aseguramiento técnico · Multi-finca</span>
         </div>
       </div>
 
@@ -183,24 +167,23 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             </span>
             <span>AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</span>
           </div>
-          <h2 id="consolidated-title">Matriz Técnica de Aseguramientos Multi-Finca</h2>
-          <p>Análisis transversal de la flota de fincas: procesos críticos, patrones de no conformidad y ranking comparativo homogéneo.</p>
+          <h2 id="consolidated-title">Aseguramiento técnico de fincas</h2>
+          <p>Estado fitosanitario, cambios recientes y prioridades de atención, en una sola lectura.</p>
         </div>
 
         {data.records.length>0 && (
           <div className="b2b-header-actions">
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedWord(data,month||`${from||'Inicio'} a ${to||'hoy'}`)}>
+            <button className="b2b-btn b2b-btn-primary" onClick={()=>void exportConsolidatedWord(data,month||`${from||'Inicio'} a ${to||'hoy'}`)}>
               <FileSpreadsheet size={16}/> Informe Word
             </button>
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedMatrixExcel(data)}>
-              <FileSpreadsheet size={16}/> Matriz Excel
-            </button>
-            <button className="b2b-btn b2b-btn-secondary" onClick={()=>void exportConsolidatedMatrixCsv(data)}>
-              <FileDown size={16}/> CSV
-            </button>
-            <button className="b2b-btn b2b-btn-primary" onClick={()=>window.print()}>
-              <Printer size={16}/> Guardar PDF
-            </button>
+            <details className="metrics-export-menu">
+              <summary><FileDown size={16}/> Más formatos</summary>
+              <div className="metrics-export-options">
+                <button onClick={()=>void exportConsolidatedMatrixExcel(data)}><FileSpreadsheet size={15}/> Matriz Excel</button>
+                <button onClick={()=>void exportConsolidatedMatrixCsv(data)}><FileDown size={15}/> Descargar CSV</button>
+                <button onClick={()=>window.print()}><Printer size={15}/> Guardar como PDF</button>
+              </div>
+            </details>
           </div>
         )}
       </div>
@@ -237,557 +220,121 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
         </div>
       ) : (
         <>
-          {/* Executive Multi-Farm KPI Grid with Recharts Trend Lines & Well-Written Cards */}
-          <div className="b2b-kpi-grid">
-            {/* KPI 1: Índice MIPE Promedio de la Flota */}
-            <div
-              className={`b2b-kpi-card ${data.status} cursor-pointer transition-all ${timelineView==='score'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setTimelineView('score')}
-              title="Click para enfocar Índice Consolidado en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('score');}}
-            >
-              <div className="b2b-kpi-header">
-                <div>
-                  <span className="b2b-kpi-category text-[#007fa3] flex items-center gap-1">
-                    <Target size={12}/> Flota Integral MIPE
-                  </span>
-                  <span className="b2b-kpi-title">Índice MIPE Promedio</span>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">Media ponderada de la flota</span>
-                </div>
+          <div className="metrics-executive-dashboard">
+            <section className={`metrics-outcome ${data.status}`} aria-label="Conclusión consolidada de las fincas">
+              <div className="metrics-outcome-main">
+                <div className="metrics-section-kicker">Estado actual · {data.farms} fincas evaluadas</div>
+                <h3>Estado fitosanitario de las fincas</h3>
                 <StatusBadge value={data.status}/>
+                <p className="metrics-outcome-copy">{metricStatusDescriptions[data.status]}</p>
               </div>
-
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">{fleetAverageScore}%</span>
-                <span className="text-xs font-semibold text-slate-500">puntos promedio</span>
+              <div className="metrics-outcome-score" aria-label={`Promedio de aseguramiento ${fleetAverageScore} por ciento`}>
+                <strong>{fleetAverageScore}<span>%</span></strong>
+                <small>Promedio de aseguramiento</small>
+                <div className="metrics-score-track"><span style={{width:`${Math.min(100,Math.max(0,fleetAverageScore))}%`}}/></div>
               </div>
-
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={scoreSparkline} color="#007fa3" fillGradientId="sparkConsolidatedScore" unit="%" height={38}/>
+              <div className="metrics-fleet-status-counts">
+                <div className="healthy"><strong>{healthyCount}</strong><span>Saludables</span><small>95–100%</small></div>
+                <div className="acceptable"><strong>{acceptableCount}</strong><span>En alerta</span><small>80–94%</small></div>
+                <div className="critical"><strong>{criticalCount}</strong><span>Vulnerables</span><small>Menos de 80%</small></div>
+                <div className="total"><strong>{fleetFarms.length}</strong><span>Fincas evaluadas</span><small>En el periodo</small></div>
               </div>
+            </section>
 
-              <div className="b2b-kpi-footer">
-                {healthyCount} fincas en nivel óptimo (≥95%) · {acceptableCount} en aceptable (85-94%) · {criticalCount} en crítico (&lt;85%).
+            <section className="metrics-chapter-evolution" aria-labelledby="metrics-chapter-evolution-title">
+              <div className="metrics-section-heading">
+                <div><div className="metrics-section-kicker">{data.records.length} aseguramientos · {data.farms} fincas</div><h3 id="metrics-chapter-evolution-title">¿Qué capítulos mejoraron?</h3></div>
+                <span className="metrics-note">Comparación entre aseguramientos</span>
               </div>
-
-              <div className="b2b-kpi-progress-wrap">
-                <div className="b2b-kpi-progress">
-                  <div className={`b2b-kpi-progress-fill ${data.status}`} style={{width:`${fleetAverageScore||0}%`}}/>
-                </div>
-                <div className="b2b-kpi-target-mark acceptable" style={{left:'85%'}} title="Umbral Aceptable: 85%"/>
-                <div className="b2b-kpi-target-mark" style={{left:'95%'}} title="Meta Óptima: 95%"/>
+              <p className="metrics-chapter-evolution-intro">Cada capítulo muestra el promedio anterior y el actual de las fincas comparables. Azul = anterior; verde = actual. La diferencia aparece en puntos.</p>
+              <div className="metrics-chapter-evolution-summary" aria-label="Resumen de tendencia por capítulo">
+                <span className="positive"><ArrowUpRight size={15}/><strong>{improvingChapterCount}</strong> mejoraron</span>
+                <span className="negative"><ArrowDownRight size={15}/><strong>{decliningChapterCount}</strong> bajaron</span>
+                <span className="neutral"><Minus size={14}/><strong>{unchangedChapterCount}</strong> sin cambio</span>
+                {uncomparableChapterCount>0&&<span className="neutral"><strong>{uncomparableChapterCount}</strong> sin comparación</span>}
+                <span className="metrics-chapter-comparison-total">En {comparableFarmCount} {comparableFarmCount===1?'finca comparable':'fincas comparables'}</span>
               </div>
-            </div>
-
-            {/* KPI 2: Comportamiento Global de la Red */}
-            <div
-              className={`b2b-kpi-card highlight cursor-pointer transition-all ${timelineView==='all'?'ring-2 ring-[#78be20] shadow-md':''}`}
-              onClick={()=>setTimelineView('all')}
-              title="Click para comparar Comportamiento Global en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('all');}}
-            >
-              <div className="b2b-kpi-header">
-                <div>
-                  <span className="b2b-kpi-category text-[#78be20] flex items-center gap-1">
-                    <TrendingUp size={12}/> Evolución Longitudinal
-                  </span>
-                  <span className="b2b-kpi-title">Tendencia de la Red</span>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">Primer vs último periodo</span>
-                </div>
-                <span className={`inline-flex items-center gap-1 text-xs font-bold ${data.trend==='improved'?'text-[#78be20]':data.trend==='declined'?'text-[#dc2626]':'text-slate-600'}`}>
-                  {data.trend==='improved'?<TrendingUp size={14}/>:data.trend==='declined'?<TrendingDown size={14}/>:null}
-                  {metricTrendLabels[data.trend]}
-                </span>
-              </div>
-
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">
-                  {metricTrendLabels[data.trend]}
-                </span>
-                <span className="text-xs font-semibold text-slate-500">{data.timeline.length} periodos analizados</span>
-              </div>
-
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={scoreSparkline} color={data.trend==='improved'?'#78be20':data.trend==='declined'?'#dc2626':'#007fa3'} fillGradientId="sparkConsolidatedTrend" unit="%" height={38}/>
-              </div>
-
-              <div className="b2b-kpi-footer">
-                Comportamiento longitudinal ponderado a través de las evaluaciones registradas.
-              </div>
-            </div>
-
-            {/* KPI 3: Cobertura de Fincas */}
-            <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${timelineView==='reports'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setTimelineView('reports')}
-              title="Click para enfocar Informes y Fincas en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('reports');}}
-            >
-              <div className="b2b-kpi-header">
-                <div>
-                  <span className="b2b-kpi-category text-[#007fa3] flex items-center gap-1">
-                    <Users size={12}/> Alcance Multi-Finca
-                  </span>
-                  <span className="b2b-kpi-title">Población Auditada</span>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">Fincas con aseguramiento</span>
-                </div>
-                <Users size={15} className="text-[#007fa3]"/>
-              </div>
-
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">{data.farms}</span>
-                <span className="text-xs font-semibold text-slate-500">fincas activas</span>
-              </div>
-
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={reportsSparkline} color="#007fa3" fillGradientId="sparkConsolidatedFarms" height={38}/>
-              </div>
-
-              <div className="b2b-kpi-footer">
-                {completeAuditsCount} con auditoría completa (5/5 procesos) · {fleetFarms.length - completeAuditsCount} focalizadas.
-              </div>
-            </div>
-
-            {/* KPI 4: Inconformidades Totales */}
-            <div
-              className={`b2b-kpi-card ${data.findings>0?'critical':'healthy'} cursor-pointer transition-all ${timelineView==='findings'?'ring-2 ring-[#dc2626] shadow-md':''}`}
-              onClick={()=>setTimelineView('findings')}
-              title="Click para enfocar Inconformidades Totales en la gráfica de evolución"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('findings');}}
-            >
-              <div className="b2b-kpi-header">
-                <div>
-                  <span className="b2b-kpi-category text-rose-600 flex items-center gap-1">
-                    <ShieldAlert size={12}/> Riesgo Agregado
-                  </span>
-                  <span className="b2b-kpi-title">Hallazgos Totales</span>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">Respuestas “No” en la flota</span>
-                </div>
-                <ShieldAlert size={15} className="text-[#dc2626]"/>
-              </div>
-
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value text-[#dc2626]">{data.findings}</span>
-                <span className="text-xs font-semibold text-slate-500">en {data.applicable} criterios</span>
-              </div>
-
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={findingsSparkline} color={data.findings>0?'#dc2626':'#78be20'} fillGradientId="sparkConsolidatedFindings" height={38}/>
-              </div>
-
-              <div className="b2b-kpi-footer">
-                Tasa global de hallazgos: {data.applicable ? Math.round((data.findings/data.applicable)*100) : 0}% de los criterios evaluados.
-              </div>
-            </div>
-
-            {/* KPI 5: Aseguramientos Realizados */}
-            <div
-              className={`b2b-kpi-card cursor-pointer transition-all ${timelineView==='reports'?'ring-2 ring-[#007fa3] shadow-md':''}`}
-              onClick={()=>setTimelineView('reports')}
-              title="Click para ver Volumen de Aseguramientos"
-              role="button"
-              tabIndex={0}
-              onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setTimelineView('reports');}}
-            >
-              <div className="b2b-kpi-header">
-                <div>
-                  <span className="b2b-kpi-category text-[#007fa3] flex items-center gap-1">
-                    <Layers size={12}/> Cobertura de Operación
-                  </span>
-                  <span className="b2b-kpi-title">Aseguramientos</span>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">Informes técnicos revisados</span>
-                </div>
-                <Layers size={15} className="text-[#007fa3]"/>
-              </div>
-
-              <div className="b2b-kpi-body">
-                <span className="b2b-kpi-value">{data.records.length}</span>
-                <span className="text-xs font-semibold text-slate-500">visitas documentadas</span>
-              </div>
-
-              <div className="mt-1 mb-2">
-                <KpiSparkline data={reportsSparkline} color="#007fa3" fillGradientId="sparkConsolidatedVisits" height={38}/>
-              </div>
-
-              <div className="b2b-kpi-footer">
-                Auditorías que validan Almacén, Dosificación, Transporte, Mezclas y Aplicación.
-              </div>
-            </div>
-          </div>
-
-          {/* MASTER FLEET DIRECTORY: CONSOLIDADO DE TODAS LAS FINCAS */}
-          <div className="b2b-card-block">
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-              <div>
-                <div className="b2b-kicker">Consolidado General de Operación</div>
-                <h3 className="flex items-center gap-2">
-                  <Building2 size={19} className="text-[#007fa3]"/>
-                  Directorio Consolidado de Todas las Fincas Auditadas
-                </h3>
-                <p className="sub">
-                  Resumen exhaustivo de la auditoría técnica más reciente de cada finca en el periodo, su alcance normativo evaluado, calificación MIPE y desviaciones abiertas.
-                </p>
-              </div>
-
-              {/* Fleet Overview Badges */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#78be20]"></span>
-                  {healthyCount} Óptimas (≥95%)
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#f2a900]"></span>
-                  {acceptableCount} Aceptables (85-94%)
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#dc2626]"></span>
-                  {criticalCount} Críticas (&lt;85%)
-                </span>
-              </div>
-            </div>
-
-            {/* Filter Bar for Master Table */}
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-                <Search size={16} className="text-slate-400"/>
-                <input
-                  type="search"
-                  aria-label="Buscar finca, municipio o responsable AVGUST"
-                  placeholder="Buscar finca, municipio o responsable AVGUST…"
-                  value={fleetSearch}
-                  onChange={e=>setFleetSearch(e.target.value)}
-                  className="b2b-input w-full"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                  <Filter size={14} className="text-slate-400"/>
-                  <span>Estado:</span>
-                  <select
-                    aria-label="Filtrar por estado"
-                    value={fleetStatusFilter}
-                    onChange={e=>setFleetStatusFilter(e.target.value as 'all'|'healthy'|'acceptable'|'critical')}
-                    className="b2b-input py-1 text-xs"
-                  >
-                    <option value="all">Todos los estados</option>
-                    <option value="healthy">Óptimo (≥95%)</option>
-                    <option value="acceptable">Aceptable (85-94%)</option>
-                    <option value="critical">Crítico (&lt;85%)</option>
-                  </select>
-                </label>
-
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                  <span>Alcance:</span>
-                  <select
-                    aria-label="Filtrar por alcance de auditoría"
-                    value={fleetScopeFilter}
-                    onChange={e=>setFleetScopeFilter(e.target.value as 'all'|'complete'|'partial')}
-                    className="b2b-input py-1 text-xs"
-                  >
-                    <option value="all">Todos los alcances</option>
-                    <option value="complete">Auditoría Completa (5/5)</option>
-                    <option value="partial">Auditoría Parcial (&lt;5)</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-
-            {/* Fleet Master Table */}
-            <div className="b2b-table-container">
-              <table className="b2b-table">
-                <thead>
-                  <tr>
-                    <th style={{width:'50px'}} aria-label="Posición">Posición</th>
-                    <th>Finca y Ubicación</th>
-                    <th>Último Aseguramiento</th>
-                    <th>Capítulos Evaluados</th>
-                    <th>Índice MIPE</th>
-                    <th>Conformidad</th>
-                    <th>Hallazgos (“No”)</th>
-                    <th>Estado Semáforo</th>
-                    <th>Responsable AVGUST</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFleet.length ? (
-                    filteredFleet.map((farm,idx)=>(
-                      <tr key={farm.key}>
-                        <td>
-                          <span className="font-bold text-xs text-slate-500 tabular-nums">#{idx+1}</span>
-                        </td>
-                        <td>
-                          <div>
-                            <strong className="text-slate-900 block text-sm">{farm.farm}</strong>
-                            {(farm.zone||farm.city) && (
-                              <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                <MapPin size={11} className="text-slate-400"/>
-                                {[farm.zone,farm.city].filter(Boolean).join(' · ')}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td>
-                          <span className="text-slate-700 text-xs font-medium">{farm.latestDate}</span>
-                          <span className="block text-[11px] text-slate-400">{farm.totalVisits} visita{farm.totalVisits===1?'':'s'} en histórico</span>
-                        </td>
-                        <td>
-                          {farm.evaluatedChaptersCount === 5 ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#78be20]/15 text-[#245b3a] border border-[#78be20]/30">
-                              <CheckCircle2 size={12} className="text-[#78be20]"/>
-                              5/5 Completa
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-50 text-[#007fa3] border border-sky-200" title={`Capítulos evaluados: ${farm.evaluatedChaptersList.join(', ')}`}>
-                              <Layers size={12} className="text-[#007fa3]"/>
-                              {farm.evaluatedChaptersCount}/5 (Caps: {farm.evaluatedChaptersList.join(', ')})
-                            </span>
-                          )}
-                        </td>
-                        <td aria-label={`Índice MIPE ${farm.latestScore}%`}>
-                          <div className="flex items-center gap-2">
-                            <strong className="text-sm font-extrabold text-[#0f172a] min-w-[38px] tabular-nums">{farm.latestScore}%</strong>
-                            <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden hidden sm:block">
-                              <div
-                                className={`h-full rounded-full ${farm.latestStatus==='healthy'?'bg-[#78be20]':farm.latestStatus==='acceptable'?'bg-[#f2a900]':'bg-[#dc2626]'}`}
-                                style={{width:`${farm.latestScore}%`}}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="text-xs font-semibold text-slate-700 tabular-nums">
-                            {farm.latestCompliance!==null ? `${farm.latestCompliance}%` : '—'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold tabular-nums ${farm.latestFindings>0?'bg-rose-100 text-rose-800 border border-rose-200':'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
-                            {farm.latestFindings}
-                          </span>
-                        </td>
-                        <td>
-                          <StatusBadge value={farm.latestStatus}/>
-                        </td>
-                        <td>
-                          <span className="text-xs text-slate-600 font-medium">{farm.responsible||'Sin asignar'}</span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={9} className="p-8 text-center text-slate-500 text-xs">
-                        No hay fincas coincidentes con los filtros seleccionados.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer summary */}
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 px-2 flex-wrap gap-2">
-              <span>Mostrando {filteredFleet.length} de {fleetFarms.length} fincas en el consolidado.</span>
-              <span>Metodología oficial AVGUST Crop Protection · Escala 0-100 Puntos</span>
-            </div>
-          </div>
-
-          {/* Benchmark / Ranking Comparison entre fincas con igual alcance */}
-          <div className="b2b-card-block">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="b2b-kicker">Clasificación Comparativa Homogénea</div>
-                <h3>Benchmark de Desempeño entre Fincas con Igual Alcance</h3>
-                <p className="sub">Compara la auditoría revisada más reciente de cada finca dentro del periodo. Solo se agrupan fincas con idénticos capítulos evaluados para garantizar rigor estadístico y equidad.</p>
-              </div>
-            </div>
-
-            {benchmark.groups.length ? (
-              <div className="grid gap-4 mt-3">
-                {benchmark.groups.map(group=>{
-                  const scope=group.chapterIds.map(id=>catalog.find(chapter=>chapter.id===id)?.title||`Capítulo ${id}`).join(' · ');
-                  return (
-                    <div key={group.chapterIds.join('-')} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Trophy size={16} className="text-[#f2a900]"/>
-                        <span className="font-bold text-slate-800 text-xs uppercase tracking-wider">Alcance Evaluado: {scope}</span>
-                      </div>
-
-                      <div className="b2b-table-container">
-                        <table className="b2b-table">
-                          <thead>
-                            <tr>
-                              <th style={{width:'90px'}}>Posición</th>
-                              <th>Finca</th>
-                              <th>Último Informe</th>
-                              <th>Índice Oficial MIPE</th>
-                              <th>Hallazgos Abiertos</th>
-                              <th>Criterios Evaluados</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {group.records.map(record=>(
-                              <tr key={record.farm}>
-                                <td>
-                                  <span className={`inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-xs tabular-nums ${record.rank===1?'bg-amber-100 text-amber-800 border border-amber-300':record.rank===2?'bg-slate-200 text-slate-800':'bg-slate-100 text-slate-600'}`}>
-                                    {record.tied ? `Empate #${record.rank}` : `#${record.rank}`}
-                                  </span>
-                                </td>
-                                <td><strong className="text-slate-900">{record.farm}</strong></td>
-                                <td><span className="text-slate-600">{record.date}</span></td>
-                                <td><strong className="text-[#007fa3] text-sm tabular-nums">{record.score}%</strong></td>
-                                <td><span className={`font-bold tabular-nums ${record.findings>0?'text-[#dc2626]':'text-[#78be20]'}`}>{record.findings}</span></td>
-                                <td><span className="text-slate-600 tabular-nums">{record.applicable}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
+              <div className="metrics-chapter-chart" role="group" aria-label="Variación promedio por capítulo. Selecciona una barra para consultar las fincas incluidas.">
+                {fleetChapterTrends.map(chapter=>{
+                  const delta=chapter.delta;
+                  const selected=selectedTrend?.id===chapter.id;
+                  const tone=delta===null||delta===0?'neutral':delta>0?'positive':'negative';
+                  const previousHeight=chapter.previousScore===null?0:Math.max(2,chapter.previousScore);
+                  const currentHeight=chapter.score===null?0:Math.max(2,chapter.score);
+                  return <button type="button" key={chapter.id} className={`metrics-chapter-bar-item ${selected?'selected':''}`} aria-pressed={selected} aria-label={`Capítulo ${chapter.id}, ${chapter.title}: ${delta===null?'sin comparación':`antes ${chapter.previousScore} por ciento, actual ${chapter.score} por ciento, cambio ${delta>0?'+':''}${delta} puntos`}, ${chapter.comparisons} fincas comparables`} onClick={()=>setSelectedTrendChapter(chapter.id)}>
+                    <span className={`metrics-chapter-bar-value ${tone}`}>{delta===null?'Sin comparación':<>{chapter.previousScore}% <span aria-hidden="true">→</span> {chapter.score}% <b>({delta>0?'+':''}{delta} pts)</b></>}</span>
+                    <span className="metrics-chapter-bar-plot">{delta!==null&&<><span className="metrics-chapter-bar previous" title={`Anterior: ${chapter.previousScore}%`} style={{height:`${previousHeight}%`}}/><span className="metrics-chapter-bar current" title={`Actual: ${chapter.score}%`} style={{height:`${currentHeight}%`}}/></>}</span>
+                    <span className="metrics-chapter-bar-label"><strong>Capítulo {chapter.id}</strong><small>{chapter.title}</small></span>
+                  </button>;
                 })}
               </div>
-            ) : (
-              <div className="p-6 text-center bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs">
-                Aún no hay dos fincas con informes revisados de alcance idéntico en este periodo.
-              </div>
-            )}
+              <div className="metrics-chapter-chart-legend"><span><i className="previous"/>Anterior</span><span><i className="current"/>Actual</span><span><i className="positive"/>Puntaje subió</span><span><i className="negative"/>Puntaje bajó</span></div>
+              {selectedTrend&&<div className="metrics-chapter-contributors" aria-live="polite">
+                <div className="metrics-chapter-contributors-heading"><div><strong>Capítulo {selectedTrend.id} · {selectedTrend.title}</strong><small>{selectedTrend.comparisons} fincas incluidas en el promedio</small></div><strong className={`metrics-chapter-contributors-average ${selectedTrend.delta===null||selectedTrend.delta===0?'neutral':selectedTrend.delta>0?'positive':'negative'}`}>{selectedTrend.delta===null?'Sin base':`${selectedTrend.delta>0?'+':''}${selectedTrend.delta} pts`}</strong></div>
+                {selectedTrend.farms.length?<ul>{selectedTrend.farms.slice().sort((a,b)=>b.delta-a.delta).map(farm=><li key={farm.key}><span>{farm.farm}<small>{farm.previousScore}% anterior → {farm.score}% actual · {farm.date}</small></span><strong className={farm.delta===0?'neutral':farm.delta>0?'positive':'negative'}>{farm.delta>0?'+':''}{farm.delta} pts</strong></li>)}</ul>:<p className="metrics-empty">No hay dos aseguramientos comparables para este capítulo en el periodo.</p>}
+              </div>}
+            </section>
 
-            {benchmark.singleScopes.length>0 && (
-              <details className="mt-3 p-3 bg-slate-100 rounded-lg text-xs text-slate-600">
-                <summary className="font-semibold cursor-pointer">{benchmark.singleScopes.length} finca{benchmark.singleScopes.length===1?'':'s'} con alcance particular sin pares directos</summary>
-                <ul className="mt-2 list-disc list-inside space-y-1">
-                  {benchmark.singleScopes.map(item=>(
-                    <li key={item.farm}><strong>{item.farm}</strong> · {item.date} ({item.chapterIds.length?item.chapterIds.map(id=>`Cap. ${id}`).join(', '):'sin capítulos'})</li>
-                  ))}
-                </ul>
-              </details>
-            )}
+            <section className="metrics-podium-panel">
+              <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Cambio entre aseguramientos comparables</div><h3>Podios de evolución</h3></div><span className="metrics-note">Mismo alcance de capítulos</span></div>
+              <div className="metrics-podium-columns">
+                <div className="metrics-podium-group improve"><h4><TrendingUp size={17}/> Mejoras</h4>{improvingFarms.length?improvingFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>+{farm.recentDelta} pts</strong></div>):<p>No hay mejoras comparables en el periodo.</p>}</div>
+                <div className="metrics-podium-group decline"><h4><TrendingDown size={17}/> Desmejoras</h4>{decliningFarms.length?decliningFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>{farm.recentDelta} pts</strong></div>):<p>No hay desmejoras comparables en el periodo.</p>}</div>
+              </div>
+            </section>
+
+            <section className="metrics-fleet-panel">
+              <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Lectura rápida · ordenadas por puntaje</div><h3>Estado por finca</h3></div><span className="metrics-note">{filteredFleet.length} de {fleetFarms.length}</span></div>
+              <div className="metrics-fleet-filters">
+                <input type="search" aria-label="Buscar finca, municipio o responsable AVGUST" placeholder="Buscar finca, municipio o responsable…" value={fleetSearch} onChange={e=>setFleetSearch(e.target.value)}/>
+                <select aria-label="Filtrar por estado" value={fleetStatusFilter} onChange={e=>setFleetStatusFilter(e.target.value as 'all'|'healthy'|'acceptable'|'critical')}>
+                  <option value="all">Todos los estados</option><option value="healthy">Saludable</option><option value="acceptable">Alerta</option><option value="critical">Vulnerable</option>
+                </select>
+                <select aria-label="Filtrar por cobertura de aseguramiento" value={fleetScopeFilter} onChange={e=>setFleetScopeFilter(e.target.value as 'all'|'complete'|'partial')}>
+                  <option value="all">Toda la cobertura</option><option value="complete">Cobertura completa</option><option value="partial">Cobertura parcial</option>
+                </select>
+              </div>
+              <div className="metrics-farm-list">
+                {filteredFleet.map((farm,index)=>(
+                  <article className={`metrics-farm-row ${farm.latestStatus}`} key={farm.key}>
+                    <span className="metrics-farm-rank">{String(index+1).padStart(2,'0')}</span>
+                    <div className="metrics-farm-identity"><strong>{farm.farm}</strong><small>{[farm.city,farm.zone].filter(Boolean).join(' · ')||'Ubicación sin registrar'} · Último aseguramiento {farm.latestDate}</small></div>
+                    <div className="metrics-farm-score"><strong>{farm.latestScore}%</strong><small>Aseguramiento · {farm.evaluatedChaptersCount}/5 cap.</small></div>
+                    <div><StatusBadge value={farm.latestStatus}/><small className="metrics-farm-conclusion">{metricStatusDescriptions[farm.latestStatus]}</small></div>
+                    <div className="metrics-farm-findings"><strong>{farm.latestFindings}</strong><small>desviaciones</small></div>
+                    <div className={`metrics-farm-delta ${farm.recentDelta===null?'neutral':farm.recentDelta>0?'positive':farm.recentDelta<0?'negative':'neutral'}`}>{farm.recentDelta===null?'Sin comparación':`${farm.recentDelta>0?'+':''}${farm.recentDelta} pts`}</div>
+                  </article>
+                ))}
+                {!filteredFleet.length&&<p className="metrics-empty">No hay fincas que coincidan con la búsqueda y los filtros.</p>}
+              </div>
+            </section>
+
+            <section className="metrics-priority-panel">
+              <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Plan de trabajo</div><h3>Acciones prioritarias por finca</h3></div><span className="metrics-count risk">{priorityFarms.reduce((sum,farm)=>sum+farm.correctiveActions.length,0)}</span></div>
+              <p className="metrics-note">Se priorizan las fincas con mayor necesidad de atención. Abre una finca para ver desviaciones, responsables, plazos y acciones.</p>
+              <div className="metrics-farm-actions-list">
+                {priorityFarms.map(farm=>(
+                  <details className="metrics-farm-actions" key={farm.key}>
+                    <summary><span><strong>{farm.farm}</strong><small>{farm.latestDate} · {farm.latestFindings} desviaciones · {farm.correctiveActions.length} acciones</small></span><span className={`metrics-farm-action-score ${farm.latestStatus}`}>{farm.latestScore}%</span></summary>
+                    <ul className="metrics-action-list">
+                    {(expandedActionFarms[farm.key]?farm.correctiveActions:farm.correctiveActions.slice(0,3)).map(action=>(
+                        <li key={action.id}>
+                          <div className="metrics-action-title"><strong>{action.id} · {action.text}</strong><span>Cap. {action.chapter} · {action.weightPct}%</span></div>
+                          <p className="metrics-action-observation"><strong>Hallazgo / observación:</strong> {action.observation||'Sin observación registrada en este informe.'}</p>
+                          <p className="metrics-action-recommendation"><strong>Recomendación sugerida:</strong> {action.recommendation}</p>
+                          <div className="metrics-action-meta"><span>Responsable: <b>{action.owner||'Sin asignar'}</b></span><span>Fecha: <b>{action.due||'Sin definir'}</b></span><span>Estado: <b>{actionLabels[action.status as keyof typeof actionLabels]||action.status}</b></span>{action.closure&&<span>Verificación: <b>{action.closure}</b></span>}</div>
+                        </li>
+                      ))}
+                    </ul>
+                    {farm.correctiveActions.length>3&&<button className="metrics-more-button" onClick={()=>setExpandedActionFarms(current=>({...current,[farm.key]:!current[farm.key]}))}>{expandedActionFarms[farm.key]?'Mostrar menos':`Ver las ${farm.correctiveActions.length-3} acciones restantes`}</button>}
+                  </details>
+                ))}
+                {!priorityFarms.length&&<p className="metrics-empty">No se encontraron acciones correctivas para las fincas filtradas.</p>}
+              </div>
+            </section>
           </div>
 
-          {/* Charts Row: Timeline & Findings by Chapter */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="b2b-chart-card">
-              <div className="b2b-chart-header">
-                <div>
-                  <h3>Evolución Mensual Consolidada</h3>
-                  <p>Comportamiento longitudinal ponderado de la flota de fincas.</p>
-                </div>
-                <div className="b2b-quick-ranges no-print">
-                  <button className={`b2b-range-btn ${timelineView==='score'?'active':''}`} onClick={()=>setTimelineView('score')}>Índice MIPE</button>
-                  <button className={`b2b-range-btn ${timelineView==='findings'?'active':''}`} onClick={()=>setTimelineView('findings')}>Hallazgos</button>
-                  <button className={`b2b-range-btn ${timelineView==='reports'?'active':''}`} onClick={()=>setTimelineView('reports')}>Informes</button>
-                  <button className={`b2b-range-btn ${timelineView==='all'?'active':''}`} onClick={()=>setTimelineView('all')}>Todos</button>
-                </div>
-              </div>
-              <div className="w-full overflow-x-auto">
-                <div style={{minWidth:Math.max(400,chart.length*60)}}>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <LineChart data={chart} margin={{top:15,right:20,left:-15,bottom:4}}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0"/>
-                      <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
-                      <YAxis domain={timelineView==='findings'||timelineView==='reports'?[0,'auto']:[0,100]} tickLine={false} axisLine={false} tickFormatter={v=>timelineView==='findings'||timelineView==='reports'?String(v):`${v}%`} tick={{fontSize:11,fill:'#64748b'}}/>
-                      <Tooltip formatter={(value,name)=>[timelineView==='score'||name==='Índice MIPE'?`${value}%`:value,String(name)]}/>
-                      {(timelineView==='score'||timelineView==='all') && (
-                        <>
-                          <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value:'Meta Óptima (≥ 95%)',fill:'#15803d',fontSize:10,fontWeight:700,position:'insideTopRight'}}/>
-                          <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value:'Umbral Aceptable (85%)',fill:'#b45309',fontSize:10,fontWeight:700,position:'insideBottomRight'}}/>
-                        </>
-                      )}
-                      {(timelineView==='score'||timelineView==='all') && (
-                        <Line type="monotone" dataKey="score" name="Índice MIPE" stroke="#007fa3" strokeWidth={3} dot={{r:5,fill:'#007fa3'}} activeDot={{r:7}}/>
-                      )}
-                      {(timelineView==='findings'||timelineView==='all') && (
-                        <Line type="linear" dataKey="findings" name="Hallazgos" stroke="#dc2626" strokeWidth={2.5} strokeDasharray={timelineView==='all'?'4 4':'0'} dot={{r:4,fill:'#dc2626'}} activeDot={{r:6}}/>
-                      )}
-                      {(timelineView==='reports'||timelineView==='all') && (
-                        <Line type="monotone" dataKey="reports" name="Informes" stroke="#005f7a" strokeWidth={2} strokeDasharray={timelineView==='all'?'2 2':'0'} dot={{r:3,fill:'#005f7a'}} activeDot={{r:5}}/>
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
 
-            <div className="b2b-chart-card">
-              <div className="b2b-chart-header">
-                <div>
-                  <h3>Concentración de Hallazgos por Proceso</h3>
-                  <p>Número total de incumplimientos por capítulo MIPE.</p>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={chapterChart} margin={{top:15,right:12,left:-20,bottom:4}}>
-                  <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3"/>
-                  <XAxis dataKey="chapter" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#64748b'}}/>
-                  <Tooltip formatter={(value,_name,item)=>[value,`Hallazgos en ${item.payload.title}`]}/>
-                  <Bar dataKey="hallazgos" name="Hallazgos" fill="#f2a900" radius={[6,6,0,0]} isAnimationActive={false}/>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Pareto / Top Inconvenientes */}
-          <div className="b2b-card-block">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="b2b-kicker">Priorización de Intervención</div>
-                <h3>Criterios con Mayor Frecuencia de No Conformidad</h3>
-                <p className="sub">Listado ordenado por volumen de respuestas “No” acumuladas en todas las fincas.</p>
-              </div>
-            </div>
-
-            <div className="b2b-table-container">
-              <table className="b2b-table">
-                <thead>
-                  <tr>
-                    <th>Capítulo</th>
-                    <th style={{width:'80px'}}>Código</th>
-                    <th>Criterio Técnico / Inconveniente</th>
-                    <th>Hallazgos Totales</th>
-                    <th>Frecuencia Relativa</th>
-                    <th>Fincas Afectadas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.items.filter(item=>item.findings>0).slice(0,12).map(item=>(
-                    <tr key={item.id}>
-                      <td><span className="font-semibold text-slate-700">Cap. {item.chapter} · {item.chapterTitle}</span></td>
-                      <td><strong className="text-slate-900">{item.id}</strong></td>
-                      <td><span className="text-slate-700 text-xs">{item.text}</span></td>
-                      <td><strong className="text-[#dc2626] text-sm tabular-nums">{item.findings}</strong></td>
-                      <td>
-                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold tabular-nums ${item.rate>=50?'bg-rose-100 text-rose-800 border border-rose-200':item.rate>=25?'bg-amber-100 text-amber-800 border border-amber-200':'bg-slate-100 text-slate-700'}`}>
-                          {item.rate}%
-                        </span>
-                      </td>
-                      <td><span className="font-bold text-slate-800 tabular-nums">{item.farms}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {!data.items.some(item=>item.findings>0) && (
-              <div className="p-6 text-center text-emerald-800 text-xs">No hay hallazgos registrados en el periodo.</div>
-            )}
-          </div>
-
-          {/* Consolidated Chapter Deep Dive with scope evidence and evaluated filter */}
-          <div className="b2b-card-block">
-            <div className="mb-2">
-              <h3>Estado y Auditoría por Capítulo Normativo</h3>
-              <p className="sub">Desglose exhaustivo de los 37 criterios oficiales por proceso con filtro de alcance y subcriterios.</p>
-            </div>
-            <ConsolidatedChapterDetails chapters={data.chapters} items={data.items}/>
-          </div>
         </>
       )}
     </div>

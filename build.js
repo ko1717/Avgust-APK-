@@ -90,7 +90,6 @@ if (fs.existsSync(indexHtmlPath)) {
     `<script defer src="/enhance/care360-experience.js?v=${buildVer}"></script>`,
     `<script defer src="/enhance/care360-ops.js?v=${buildVer}"></script>`,
     `<script defer src="/enhance/care360-import.js?v=${buildVer}"></script>`,
-    `<script defer src="/enhance/care360-metrics.js?v=${buildVer}"></script>`,
     `<script defer src="/enhance/care360-pro.js?v=${buildVer}"></script>`,
     `<script defer src="/enhance/care360-presentation.js?v=${buildVer}"></script>`
   ].join('');
@@ -185,7 +184,6 @@ const patches = [
   'patch_followup.py',
   'patch_draft.py',
   'patch_crop.py',
-  'patch_metrics_center.py'
 ];
 
 for (const patch of patches) {

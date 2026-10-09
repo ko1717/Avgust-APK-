@@ -1,4 +1,6 @@
 # AUDITORÍA MATEMÁTICA Y DE INTEGRIDAD DE KPIs
+> **Auditoría histórica:** este documento evalúa el motor anterior de `enhance`, que ya no se carga. No describe la implementación vigente de métricas en `lib/model.ts` y `lib/metric-analysis.ts`.
+
 **AVGUST CARE 360 · Centro de Inteligencia MIPE**
 *Documento de Auditoría Técnica, Integridad Matemática y Verificación Formal de Indicadores Agronómicos*
 
