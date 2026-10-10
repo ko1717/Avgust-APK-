@@ -443,7 +443,8 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
           ) : !current ? (
-            <div className="fp-metrics-empty">
+            <div className="fp-metrics-empty" role="status">
+              <span className="fp-empty-kicker">Estado de la finca</span>
               <strong>
                 {cloudLoading
                   ? 'Sincronizando aseguramientos…'
@@ -454,8 +455,13 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                   ? 'Estamos cargando las visitas revisadas desde AVGUST Cloud.'
                   : 'Cuando tu técnico publique un informe revisado, aquí verás el resultado ponderado, la tendencia por capítulo y las desviaciones con acción correctiva.'}
               </p>
+              <ul className="fp-empty-preview" aria-hidden={cloudLoading ? true : undefined}>
+                <li><span>Índice MIPE</span><em>Saludable · Alerta · Vulnerable</em></li>
+                <li><span>5 procesos</span><em>Pesos 5 / 25 / 10 / 30 / 30</em></li>
+                <li><span>Acciones</span><em>Hallazgos y compromisos</em></li>
+              </ul>
               <p className="fp-weights-note">
-                Modelo oficial MIPE: pesos 5% / 25% / 10% / 30% / 30% · Saludable 95–100% · Alerta 80–94% · Vulnerable &lt;80%.
+                Umbrales oficiales: Saludable 95–100% · Alerta 80–94% · Vulnerable &lt;80%.
               </p>
             </div>
           ) : (
