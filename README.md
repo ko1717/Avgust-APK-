@@ -18,7 +18,7 @@ El respaldo JSON conserva campos y referencias a fotos, no los bytes de las foto
 
 Node 22.16 o posterior. Se requiere esta versión para la API de respaldo de SQLite que usa la edición Windows. `npm ci`, `npm run dev`, `npm run build`. `npm run db:generate` genera migraciones de Drizzle; no se crean tablas desde rutas de aplicación. El entorno local simula el inicio de sesión mediante `/signin-with-chatgpt`.
 
-Portal de finca / servidor en línea (Firebase Hosting): `npm run dev:portal` en local; publicación estática con `npm run build:firebase` y `npm run deploy:firebase` (ver `docs/firebase-hosting.md`). El deploy de Sites/Vinext (Cloudflare) no se reemplaza.
+Portal de finca / servidor en línea (Firebase Hosting): `npm run dev:portal` en local; en Windows, doble clic en `deploy-portal.bat` (ver `docs/firebase-hosting.md`). El deploy de Sites/Vinext (Cloudflare) no se reemplaza.
 
 Para preparar una base local nueva tras generar y construir, ejecutar las migraciones de `drizzle/` en orden numérico. Si la base local ya existía, aplicar solamente cada migración pendiente antes de iniciar `npm run dev`; por ejemplo: `npx wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_farm_dossier_indexes.sql`. Utilizar una ruta absoluta para `persist-to` si Wrangler resuelve la ruta desde `dist/server`. Nunca añadir `--remote` a este procedimiento sin una autorización y un entorno de prueba explícitos.
 
