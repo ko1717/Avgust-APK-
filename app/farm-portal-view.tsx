@@ -443,7 +443,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
           ) : !current ? (
-            <div className="fp-metrics-empty" role="status">
+            <div className="fp-metrics-empty" aria-live="polite">
               <span className="fp-empty-kicker">Estado de la finca</span>
               <strong>
                 {cloudLoading
