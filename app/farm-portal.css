@@ -26,9 +26,29 @@
   flex-direction: column;
   color: var(--fp-ink);
   font-family: var(--fp-font);
+  isolation: isolate;
   background:
-    linear-gradient(180deg, rgba(243, 247, 249, 0.92) 0%, rgba(243, 247, 249, 0.97) 40%, #f3f7f9 100%),
-    var(--fp-photo-ornamental) center top / cover no-repeat fixed;
+    linear-gradient(
+      180deg,
+      rgba(243, 247, 249, 0.78) 0%,
+      rgba(243, 247, 249, 0.88) 38%,
+      rgba(245, 248, 250, 0.93) 100%
+    ),
+    radial-gradient(900px 360px at 8% -6%, rgba(0, 181, 226, 0.16), transparent 55%),
+    radial-gradient(780px 320px at 96% 4%, rgba(120, 190, 32, 0.12), transparent 50%),
+    var(--fp-photo-field) center top / cover no-repeat fixed,
+    #f3f7f9;
+}
+
+.farm-portal::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.28;
+  mix-blend-mode: multiply;
+  background: var(--fp-photo-ornamental) right bottom / min(48vw, 640px) auto no-repeat;
 }
 
 .farm-portal * {
@@ -296,7 +316,9 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(243, 247, 249, 0.88) 0%, rgba(243, 247, 249, 0.94) 100%),
+    linear-gradient(165deg, rgba(243, 247, 249, 0.82) 0%, rgba(255, 255, 255, 0.78) 48%, rgba(243, 247, 249, 0.9) 100%),
+    radial-gradient(480px 260px at 85% 10%, rgba(0, 181, 226, 0.14), transparent 60%),
+    radial-gradient(380px 240px at 10% 90%, rgba(120, 190, 32, 0.12), transparent 55%),
     var(--fp-photo-ornamental) center / cover no-repeat;
   opacity: 1;
   z-index: 0;
@@ -416,6 +438,7 @@
   box-shadow: 0 0 0 3px rgba(0, 127, 163, 0.14);
 }
 
+.fp-gate .fp-btn-primary,
 .fp-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -425,20 +448,25 @@
   padding: 13px 18px;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--fp-cyan) 0%, var(--fp-cyan-light) 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #007fa3 0%, #00b5e2 100%);
+  color: #ffffff;
   font: 800 0.9rem/1.2 var(--fp-font);
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(0, 127, 163, 0.28);
-  transition: filter 0.15s ease, transform 0.15s ease;
+  transition: filter 0.15s ease, transform 0.15s ease, background 0.15s ease;
 }
 
+.fp-gate .fp-btn-primary:hover:not(:disabled),
 .fp-btn-primary:hover:not(:disabled) {
   filter: brightness(1.05);
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
+.fp-gate .fp-btn-primary:disabled,
 .fp-btn-primary:disabled {
+  background: linear-gradient(135deg, #007fa3 0%, #00b5e2 100%);
+  color: #ffffff;
   opacity: 0.55;
   cursor: wait;
 }
