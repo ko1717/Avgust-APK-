@@ -1,30 +1,14 @@
 'use client';
 import {useState, useEffect, useMemo} from 'react';
 import {
-  ShieldCheck,
-  FileText,
   Download,
   Globe,
-  TrendingUp,
-  AlertTriangle,
   LogOut,
-  Layers,
   Lock,
   KeyRound,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus
+  ExternalLink,
+  FileText
 } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine
-} from 'recharts';
 import {
   verifyFarmInvitation,
   getClientSession,
@@ -34,19 +18,21 @@ import {
 } from '@/lib/invitations';
 import {exportWord} from '@/lib/export-word';
 import {
-  catalog,
+  actionLabels,
   CHAPTER_WEIGHTS,
   farmKey,
-  metrics,
+  findings,
+  metricStatusDescriptions,
   metricStatusLabels,
-  metricTrendLabels,
-  actionLabels,
+  sameChapterScope,
   type MetricStatus,
   type Visit
 } from '@/lib/model';
-import {farmMetricHistory, type FarmMetricAnalysis} from '@/lib/metric-analysis';
+import {farmMetricHistory} from '@/lib/metric-analysis';
 import {ensurePortalAuth, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
+import MetricsKpiStrip from './metrics-kpi-strip';
 import {StandaloneOnlineReport} from './online-report-view';
+import './b2b-metrics.css';
 import './farm-portal.css';
 
 type FarmPortalViewProps = {
@@ -55,32 +41,14 @@ type FarmPortalViewProps = {
   onExitPortal: () => void;
 };
 
-type PortalTab = 'overview' | 'reports' | 'processes' | 'commitments';
-
-const STATUS_CLASS: Record<MetricStatus, string> = {
-  healthy: 'is-healthy',
-  acceptable: 'is-alert',
-  critical: 'is-critical',
-  pending: 'is-pending'
-};
-
-const CHAPTER_BLURBS: Record<number, string> = {
-  1: 'Almacenamiento y rotulado',
-  2: 'Calibración y probetas',
-  3: 'Traslado y contención',
-  4: 'Orden y pre-dilución',
-  5: 'Boquillas, aforo y EPP'
-};
-
-function statusClass(status: MetricStatus | null | undefined) {
-  return STATUS_CLASS[status || 'pending'];
-}
-
-function statusLabel(score: number | null, status?: MetricStatus) {
-  if (score === null || !status || status === 'pending') return 'Sin evaluación';
-  if (status === 'healthy') return 'Saludable (≥95%)';
-  if (status === 'acceptable') return 'Alerta (80-94%)';
-  return 'Vulnerable (<80%)';
+function StatusBadge({value}: {value: MetricStatus}) {
+  const labels: Record<MetricStatus, string> = {
+    healthy: 'Saludable (95-100%)',
+    acceptable: 'Alerta (80-94%)',
+    critical: 'Vulnerable (< 80%)',
+    pending: 'Sin medición'
+  };
+  return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
 }
 
 export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalViewProps) {
@@ -89,8 +57,8 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<PortalTab>('overview');
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
+  const [expandedActions, setExpandedActions] = useState(false);
   const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
   const [cloudSyncedFarm, setCloudSyncedFarm] = useState('');
 
@@ -173,18 +141,93 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [invitation, visits, cloudVisits]);
 
-  const historyAnalysis: FarmMetricAnalysis | null = useMemo(() => {
+  const historyAnalysis = useMemo(() => {
     if (!invitation || !farmVisits.length) return null;
     return farmMetricHistory(farmVisits, invitation.farm);
   }, [invitation, farmVisits]);
 
-  const latestVisit = farmVisits.at(-1);
-  const latestMetrics = latestVisit ? metrics(latestVisit) : null;
-  const latestScore = latestMetrics?.score ?? null;
-  const latestStatus = latestMetrics?.status ?? 'pending';
-  const coveragePct = latestMetrics ? Math.round(latestMetrics.auditedWeight * 100) : 0;
-  const trend = historyAnalysis?.trend ?? 'pending';
-  const recentDelta = historyAnalysis?.recentDelta ?? null;
+  const current = historyAnalysis?.latest;
+  const previous = historyAnalysis && historyAnalysis.records.length > 1
+    ? historyAnalysis.records[historyAnalysis.records.length - 2]
+    : undefined;
+  const comparableChapterPair = Boolean(
+    current && previous && sameChapterScope(previous.visit, current.visit)
+  );
+  const selectedDelta = comparableChapterPair && current && previous
+    ? current.score - previous.score
+    : null;
+
+  const chapterTrends = useMemo(() => {
+    if (!historyAnalysis || !current) {
+      return [1, 2, 3, 4, 5].map(id => ({
+        id,
+        title: historyAnalysis?.chapters.find(c => c.id === id)?.title || `Capítulo ${id}`,
+        weightPct: Math.round((CHAPTER_WEIGHTS[id] || 0) * 100),
+        score: null as number | null,
+        delta: null as number | null,
+        comparisons: 0
+      }));
+    }
+
+    return historyAnalysis.chapters.map(chapter => {
+      const currentPoint = chapter.visitEvolution.find(point => point.visitId === current.visit.id);
+      const previousPoint = chapter.visitEvolution.find(point => point.visitId === previous?.visit.id);
+      const delta =
+        comparableChapterPair &&
+        currentPoint?.score !== null &&
+        currentPoint?.score !== undefined &&
+        previousPoint?.score !== null &&
+        previousPoint?.score !== undefined
+          ? Math.round((currentPoint.score - previousPoint.score) * 10) / 10
+          : null;
+      return {
+        id: chapter.id,
+        title: chapter.title,
+        weightPct: chapter.weightPct,
+        score: currentPoint?.score ?? null,
+        delta,
+        comparisons: delta === null ? 0 : 1
+      };
+    });
+  }, [historyAnalysis, current, previous, comparableChapterPair]);
+
+  const selectedProblems = useMemo(() => {
+    if (!current) return [];
+    return findings(current.visit).map(f => ({
+      id: f.id,
+      text: f.text,
+      observation: f.answer.observation,
+      recommendation: f.answer.recommendation,
+      chapter: Number(f.id.split('.')[0]),
+      weightPct: Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])] || 0) * 100),
+      action: {
+        owner: f.action.owner,
+        due: f.action.due,
+        status: f.action.status
+      }
+    }));
+  }, [current]);
+
+  const podium = useMemo(() => {
+    if (!historyAnalysis) return [];
+    return historyAnalysis.records.slice(-3).map((record, index, items) => {
+      const prior = index > 0 ? items[index - 1] : undefined;
+      return {
+        record,
+        label:
+          index === items.length - 1
+            ? 'Último aseguramiento'
+            : index === items.length - 2
+              ? 'Aseguramiento anterior'
+              : 'Inicio del periodo',
+        delta:
+          prior && sameChapterScope(prior.visit, record.visit)
+            ? record.score - prior.score
+            : null,
+        hasPrevious: Boolean(prior)
+      };
+    });
+  }, [historyAnalysis]);
 
   const handleVerifyCode = async (e: {preventDefault: () => void}) => {
     e.preventDefault();
@@ -229,7 +272,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
       <div className="fp-loading">
         <div className="fp-spinner" aria-hidden />
         <h2>Conectando con AVGUST Cloud</h2>
-        <p>Verificando invitación y credenciales del Portal de Finca…</p>
+        <p>Verificando invitación del Portal de Finca…</p>
       </div>
     );
   }
@@ -242,18 +285,17 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
             <div className="fp-gate-logo">
               <img src="/avgust-logo.svg" alt="AVGUST Crop Protection" />
             </div>
-            <span className="fp-gate-kicker">CARE 360 · Servidor en línea</span>
+            <span className="fp-gate-kicker">CARE 360 · Portal de finca</span>
             <h1 className="fp-gate-product">
-              Portal de <span>Finca</span>
+              Aseguramiento <span>MIPE</span>
             </h1>
             <p className="fp-gate-lead">
-              Consulta el estado MIPE de tu finca, la evolución por proceso y los informes de
-              aseguramiento sin depender del papel.
+              La misma lectura de indicadores del programa AVGUST, disponible para el responsable de tu finca.
             </p>
             <ul className="fp-gate-points">
-              <li>Índice MIPE con umbrales oficiales: Saludable ≥95%, Alerta 80–94%, Vulnerable &lt;80%.</li>
-              <li>Informes en línea con evidencias y descarga Word cuando lo necesites.</li>
-              <li>Hallazgos, recomendaciones y compromisos visibles para el responsable de finca.</li>
+              <li>Resultado ponderado con umbrales oficiales: Saludable 95–100%, Alerta 80–94%, Vulnerable &lt;80%.</li>
+              <li>Tendencia por capítulo (pesos 5 / 25 / 10 / 30 / 30) y desviaciones con acción correctiva.</li>
+              <li>Informes de aseguramiento en línea y descarga Word.</li>
             </ul>
           </div>
           <p className="fp-gate-foot">AVGUST · Juntos Crecemos Bien</p>
@@ -263,7 +305,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
           <div className="fp-gate-card">
             <h2>Acceso con código de invitación</h2>
             <p>
-              Ingresa el PIN emitido por tu técnico AVGUST para ver solo la información de tu finca.
+              Ingresa el PIN emitido por tu técnico AVGUST para consultar solo la información de tu finca.
             </p>
 
             {errorMsg && (
@@ -310,35 +352,8 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     );
   }
 
-  const trajectoryData = farmVisits.map((v, idx) => {
-    const m = metrics(v);
-    return {
-      index: idx + 1,
-      date: v.date,
-      label: `V${idx + 1}`,
-      fullLabel: `Visita ${idx + 1} · ${v.date}`,
-      score: m.score ?? 0,
-      compliance: m.criteriaCompliance ?? 0,
-      findings: m.findings,
-      responsible: v.responsible,
-      status: m.status
-    };
-  });
-
-  const TrendIcon = recentDelta === null
-    ? Minus
-    : recentDelta >= 5
-      ? ArrowUpRight
-      : recentDelta <= -5
-        ? ArrowDownRight
-        : Minus;
-
-  const tabs: {id: PortalTab; label: string; icon: typeof TrendingUp}[] = [
-    {id: 'overview', label: 'Estado actual', icon: TrendingUp},
-    {id: 'reports', label: `Informes (${farmVisits.length})`, icon: FileText},
-    {id: 'processes', label: '5 procesos', icon: Layers},
-    {id: 'commitments', label: 'Hallazgos y compromisos', icon: AlertTriangle}
-  ];
+  const latestStatus: MetricStatus = current?.status ?? 'pending';
+  const latestScore = current?.score ?? null;
 
   return (
     <div className="farm-portal">
@@ -346,21 +361,20 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         <div className="fp-topbar-brand">
           <img src="/avgust-logo.svg" alt="AVGUST" />
           <div className="fp-topbar-meta">
-            <small>Portal de Finca · En línea</small>
+            <small>Portal de Finca · Aseguramiento</small>
             <strong title={invitation.farm}>{invitation.farm}</strong>
           </div>
         </div>
 
         <div className="fp-topbar-actions">
           <div className="fp-chip is-desktop">
-            <ShieldCheck size={14} aria-hidden />
             <span>
               Invitado: <strong>{invitation.clientName}</strong>
             </span>
             <span aria-hidden>·</span>
             <span>Código {invitation.code}</span>
           </div>
-          <button type="button" className="fp-btn-ghost" onClick={handleLogout} title="Cerrar sesión">
+          <button type="button" className="b2b-btn b2b-btn-secondary" onClick={handleLogout} title="Cerrar sesión">
             <LogOut size={14} aria-hidden />
             Salir
           </button>
@@ -368,431 +382,318 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
       </header>
 
       <main className="fp-main">
-        <section className="fp-hero" aria-labelledby="fp-hero-title">
-          <div className="fp-hero-copy">
-            <small>
-              <ShieldCheck size={13} aria-hidden />
-              Acceso verificado · Técnico {invitation.createdBy || 'AVGUST'}
-            </small>
-            <h1 id="fp-hero-title">Aseguramiento MIPE</h1>
-            <p>
-              Lee en segundos el estado de tu finca: índice ponderado, cobertura de procesos,
-              hallazgos abiertos y la tendencia frente a la visita anterior.
-            </p>
-            <div className="fp-hero-meta">
-              <span>
-                Finca: <strong>{invitation.farm}</strong>
-              </span>
-              <span>
-                Última visita:{' '}
-                <strong>{latestVisit?.date || (cloudLoading ? 'Cargando…' : 'Sin informes')}</strong>
-              </span>
-              <span>
-                Tendencia:{' '}
-                <strong>
-                  {metricTrendLabels[trend]}
-                  {recentDelta !== null ? ` (${recentDelta > 0 ? '+' : ''}${recentDelta} pts)` : ''}
-                </strong>
-              </span>
-            </div>
-          </div>
-
-          <div className={`fp-score ${statusClass(latestStatus)}`} aria-live="polite">
-            <span className="fp-score-label">Índice MIPE actual</span>
-            <span className={`fp-score-value farm-portal-tabular ${statusClass(latestStatus)}`}>
-              {latestScore === null ? '—' : `${latestScore}%`}
-            </span>
-            <span className={`fp-status ${statusClass(latestStatus)}`}>
-              {statusLabel(latestScore, latestStatus)}
-            </span>
-            <span className="fp-score-date">
-              {latestVisit
-                ? `Informe del ${latestVisit.date} · Resp. ${latestVisit.responsible}`
-                : cloudLoading
-                  ? 'Sincronizando informes en la nube…'
-                  : 'Aún no hay visitas revisadas para esta finca'}
-            </span>
-          </div>
-        </section>
-
-        <div className="fp-snapshot" aria-label="Resumen operativo">
-          <div className="fp-snapshot-item">
-            <span>Auditorías</span>
-            <strong className="farm-portal-tabular">{farmVisits.length}</strong>
-            <em>{cloudLoading && !farmVisits.length ? 'Buscando en la nube…' : 'Visitas revisadas en línea'}</em>
-          </div>
-          <div className="fp-snapshot-item">
-            <span>Conformidad</span>
-            <strong className="farm-portal-tabular is-accent">
-              {latestMetrics ? `${latestMetrics.positive}/${latestMetrics.applicable}` : '—'}
-            </strong>
-            <em>
-              {latestMetrics?.criteriaCompliance != null
-                ? `${latestMetrics.criteriaCompliance}% criterios con Sí`
-                : 'Sin criterios aplicables'}
-            </em>
-          </div>
-          <div className="fp-snapshot-item">
-            <span>Hallazgos abiertos</span>
-            <strong
-              className={`farm-portal-tabular ${(latestMetrics?.findings ?? 0) > 0 ? 'is-bad' : 'is-good'}`}
-            >
-              {latestMetrics?.findings ?? 0}
-            </strong>
-            <em>
-              {(latestMetrics?.findings ?? 0) === 0
-                ? 'Sin desviaciones en la última visita'
-                : 'Requieren plan correctivo'}
-            </em>
-          </div>
-          <div className="fp-snapshot-item">
-            <span>Cobertura ponderada</span>
-            <strong className="farm-portal-tabular">
-              {latestMetrics ? `${coveragePct}%` : '—'}
-            </strong>
-            <em>
-              {latestVisit
-                ? `${latestMetrics?.evaluatedChapters.length ?? 0}/5 capítulos con peso auditado`
-                : 'Pesos oficiales 5 / 25 / 10 / 30 / 30'}
-            </em>
-          </div>
-        </div>
-
-        <nav className="fp-tabs" aria-label="Secciones del portal">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`fp-tab${active ? ' is-active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-                aria-current={active ? 'page' : undefined}
-              >
-                <Icon size={15} aria-hidden />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {activeTab === 'overview' && (
-          <div className="fp-panel">
-            <div className="fp-section-head">
-              <h2>Evolución del índice MIPE</h2>
+        <div className="b2b-metrics-wrapper" aria-labelledby="farm-portal-title">
+          <div className="b2b-header">
+            <div className="b2b-header-title">
+              <div className="b2b-kicker">AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</div>
+              <h2 id="farm-portal-title">Aseguramiento técnico de la finca</h2>
               <p>
-                Curva de todas las auditorías revisadas. Líneas de referencia en 95% (Saludable) y 80% (Alerta).
+                Resultado, prioridad de atención y avance reciente — la misma lectura del módulo de métricas,
+                para el cliente de finca.
               </p>
             </div>
-
-            {trajectoryData.length > 0 ? (
-              <div className="fp-chart">
-                <div className="fp-chart-legend">
-                  <span><i style={{background: '#78be20'}} />Saludable ≥95%</span>
-                  <span><i style={{background: '#f2a900'}} />Alerta 80–94%</span>
-                  <span><i style={{background: '#c23131'}} />Vulnerable &lt;80%</span>
-                  <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
-                    <TrendIcon size={13} aria-hidden />
-                    {metricTrendLabels[trend]}
-                    {recentDelta !== null ? ` · ${recentDelta > 0 ? '+' : ''}${recentDelta} pts vs. visita previa` : ''}
-                  </span>
-                </div>
-                <div className="w-full overflow-x-auto">
-                  <div style={{minWidth: Math.max(420, trajectoryData.length * 72)}}>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={trajectoryData} margin={{top: 12, right: 16, left: -12, bottom: 0}}>
-                        <defs>
-                          <linearGradient id="portalColorMipe" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#007fa3" stopOpacity={0.28} />
-                            <stop offset="95%" stopColor="#007fa3" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d5dee4" />
-                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{fontSize: 11, fill: '#5b6b75'}} />
-                        <YAxis
-                          domain={[0, 100]}
-                          tickLine={false}
-                          axisLine={false}
-                          tickFormatter={v => `${v}%`}
-                          tick={{fontSize: 11, fill: '#5b6b75'}}
-                        />
-                        <Tooltip
-                          content={({active, payload}) => {
-                            if (!active || !payload?.length) return null;
-                            const item = payload[0].payload as (typeof trajectoryData)[0];
-                            return (
-                              <div className="fp-tooltip">
-                                <strong>{item.fullLabel}</strong>
-                                <div>Responsable AVGUST: {item.responsible}</div>
-                                <div style={{color: '#007fa3', fontWeight: 700}}>Índice MIPE: {item.score}%</div>
-                                <div>Conformidad: {item.compliance}%</div>
-                                <div style={{fontWeight: 700, color: item.findings > 0 ? '#c23131' : '#5c9914'}}>
-                                  Hallazgos: {item.findings}
-                                </div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <ReferenceLine
-                          y={95}
-                          stroke="#78be20"
-                          strokeWidth={1.5}
-                          strokeDasharray="4 4"
-                          label={{value: '≥95%', fill: '#5c9914', fontSize: 10, position: 'insideTopRight'}}
-                        />
-                        <ReferenceLine
-                          y={80}
-                          stroke="#f2a900"
-                          strokeWidth={1.5}
-                          strokeDasharray="3 3"
-                          label={{value: '80%', fill: '#b45309', fontSize: 10, position: 'insideBottomRight'}}
-                        />
-                        <Area
-                          type="monotone"
-                          name="Índice MIPE"
-                          dataKey="score"
-                          stroke="#007fa3"
-                          strokeWidth={2.5}
-                          fillOpacity={1}
-                          fill="url(#portalColorMipe)"
-                          dot={{r: 4, fill: '#00b5e2', strokeWidth: 2, stroke: '#fff'}}
-                          activeDot={{r: 6}}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="fp-empty">
-                <strong>
-                  {cloudLoading ? 'Sincronizando informes…' : 'Aún no hay auditorías para graficar'}
-                </strong>
-                <p>
-                  {cloudLoading
-                    ? 'Estamos cargando las visitas revisadas desde AVGUST Cloud.'
-                    : 'Cuando tu técnico publique un informe revisado, aquí verás la evolución del índice MIPE.'}
-                </p>
-              </div>
-            )}
-
-            {historyAnalysis?.chapters && farmVisits.length > 0 && (
-              <div className="fp-chapters" aria-label="Vista rápida por proceso">
-                {historyAnalysis.chapters.map(chapter => (
-                  <div key={chapter.id} className={`fp-chapter ${statusClass(chapter.status)}`}>
-                    <div className="fp-chapter-top">
-                      <span style={{background: 'transparent', padding: 0, color: 'inherit'}}>
-                        Cap. {chapter.id}
-                      </span>
-                      <span>{chapter.weightPct}%</span>
-                    </div>
-                    <h3>{chapter.title}</h3>
-                    <strong className={`farm-portal-tabular ${statusClass(chapter.status)}`}>
-                      {chapter.score === null ? '—' : `${chapter.score}%`}
-                    </strong>
-                    <p>{metricStatusLabels[chapter.status]}</p>
-                  </div>
-                ))}
+            {current && (
+              <div className="b2b-header-actions">
+                <button
+                  type="button"
+                  className="b2b-btn b2b-btn-secondary"
+                  onClick={() => setViewingReportId(current.visit.id)}
+                >
+                  <ExternalLink size={16} aria-hidden />
+                  Abrir último informe
+                </button>
+                <button
+                  type="button"
+                  className="b2b-btn b2b-btn-primary"
+                  onClick={() => void exportWord(current.visit)}
+                >
+                  <FileText size={16} aria-hidden />
+                  Descargar Word
+                </button>
               </div>
             )}
           </div>
-        )}
 
-        {activeTab === 'reports' && (
-          <div className="fp-panel">
-            <div className="fp-section-head">
-              <h2>Historial de informes en línea</h2>
+          {cloudLoading && !farmVisits.length ? (
+            <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
+          ) : !current ? (
+            <div className="fp-metrics-empty">
+              <strong>
+                {cloudLoading
+                  ? 'Sincronizando aseguramientos…'
+                  : 'Aún no hay aseguramientos revisados para esta finca'}
+              </strong>
               <p>
-                Abre el informe digital con evidencias o descárgalo en Word. Solo visitas revisadas de tu finca.
+                {cloudLoading
+                  ? 'Estamos cargando las visitas revisadas desde AVGUST Cloud.'
+                  : 'Cuando tu técnico publique un informe revisado, aquí verás el resultado ponderado, la tendencia por capítulo y las desviaciones con acción correctiva.'}
               </p>
-            </div>
-
-            {farmVisits.length === 0 ? (
-              <div className="fp-empty">
-                <strong>
-                  {cloudLoading ? 'Buscando informes en la nube…' : 'No hay informes publicados aún'}
-                </strong>
-                <p>
-                  {cloudLoading
-                    ? 'La sincronización puede tardar unos segundos la primera vez.'
-                    : 'Tu técnico AVGUST debe marcar la visita como revisada y publicarla para que aparezca aquí.'}
-                </p>
-              </div>
-            ) : (
-              farmVisits
-                .slice()
-                .reverse()
-                .map((visit, idx) => {
-                  const m = metrics(visit);
-                  const score = m.score;
-                  return (
-                    <article key={visit.id} className="fp-report">
-                      <div className="fp-report-main">
-                        <div className="fp-report-title">
-                          <span>Informe #{farmVisits.length - idx}</span>
-                          <strong>Auditoría del {visit.date}</strong>
-                          <span className={`fp-status ${statusClass(m.status)}`}>
-                            {statusLabel(score, m.status)}
-                          </span>
-                        </div>
-                        <div className="fp-report-meta">
-                          <span>
-                            Índice:{' '}
-                            <strong className="farm-portal-tabular">
-                              {score === null ? '—' : `${score}%`}
-                            </strong>
-                          </span>
-                          <span>
-                            Responsable AVGUST: <strong>{visit.responsible}</strong>
-                          </span>
-                          <span>
-                            Representante finca: <strong>{visit.technician || '—'}</strong>
-                          </span>
-                          <span>
-                            Capítulos: <strong>{visit.chapters.length}/5</strong>
-                          </span>
-                          <span>
-                            Hallazgos:{' '}
-                            <strong style={{color: m.findings > 0 ? '#c23131' : '#5c9914'}}>
-                              {m.findings}
-                            </strong>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="fp-report-actions">
-                        <button
-                          type="button"
-                          className="fp-btn-action"
-                          onClick={() => setViewingReportId(visit.id)}
-                          title="Ver informe interactivo"
-                        >
-                          <Globe size={14} aria-hidden />
-                          Ver en línea
-                        </button>
-                        <button
-                          type="button"
-                          className="fp-btn-secondary"
-                          onClick={() => void exportWord(visit)}
-                          title="Descargar Word"
-                        >
-                          <Download size={14} aria-hidden />
-                          Word
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })
-            )}
-          </div>
-        )}
-
-        {activeTab === 'processes' && (
-          <div className="fp-panel">
-            <div className="fp-section-head">
-              <h2>Comportamiento por proceso normativo</h2>
               <p className="fp-weights-note">
-                Ponderación oficial MIPE: Almacén 5%, Dosificación 25%, Transporte 10%, Mezclas 30% y Aplicación 30%.
+                Modelo oficial MIPE: pesos 5% / 25% / 10% / 30% / 30% · Saludable 95–100% · Alerta 80–94% · Vulnerable &lt;80%.
               </p>
             </div>
+          ) : (
+            <div className="metrics-executive-dashboard">
+              <section className={`metrics-outcome ${latestStatus}`} aria-label="Conclusión de la finca">
+                <div className="metrics-outcome-main">
+                  <div className="metrics-section-kicker">
+                    Aseguramiento consultado · {current.date}
+                  </div>
+                  <h3>{historyAnalysis?.farm || invitation.farm}</h3>
+                  <StatusBadge value={latestStatus} />
+                  <p className="metrics-outcome-copy">{metricStatusDescriptions[latestStatus]}</p>
+                  <div className="metrics-outcome-actions">
+                    <button
+                      type="button"
+                      className="b2b-btn b2b-btn-secondary"
+                      onClick={() => setViewingReportId(current.visit.id)}
+                    >
+                      <Globe size={16} aria-hidden />
+                      Ver informe en línea
+                    </button>
+                  </div>
+                </div>
+                <div
+                  className="metrics-outcome-score"
+                  aria-label={`Resultado de aseguramiento ${latestScore} por ciento`}
+                >
+                  <strong>
+                    {latestScore}
+                    <span>%</span>
+                  </strong>
+                  <small>Resultado ponderado</small>
+                  <div className="metrics-score-track">
+                    <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
+                  </div>
+                </div>
+                <div className="metrics-outcome-facts">
+                  <div>
+                    <span>Puntaje</span>
+                    <strong>{current.pointsEarned} / 100</strong>
+                  </div>
+                  <div>
+                    <span>Desviaciones</span>
+                    <strong>{current.findings}</strong>
+                  </div>
+                  <div>
+                    <span>Cobertura</span>
+                    <strong>{current.evaluatedChapters}/5 capítulos</strong>
+                  </div>
+                  <div>
+                    <span>Variación vs. anterior</span>
+                    <strong
+                      className={
+                        selectedDelta === null
+                          ? ''
+                          : selectedDelta > 0
+                            ? 'positive'
+                            : selectedDelta < 0
+                              ? 'negative'
+                              : ''
+                      }
+                    >
+                      {selectedDelta === null
+                        ? 'Sin comparación'
+                        : `${selectedDelta > 0 ? '+' : ''}${selectedDelta} pts`}
+                    </strong>
+                  </div>
+                </div>
+              </section>
 
-            {!farmVisits.length ? (
-              <div className="fp-empty">
-                <strong>Sin datos de procesos todavía</strong>
-                <p>
-                  Los cinco capítulos aparecerán con su puntaje cuando exista al menos una visita revisada.
-                </p>
-              </div>
-            ) : (
-              <div className="fp-chapters">
-                {catalog.map(chapter => {
-                  const chapterStats = historyAnalysis?.chapters.find(c => c.id === chapter.id);
-                  const score = chapterStats?.score ?? null;
-                  const status = chapterStats?.status ?? 'pending';
-                  const weightPct = Math.round((CHAPTER_WEIGHTS[chapter.id] ?? 0) * 100);
-                  return (
-                    <div key={chapter.id} className={`fp-chapter ${statusClass(status)}`}>
-                      <div className="fp-chapter-top">
-                        <span style={{background: 'transparent', padding: 0, color: 'inherit'}}>
-                          Capítulo {chapter.id}
-                        </span>
-                        <span>Peso {weightPct}%</span>
-                      </div>
-                      <h3>{chapter.title}</h3>
-                      <strong className={`farm-portal-tabular ${statusClass(status)}`}>
-                        {score === null ? '—' : `${score}%`}
-                      </strong>
-                      <p>{CHAPTER_BLURBS[chapter.id] || metricStatusLabels[status]}</p>
+              <MetricsKpiStrip
+                count={historyAnalysis?.records.length || 0}
+                scope={`${historyAnalysis?.farm || invitation.farm} · aseguramientos revisados`}
+                chapterTrends={chapterTrends}
+                comparisonLabel={
+                  comparableChapterPair
+                    ? 'Vs. aseguramiento anterior'
+                    : 'Sin comparación comparable'
+                }
+              />
+
+              <div className="metrics-overview-grid">
+                <section className="metrics-priority-panel">
+                  <div className="metrics-section-heading">
+                    <div>
+                      <div className="metrics-section-kicker">Qué corregir</div>
+                      <h3>Desviaciones y acciones</h3>
                     </div>
-                  );
-                })}
+                    <span className={`metrics-count ${selectedProblems.length ? 'risk' : 'clear'}`}>
+                      {selectedProblems.length}
+                    </span>
+                  </div>
+                  {selectedProblems.length ? (
+                    <ul className="metrics-action-list">
+                      {(expandedActions ? selectedProblems : selectedProblems.slice(0, 3)).map(problem => (
+                        <li key={problem.id}>
+                          <div className="metrics-action-title">
+                            <strong>
+                              {problem.id} · {problem.text}
+                            </strong>
+                            <span>
+                              Cap. {problem.chapter} · {problem.weightPct}%
+                            </span>
+                          </div>
+                          <p className="metrics-action-observation">
+                            <strong>Hallazgo / observación:</strong>{' '}
+                            {problem.observation || 'Sin observación registrada en este informe.'}
+                          </p>
+                          <p className="metrics-action-recommendation">
+                            <strong>Recomendación sugerida:</strong>{' '}
+                            {problem.recommendation || 'Definir y documentar la acción correctiva.'}
+                          </p>
+                          <div className="metrics-action-meta">
+                            <span>
+                              Responsable: <b>{problem.action.owner || 'Sin asignar'}</b>
+                            </span>
+                            <span>
+                              Fecha: <b>{problem.action.due || 'Sin definir'}</b>
+                            </span>
+                            <span>
+                              Estado:{' '}
+                              <b>
+                                {actionLabels[problem.action.status as keyof typeof actionLabels] ||
+                                  problem.action.status}
+                              </b>
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                      {selectedProblems.length > 3 && (
+                        <button
+                          type="button"
+                          className="metrics-more-button"
+                          onClick={() => setExpandedActions(value => !value)}
+                        >
+                          {expandedActions
+                            ? 'Mostrar menos'
+                            : `Ver las ${selectedProblems.length - 3} acciones restantes`}
+                        </button>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="metrics-empty">No se identificaron desviaciones en este aseguramiento.</p>
+                  )}
+                </section>
               </div>
-            )}
-          </div>
-        )}
 
-        {activeTab === 'commitments' && (
-          <div className="fp-panel">
-            <div className="fp-section-head">
-              <h2>Hallazgos y compromisos de mejora</h2>
-              <p>
-                Desviaciones de la última auditoría, con recomendación técnica y estado del compromiso cuando exista.
-              </p>
+              {podium.length > 0 && (
+                <section className="metrics-podium-panel">
+                  <div className="metrics-section-heading">
+                    <div>
+                      <div className="metrics-section-kicker">Cambio reciente</div>
+                      <h3>Últimos aseguramientos</h3>
+                    </div>
+                    <span className="metrics-note">Comparamos solo con el mismo alcance</span>
+                  </div>
+                  <div className="metrics-podium-list">
+                    {podium.map((point, index) => (
+                      <article
+                        key={point.record.visit.id}
+                        className={point.record.visit.id === current.visit.id ? 'current' : ''}
+                      >
+                        <span className="metrics-podium-rank">0{index + 1}</span>
+                        <div>
+                          <small>
+                            {point.label} · {point.record.date}
+                          </small>
+                          <StatusBadge value={point.record.status} />
+                        </div>
+                        <strong className="metrics-podium-score">{point.record.score}%</strong>
+                        <span
+                          className={`metrics-podium-delta ${
+                            point.delta === null
+                              ? 'neutral'
+                              : point.delta > 0
+                                ? 'positive'
+                                : point.delta < 0
+                                  ? 'negative'
+                                  : 'neutral'
+                          }`}
+                        >
+                          {point.delta === null
+                            ? point.hasPrevious
+                              ? 'Sin comparación'
+                              : 'Línea base'
+                            : point.delta > 0
+                              ? `+${point.delta} pts`
+                              : point.delta < 0
+                                ? `${point.delta} pts`
+                                : 'Sin cambio'}
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section className="fp-reports-panel" aria-labelledby="fp-reports-title">
+                <div className="metrics-section-heading">
+                  <div>
+                    <div className="metrics-section-kicker">Historial</div>
+                    <h3 id="fp-reports-title">Informes de aseguramiento</h3>
+                  </div>
+                  <span className="metrics-note">{farmVisits.length} revisados</span>
+                </div>
+                <div className="fp-reports-list">
+                  {farmVisits
+                    .slice()
+                    .reverse()
+                    .map((visit, idx) => {
+                      const record = historyAnalysis?.records.find(r => r.visit.id === visit.id);
+                      const score = record?.score ?? null;
+                      const status = record?.status ?? 'pending';
+                      return (
+                        <article key={visit.id} className="fp-report-row">
+                          <div className="fp-report-row-main">
+                            <div className="fp-report-row-title">
+                              <span>Informe #{farmVisits.length - idx}</span>
+                              <strong>Aseguramiento del {visit.date}</strong>
+                              <StatusBadge value={status} />
+                            </div>
+                            <div className="fp-report-row-meta">
+                              <span>
+                                Resultado:{' '}
+                                <strong>{score === null ? '—' : `${score}%`}</strong>
+                              </span>
+                              <span>
+                                Responsable AVGUST: <strong>{visit.responsible}</strong>
+                              </span>
+                              <span>
+                                Capítulos: <strong>{visit.chapters.length}/5</strong>
+                              </span>
+                              <span>
+                                Desviaciones:{' '}
+                                <strong>{record?.findings ?? 0}</strong>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="fp-report-row-actions">
+                            <button
+                              type="button"
+                              className="b2b-btn b2b-btn-primary"
+                              onClick={() => setViewingReportId(visit.id)}
+                            >
+                              <Globe size={14} aria-hidden />
+                              Ver en línea
+                            </button>
+                            <button
+                              type="button"
+                              className="b2b-btn b2b-btn-secondary"
+                              onClick={() => void exportWord(visit)}
+                            >
+                              <Download size={14} aria-hidden />
+                              Word
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                </div>
+              </section>
             </div>
-
-            {historyAnalysis?.problems && historyAnalysis.problems.length > 0 ? (
-              <div className="fp-problems">
-                {historyAnalysis.problems.map(prob => {
-                  const actionStatus = (prob.action.status || 'proposed') as keyof typeof actionLabels;
-                  return (
-                    <article key={prob.id} className="fp-problem">
-                      <div className="fp-problem-top">
-                        <span>Criterio {prob.id}</span>
-                        <em>
-                          Cap. {prob.chapter} · Peso {prob.weightPct}%
-                          {prob.isRecurrent ? ' · Recurrente' : prob.isNew ? ' · Nuevo' : ''}
-                        </em>
-                      </div>
-                      <h3>{prob.text}</h3>
-                      <div className="fp-problem-rec">
-                        <strong>Recomendación AVGUST</strong>
-                        {prob.recommendation || 'Sin recomendación registrada.'}
-                      </div>
-                      <div className="fp-problem-foot">
-                        <span>
-                          Compromiso:{' '}
-                          <strong>
-                            {actionLabels[actionStatus] || actionStatus}
-                          </strong>
-                        </span>
-                        {prob.action.owner ? <span>Responsable: {prob.action.owner}</span> : null}
-                        {prob.action.due ? <span>Vence: {prob.action.due}</span> : null}
-                        <span>
-                          Recurrencia: {prob.occurrences} informe{prob.occurrences === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="fp-empty is-good">
-                <strong>
-                  {farmVisits.length
-                    ? 'Sin hallazgos abiertos en la última auditoría'
-                    : cloudLoading
-                      ? 'Cargando hallazgos…'
-                      : 'Sin auditorías para revisar compromisos'}
-                </strong>
-                <p>
-                  {farmVisits.length
-                    ? 'Mantén el estándar: la finca no tiene desviaciones registradas en el informe más reciente.'
-                    : 'Cuando se publique una visita con hallazgos, los verás aquí con su plan de acción.'}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       <footer className="fp-footer">
