@@ -12,6 +12,7 @@ import {
   User
 } from 'lucide-react';
 import {getOnlineReport,type OnlineReportData} from '@/lib/firebase';
+import {getPortalOrigin} from '@/lib/portal-origin';
 import {catalog,metricStatusLabels,type MetricStatus} from '@/lib/model';
 
 function StatusBadge({value}:{value:string}){
@@ -41,7 +42,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
     });
   },[reportId]);
 
-  const shareUrl=typeof window!=='undefined'?`${window.location.origin}?view=online-report&id=${encodeURIComponent(reportId)}`:'';
+  const shareUrl=`${getPortalOrigin()}?view=online-report&id=${encodeURIComponent(reportId)}`;
 
   const copyLink=()=>{
     void navigator.clipboard.writeText(shareUrl);

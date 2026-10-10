@@ -10,7 +10,9 @@ import {
   where,
   limit,
   getDocs,
-  onSnapshot
+  onSnapshot,
+  writeBatch,
+  type Query
 } from 'firebase/firestore';
 import {
   getAuth,
@@ -25,6 +27,16 @@ import {useState, useEffect} from 'react';
 import firebaseConfig from '../firebase-applet-config.json';
 import {metrics,type Visit} from './model';
 import {getPortalOrigin} from './portal-origin';
+import {
+  canonicalFarmName,
+  farmKey,
+  publishFailureMessage,
+  omitUndefined,
+  sameFarm,
+  stableVisitId
+} from './portal-match.mjs';
+
+export {publishFailureMessage};
 
 // Initialize Firebase App instance
 const app = getApps().length ? getApp() : initializeApp({
@@ -128,69 +140,141 @@ export type OnlineReportData = {
   publishedAt: string;
   publishedBy?: string;
   payload: Visit;
+  /** Normalized farm name so invitations match visits despite case or extra spaces. */
+  farmKey?: string;
 };
+
+function farmNameVariants(farmName: string): string[] {
+  return Array.from(new Set(
+    [String(farmName || '').trim(), canonicalFarmName(farmName)].filter(name => name.length > 0)
+  ));
+}
+
+function farmLookups(collectionName: string, farmName: string): {label: string; q: Query}[] {
+  const key = farmKey(farmName);
+  const lookups: {label: string; q: Query}[] = farmNameVariants(farmName).map(name => ({
+    label: `farm:${name}`,
+    q: query(collection(db, collectionName), where('farm', '==', name), limit(100))
+  }));
+  if (key) {
+    lookups.push({
+      label: `farmKey:${key}`,
+      q: query(collection(db, collectionName), where('farmKey', '==', key), limit(100))
+    });
+  }
+  // Legacy rows may lack farmKey and differ only by case or spaces.
+  lookups.push({
+    label: 'scan',
+    q: query(collection(db, collectionName), limit(100))
+  });
+  return lookups;
+}
+
+async function collectByFarm<T>(
+  collectionName: string,
+  farmName: string,
+  accept: (row: T) => boolean,
+  idOf: (row: T) => string | undefined
+): Promise<T[]> {
+  const byId = new Map<string, T>();
+  await Promise.all(farmLookups(collectionName, farmName).map(async ({q}) => {
+    try {
+      const snapshot = await getDocs(q);
+      snapshot.forEach(docSnap => {
+        const row = docSnap.data() as T;
+        const id = idOf(row);
+        if (!id || !accept(row)) return;
+        const prev = byId.get(id);
+        byId.set(id, prev ? {...prev, ...row} : row);
+      });
+    } catch (error) {
+      console.warn(`Consulta de ${collectionName} no disponible:`, error);
+    }
+  }));
+  return Array.from(byId.values());
+}
 
 /**
  * Publishes or updates an assurance report in cloud Firestore
  */
 export async function publishOnlineReport(visit: Visit, authorEmail?: string): Promise<{url: string; id: string}> {
-  const m = metrics(visit);
-  const path = `reports/${visit.id}`;
-  const reportDoc = doc(db, 'reports', visit.id);
-  
+  const farm = canonicalFarmName(visit.farm);
+  if (!farm) {
+    throw new Error('No se pudo publicar el informe en el portal: falta el nombre de la finca. El informe no llegó a Firebase.');
+  }
+  if (!String(visit.date || '').trim()) {
+    throw new Error('No se pudo publicar el informe en el portal: falta la fecha de la visita. El informe no llegó a Firebase.');
+  }
+
+  const id = stableVisitId(visit);
+  const key = farmKey(farm);
+  const published: Visit = {...visit, id, farm};
+  const m = metrics(published);
+  const author = authorEmail || auth.currentUser?.email || 'AVGUST Técnico';
+  const publishedAt = new Date().toISOString();
+
   const data: OnlineReportData = {
-    id: visit.id,
-    farm: visit.farm || 'Finca sin nombre',
-    farmId: visit.farmId,
-    date: visit.date,
-    city: visit.city,
-    zone: visit.zone,
-    technician: visit.technician,
-    responsible: visit.responsible,
-    rtc: visit.rtc,
+    id,
+    farm,
+    farmKey: key,
+    farmId: published.farmId,
+    date: published.date,
+    city: published.city,
+    zone: published.zone,
+    technician: published.technician,
+    responsible: published.responsible,
+    rtc: published.rtc,
     score: m.score,
     status: m.status,
     findingsCount: m.findings,
     applicableCount: m.applicable,
-    reviewed: visit.reviewed,
-    serviceKind: visit.serviceKind || 'assurance',
-    chapters: visit.chapters,
-    conclusion: visit.conclusion,
-    publishedAt: new Date().toISOString(),
-    publishedBy: authorEmail || auth.currentUser?.email || 'AVGUST Técnico',
-    payload: visit
+    reviewed: published.reviewed,
+    serviceKind: published.serviceKind || 'assurance',
+    chapters: published.chapters,
+    conclusion: published.conclusion,
+    publishedAt,
+    publishedBy: author,
+    payload: published
   };
 
   try {
-    await setDoc(reportDoc, data, {merge: true});
-    // Mirror the reviewed visit so the farm portal can list status in real time
-    await setDoc(doc(db, 'visits', visit.id), {
-      ...visit,
-      syncTimestamp: new Date().toISOString(),
-      updatedBy: authorEmail || auth.currentUser?.email || 'offline',
+    const batch = writeBatch(db);
+    // Same document id on every republish: merge updates the portal row in place.
+    batch.set(doc(db, 'reports', id), omitUndefined(data), {merge: true});
+    batch.set(doc(db, 'visits', id), omitUndefined({
+      ...published,
+      farmKey: key,
+      syncTimestamp: publishedAt,
+      updatedBy: author,
       publishedOnline: true
-    }, {merge: true});
+    }), {merge: true});
+    await batch.commit();
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    throw new Error(publishFailureMessage(error));
   }
 
   const origin = getPortalOrigin();
-  const url = `${origin}?view=online-report&id=${encodeURIComponent(visit.id)}`;
-
-  return {url, id: visit.id};
+  const url = `${origin}?view=online-report&id=${encodeURIComponent(id)}`;
+  return {url, id};
 }
 
 /**
  * Saves or updates a visit document in Firestore in real-time
  */
 export async function saveVisitRealtime(visit: Visit): Promise<void> {
-  const path = `visits/${visit.id}`;
-  const visitDoc = doc(db, 'visits', visit.id);
-  const data = {
+  const farm = canonicalFarmName(visit.farm);
+  if (!farm) return;
+  const id = stableVisitId(visit);
+  const path = `visits/${id}`;
+  const visitDoc = doc(db, 'visits', id);
+  const data = omitUndefined({
     ...visit,
+    id,
+    farm,
+    farmKey: farmKey(farm),
     syncTimestamp: new Date().toISOString(),
     updatedBy: auth.currentUser?.email || 'offline'
-  };
+  });
 
   try {
     await setDoc(visitDoc, data, {merge: true});
@@ -223,20 +307,40 @@ export function subscribeToVisits(callback: (visits: Visit[]) => void): () => vo
  * Subscribes to visits for one farm (client portal / servidor en línea).
  */
 export function subscribeToFarmVisits(farmName: string, callback: (visits: Visit[]) => void): () => void {
-  const q = query(collection(db, 'visits'), where('farm', '==', farmName), limit(100));
-  return onSnapshot(q, (snapshot) => {
-    const list: Visit[] = [];
+  const key = farmKey(farmName);
+  if (!key) {
+    callback([]);
+    return () => {};
+  }
+  const buckets = new Map<string, Map<string, Visit>>();
+  const lookups = farmLookups('visits', farmName);
+  const emit = () => {
+    const merged = new Map<string, Visit>();
+    for (const bucket of buckets.values()) {
+      for (const visit of bucket.values()) {
+        if (!visit.id || !sameFarm(visit.farm, farmName)) continue;
+        const prev = merged.get(visit.id);
+        merged.set(visit.id, prev ? {...prev, ...visit, id: visit.id} : visit);
+      }
+    }
+    callback(Array.from(merged.values()).sort((a, b) => (a.date || '').localeCompare(b.date || '')));
+  };
+  const unsubs = lookups.map(({label, q}) => onSnapshot(q, snapshot => {
+    const map = new Map<string, Visit>();
     snapshot.forEach(docSnap => {
       const data = docSnap.data() as Visit;
-      if (data && data.id && data.farm) {
-        list.push(data);
-      }
+      if (data?.id && data.farm && sameFarm(data.farm, farmName)) map.set(data.id, data);
     });
-    callback(list);
-  }, (error) => {
+    buckets.set(label, map);
+    emit();
+  }, error => {
     console.error('Error in farm visits subscription:', error);
-    callback([]);
-  });
+    buckets.set(label, new Map());
+    emit();
+  }));
+  return () => {
+    for (const unsub of unsubs) unsub();
+  };
 }
 
 let lastPortalAuthWarning: string | null = null;
@@ -309,9 +413,13 @@ export async function getOnlineReport(id: string): Promise<OnlineReportData | nu
 export async function listFarmOnlineReports(farmName: string): Promise<OnlineReportData[]> {
   const path = 'reports';
   try {
-    const q = query(collection(db, 'reports'), where('farm', '==', farmName), limit(100));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as OnlineReportData);
+    const rows = await collectByFarm<OnlineReportData>(
+      'reports',
+      farmName,
+      row => sameFarm(row.farm || '', farmName) || sameFarm(row.payload?.farm || '', farmName),
+      row => row.id || row.payload?.id
+    );
+    return rows;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }
@@ -322,13 +430,19 @@ export async function listFarmOnlineReports(farmName: string): Promise<OnlineRep
  */
 export async function listFarmCloudVisits(farmName: string): Promise<Visit[]> {
   const byId = new Map<string, Visit>();
+  const absorb = (visit: Visit | undefined) => {
+    if (!visit?.id || !visit.farm || !sameFarm(visit.farm, farmName)) return;
+    const prev = byId.get(visit.id);
+    byId.set(visit.id, prev ? {...prev, ...visit, id: visit.id} : visit);
+  };
   try {
-    const visitsQuery = query(collection(db, 'visits'), where('farm', '==', farmName), limit(100));
-    const visitSnap = await getDocs(visitsQuery);
-    visitSnap.forEach(docSnap => {
-      const data = docSnap.data() as Visit;
-      if (data?.id && data.farm) byId.set(data.id, data);
-    });
+    const visits = await collectByFarm<Visit>(
+      'visits',
+      farmName,
+      row => sameFarm(row.farm || '', farmName),
+      row => row.id
+    );
+    visits.forEach(absorb);
   } catch (error) {
     console.warn('Could not list farm visits from Firestore:', error);
   }
@@ -337,9 +451,14 @@ export async function listFarmCloudVisits(farmName: string): Promise<Visit[]> {
     const reports = await listFarmOnlineReports(farmName);
     for (const report of reports) {
       const payload = report.payload;
-      if (payload?.id && payload.farm) {
-        byId.set(payload.id, {...byId.get(payload.id), ...payload, reviewed: payload.reviewed ?? report.reviewed});
-      }
+      if (!payload?.id) continue;
+      if (!sameFarm(payload.farm || '', farmName) && !sameFarm(report.farm || '', farmName)) continue;
+      absorb({
+        ...payload,
+        id: payload.id,
+        farm: canonicalFarmName(payload.farm || report.farm),
+        reviewed: payload.reviewed ?? report.reviewed
+      });
     }
   } catch (error) {
     console.warn('Could not list farm reports from Firestore:', error);
@@ -362,6 +481,7 @@ export type AssuranceRequest = {
   source: 'farm-portal';
   invitationCode?: string;
   createdAt: string;
+  farmKey?: string;
 };
 
 /**
@@ -380,9 +500,10 @@ export async function createAssuranceRequest(input: {
 }): Promise<AssuranceRequest> {
   const id = `areq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const path = `assuranceRequests/${id}`;
+  const farm = canonicalFarmName(input.farm);
   const data: AssuranceRequest = {
     id,
-    farm: input.farm.trim(),
+    farm,
     farmId: input.farmId,
     clientName: input.clientName.trim() || 'Responsable de finca',
     clientPhone: input.clientPhone?.trim() || undefined,
@@ -392,10 +513,11 @@ export async function createAssuranceRequest(input: {
     status: 'pending',
     source: 'farm-portal',
     invitationCode: input.invitationCode,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    farmKey: farmKey(farm)
   };
   try {
-    await setDoc(doc(db, 'assuranceRequests', id), data);
+    await setDoc(doc(db, 'assuranceRequests', id), omitUndefined(data));
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
   }
@@ -406,15 +528,13 @@ export async function createAssuranceRequest(input: {
 export async function listFarmAssuranceRequests(farmName: string): Promise<AssuranceRequest[]> {
   const path = 'assuranceRequests';
   try {
-    const q = query(
-      collection(db, 'assuranceRequests'),
-      where('farm', '==', farmName),
-      limit(50)
+    const rows = await collectByFarm<AssuranceRequest>(
+      'assuranceRequests',
+      farmName,
+      row => sameFarm(row.farm || '', farmName),
+      row => row.id
     );
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-      .map(d => d.data() as AssuranceRequest)
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }

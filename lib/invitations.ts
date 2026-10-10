@@ -1,8 +1,17 @@
 import {doc, setDoc, collection, getDocs, query, where, limit, updateDoc} from 'firebase/firestore';
 import {db, auth} from './firebase';
 import {getPortalOrigin} from './portal-origin';
+import {
+  canonicalFarmName,
+  farmKey,
+  generateInvitationCode,
+  isInvitationCode,
+  normalizeInvitationCode,
+  omitUndefined
+} from './portal-match.mjs';
 
 export {getPortalOrigin} from './portal-origin';
+export {generateInvitationCode, normalizeInvitationCode, isInvitationCode} from './portal-match.mjs';
 
 export type FarmInvitation = {
   id: string;
@@ -18,6 +27,8 @@ export type FarmInvitation = {
   createdAt: string;
   createdBy: string;
   expiresAt?: string;
+  /** Normalized farm name. Older invitations (including ASEG-3601) may omit it. */
+  farmKey?: string;
 };
 
 const LOCAL_STORAGE_KEY = 'care360:invitations';
@@ -38,15 +49,6 @@ function saveLocalInvitations(list: FarmInvitation[]): void {
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
   } catch {}
-}
-
-/**
- * Generates an easy-to-read invitation code (e.g. ASEG-8429).
- * Legacy MIPE-* codes remain valid for verification against stored invitations.
- */
-export function generateInvitationCode(): string {
-  const num = Math.floor(1000 + Math.random() * 9000);
-  return `ASEG-${num}`;
 }
 
 /**
@@ -71,6 +73,8 @@ export async function createFarmInvitation(input: {
   clientPhone?: string;
   createdBy?: string;
 }): Promise<FarmInvitation> {
+  const farm = canonicalFarmName(input.farm);
+  if (!farm) throw new Error('Escribe el nombre de la finca para emitir la invitación.');
   const code = generateInvitationCode();
   const token = generateToken();
   const id = `inv_${Date.now()}_${token.slice(0, 6)}`;
@@ -80,7 +84,8 @@ export async function createFarmInvitation(input: {
     id,
     code,
     token,
-    farm: input.farm,
+    farm,
+    farmKey: farmKey(farm),
     farmId: input.farmId,
     clientName: input.clientName,
     clientRole: input.clientRole || 'Responsable de Finca',
@@ -98,7 +103,7 @@ export async function createFarmInvitation(input: {
   // 2. Persist to Firestore
   try {
     const docRef = doc(db, 'invitations', id);
-    await setDoc(docRef, invitation, {merge: true});
+    await setDoc(docRef, omitUndefined(invitation), {merge: true});
   } catch (err) {
     console.warn('Could not persist invitation to Firestore, cached locally:', err);
   }
@@ -110,39 +115,52 @@ export async function createFarmInvitation(input: {
  * Verifies an invitation either by token (from URL) or by manual code (e.g. ASEG-1234).
  * Also accepts legacy MIPE-* codes already stored in Firebase.
  */
-export async function verifyFarmInvitation(tokenOrCode: string): Promise<FarmInvitation | null> {
-  const cleaned = tokenOrCode.trim().toUpperCase();
-  if (!cleaned) return null;
+function invitationMatches(inv: FarmInvitation, trimmed: string, code: string): boolean {
+  if (inv.status !== 'active') return false;
+  if (isInvitationCode(code) && normalizeInvitationCode(inv.code || '') === code) return true;
+  const token = inv.token || '';
+  return token === trimmed || token.toLowerCase() === trimmed.toLowerCase();
+}
 
-  // 1. Check local cache first
+export async function verifyFarmInvitation(tokenOrCode: string): Promise<FarmInvitation | null> {
+  const trimmed = tokenOrCode.trim();
+  if (!trimmed) return null;
+  const code = normalizeInvitationCode(trimmed);
+
+  // 1. Check local cache first. Does not rewrite stored invitations such as ASEG-3601.
   const localList = getLocalInvitations();
-  const foundLocal = localList.find(
-    i => (i.code.toUpperCase() === cleaned || i.token.toUpperCase() === cleaned || i.token === tokenOrCode.trim()) && i.status === 'active'
-  );
+  const foundLocal = localList.find(inv => invitationMatches(inv, trimmed, code));
   if (foundLocal) return foundLocal;
 
-  // 2. Query Firestore by code or by token
+  // 2. Query Firestore by normalized ASEG/MIPE code, then by token.
   try {
     const colRef = collection(db, 'invitations');
-    // Try by code
-    const qCode = query(colRef, where('code', '==', cleaned), limit(5));
-    const snapCode = await getDocs(qCode);
-    if (!snapCode.empty) {
-      const inv = snapCode.docs[0].data() as FarmInvitation;
-      if (inv.status === 'active') {
-        saveLocalInvitations([inv, ...localList.filter(i => i.id !== inv.id)]);
-        return inv;
+    const codeLookups = new Set<string>();
+    if (isInvitationCode(code)) codeLookups.add(code);
+    const upper = trimmed.toUpperCase();
+    if (upper !== code && isInvitationCode(upper)) codeLookups.add(normalizeInvitationCode(upper));
+    if (isInvitationCode(trimmed)) codeLookups.add(normalizeInvitationCode(trimmed));
+
+    for (const candidate of codeLookups) {
+      const snapCode = await getDocs(query(colRef, where('code', '==', candidate), limit(5)));
+      if (!snapCode.empty) {
+        const inv = snapCode.docs[0].data() as FarmInvitation;
+        if (inv.status === 'active') {
+          saveLocalInvitations([inv, ...localList.filter(i => i.id !== inv.id)]);
+          return inv;
+        }
       }
     }
 
-    // Try by token
-    const qToken = query(colRef, where('token', '==', tokenOrCode.trim()), limit(5));
-    const snapToken = await getDocs(qToken);
-    if (!snapToken.empty) {
-      const inv = snapToken.docs[0].data() as FarmInvitation;
-      if (inv.status === 'active') {
-        saveLocalInvitations([inv, ...localList.filter(i => i.id !== inv.id)]);
-        return inv;
+    const tokenLookups = new Set([trimmed, trimmed.toLowerCase()]);
+    for (const token of tokenLookups) {
+      const snapToken = await getDocs(query(colRef, where('token', '==', token), limit(5)));
+      if (!snapToken.empty) {
+        const inv = snapToken.docs[0].data() as FarmInvitation;
+        if (inv.status === 'active') {
+          saveLocalInvitations([inv, ...localList.filter(i => i.id !== inv.id)]);
+          return inv;
+        }
       }
     }
   } catch (err) {

@@ -1,33 +1,35 @@
 /**
- * Production origin for invitation / online-report links.
- *
- * Override with PUBLIC_PORTAL_ORIGIN or NEXT_PUBLIC_PORTAL_ORIGIN
- * (e.g. https://gen-lang-client-0175464290.web.app) so WhatsApp links
- * point at Firebase Hosting even when the technician is on Sites/localhost.
+ * Invitation and online-report links always use Firebase Hosting.
+ * The technician shell (localhost, Sites, firebaseapp.com, or an env override)
+ * must not leak into WhatsApp or the client URL.
  */
+import {getPortalOrigin as resolvePortalOrigin, PORTAL_ORIGIN} from './portal-match.mjs';
+
 export const DEFAULT_FIREBASE_HOSTING_ORIGIN =
   'https://gen-lang-client-0175464290.web.app';
 
-function isDevOrSitesShell(origin: string): boolean {
-  return /localhost|127\.0\.0\.1|0\.0\.0\.0|chatgpt\.com|openai\.com|workers\.dev|pages\.dev/i.test(
-    origin
-  );
+export function getPortalOrigin(): string {
+  return resolvePortalOrigin() || DEFAULT_FIREBASE_HOSTING_ORIGIN || PORTAL_ORIGIN;
 }
 
-export function getPortalOrigin(): string {
-  const envOrigin =
-    (typeof process !== 'undefined' &&
-      (process.env.NEXT_PUBLIC_PORTAL_ORIGIN || process.env.PUBLIC_PORTAL_ORIGIN)) ||
-    '';
-  const trimmed = typeof envOrigin === 'string' ? envOrigin.trim().replace(/\/$/, '') : '';
-  if (trimmed) return trimmed;
+/**
+ * Gate the farm client opens on Firebase Hosting.
+ * Invitation links keep this prefix and add `&invitation=`.
+ */
+export function clientPortalEntryUrl(origin = getPortalOrigin()): string {
+  return `${origin.replace(/\/$/, '')}?portal=finca`;
+}
 
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    const origin = window.location.origin.replace(/\/$/, '');
-    // Invitation links must reach Firebase Hosting, not ChatGPT Sites login or local shells.
-    if (isDevOrSitesShell(origin)) return DEFAULT_FIREBASE_HOSTING_ORIGIN;
-    return origin;
+/**
+ * Blocks a technician publish that the live portal cannot show.
+ * Empty farm names cannot match an invitation. Unreviewed visits are hidden.
+ */
+export function publishClientBlockReason(visit: {farm: string; reviewed: boolean}): string | null {
+  if (!visit.farm.trim()) {
+    return 'Escribe el nombre de la finca antes de publicar. Sin ese nombre el Portal Finca no puede emparejar la invitación.';
   }
-
-  return DEFAULT_FIREBASE_HOSTING_ORIGIN;
+  if (!visit.reviewed) {
+    return 'Marca el informe como revisado antes de publicar. Una visita sin revisar no aparece en el Portal Finca.';
+  }
+  return null;
 }

@@ -1,48 +1,47 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
 
-const DEFAULT_FIREBASE_HOSTING_ORIGIN = 'https://gen-lang-client-0175464290.web.app';
+const HOSTING = 'https://gen-lang-client-0175464290.web.app';
+const root = fileURLToPath(new URL('..', import.meta.url));
 
-/** Mirror of lib/portal-origin.ts for unit coverage without a TS loader. */
-function getPortalOrigin(env = {}, windowOrigin = '') {
-  const envOrigin = env.NEXT_PUBLIC_PORTAL_ORIGIN || env.PUBLIC_PORTAL_ORIGIN || '';
-  const trimmed = typeof envOrigin === 'string' ? envOrigin.trim().replace(/\/$/, '') : '';
-  if (trimmed) return trimmed;
-  if (windowOrigin) {
-    const origin = windowOrigin.replace(/\/$/, '');
-    if (/localhost|127\.0\.0\.1|0\.0\.0\.0|chatgpt\.com|openai\.com|workers\.dev|pages\.dev/i.test(origin)) {
-      return DEFAULT_FIREBASE_HOSTING_ORIGIN;
-    }
-    return origin;
+const bundled = await build({
+  entryPoints: [path.join(root, 'lib/portal-origin.ts')],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  write: false
+});
+const source = Buffer.from(bundled.outputFiles[0].contents).toString('base64');
+const {getPortalOrigin, clientPortalEntryUrl, publishClientBlockReason, DEFAULT_FIREBASE_HOSTING_ORIGIN} =
+  await import(`data:text/javascript;base64,${source}`);
+
+test('portal origin stays on Firebase Hosting even if env or window point elsewhere', () => {
+  const previousPublic = process.env.PUBLIC_PORTAL_ORIGIN;
+  const previousNext = process.env.NEXT_PUBLIC_PORTAL_ORIGIN;
+  const previousWindow = globalThis.window;
+  process.env.PUBLIC_PORTAL_ORIGIN = 'https://example.web.app/';
+  process.env.NEXT_PUBLIC_PORTAL_ORIGIN = 'https://custom.web.app';
+  globalThis.window = {location: {origin: 'http://localhost:3000'}};
+  try {
+    assert.equal(DEFAULT_FIREBASE_HOSTING_ORIGIN, HOSTING);
+    assert.equal(getPortalOrigin(), HOSTING);
+    assert.equal(clientPortalEntryUrl(), `${HOSTING}?portal=finca`);
+    assert.equal(clientPortalEntryUrl(`${HOSTING}/`), `${HOSTING}?portal=finca`);
+  } finally {
+    if (previousPublic === undefined) delete process.env.PUBLIC_PORTAL_ORIGIN;
+    else process.env.PUBLIC_PORTAL_ORIGIN = previousPublic;
+    if (previousNext === undefined) delete process.env.NEXT_PUBLIC_PORTAL_ORIGIN;
+    else process.env.NEXT_PUBLIC_PORTAL_ORIGIN = previousNext;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
   }
-  return DEFAULT_FIREBASE_HOSTING_ORIGIN;
-}
-
-test('portal origin prefers PUBLIC_PORTAL_ORIGIN without trailing slash', () => {
-  assert.equal(
-    getPortalOrigin({PUBLIC_PORTAL_ORIGIN: 'https://example.web.app/'}, 'http://localhost:3000'),
-    'https://example.web.app'
-  );
 });
 
-test('portal origin falls back to NEXT_PUBLIC_PORTAL_ORIGIN', () => {
-  assert.equal(
-    getPortalOrigin({NEXT_PUBLIC_PORTAL_ORIGIN: 'https://custom.web.app'}, ''),
-    'https://custom.web.app'
-  );
-});
-
-test('portal origin uses Firebase Hosting when window is localhost', () => {
-  assert.equal(getPortalOrigin({}, 'http://localhost:3000'), DEFAULT_FIREBASE_HOSTING_ORIGIN);
-});
-
-test('portal origin uses Firebase Hosting when env and window are unset', () => {
-  assert.equal(getPortalOrigin({}, ''), DEFAULT_FIREBASE_HOSTING_ORIGIN);
-});
-
-test('portal origin keeps production Hosting origin as-is', () => {
-  assert.equal(
-    getPortalOrigin({}, 'https://gen-lang-client-0175464290.web.app'),
-    'https://gen-lang-client-0175464290.web.app'
-  );
+test('publish blocks an empty farm name and an unreviewed visit', () => {
+  assert.match(publishClientBlockReason({farm: '   ', reviewed: true}), /nombre de la finca/);
+  assert.match(publishClientBlockReason({farm: 'El Rosal', reviewed: false}), /revisado/);
+  assert.equal(publishClientBlockReason({farm: 'El Rosal', reviewed: true}), null);
 });

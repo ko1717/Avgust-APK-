@@ -1,5 +1,7 @@
 'use client';
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
+import {farmKey} from '@/lib/model';
+import {clientPortalEntryUrl} from '@/lib/portal-origin';
 import {
   KeyRound,
   Copy,
@@ -17,7 +19,6 @@ import {
   revokeFarmInvitation,
   buildInvitationPortalUrl,
   buildWhatsAppInvitationMessage,
-  getPortalOrigin,
   type FarmInvitation
 } from '@/lib/invitations';
 import type {Visit} from '@/lib/model';
@@ -41,11 +42,19 @@ export function InvitationManagerModal({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{text: string; error?: boolean} | null>(null);
 
-  // Extract unique farms from recorded visits
-  const uniqueFarms = Array.from(new Set(visits.map(v => v.farm.trim()))).filter(Boolean).sort();
+  const exactFarms = Array.from(new Set(visits.map(v => v.farm.trim()).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b, 'es')
+  );
+  const farmListKey = exactFarms.join('\u0000');
+  const clientUrl = clientPortalEntryUrl();
 
-  // New invitation form state
-  const [selectedFarm, setSelectedFarm] = useState<string>(() => uniqueFarms[0] || '');
+  const farmNames = farmListKey ? farmListKey.split('\u0000') : [];
+  const [selectedFarm, setSelectedFarm] = useState(() => farmNames[0] || '');
+  const [seenFarmKey, setSeenFarmKey] = useState(farmListKey);
+  if (farmListKey !== seenFarmKey) {
+    setSeenFarmKey(farmListKey);
+    if (!farmNames.includes(selectedFarm)) setSelectedFarm(farmNames[0] || '');
+  }
   const [clientName, setClientName] = useState('');
   const [clientRole, setClientRole] = useState('Administrador de Finca');
   const [clientEmail, setClientEmail] = useState('');
@@ -59,8 +68,14 @@ export function InvitationManagerModal({
           setInvitations(data);
           setLoading(false);
         }
-      }).catch(() => {
-        if (active) setLoading(false);
+      }).catch((err: unknown) => {
+        if (active) {
+          setLoading(false);
+          setNotice({
+            text: err instanceof Error ? err.message : 'No se pudieron cargar las invitaciones.',
+            error: true
+          });
+        }
       });
     }
     return () => {
@@ -68,21 +83,38 @@ export function InvitationManagerModal({
     };
   }, [isOpen]);
 
+  const reviewedFor = (farm: string) =>
+    visits.filter(visit => farmKey(visit.farm) === farmKey(farm) && visit.reviewed && Boolean(visit.id)).length;
+  const reviewedForSelected = selectedFarm ? reviewedFor(selectedFarm) : 0;
+  const nameVariants = selectedFarm
+    ? exactFarms.filter(name => name !== selectedFarm && farmKey(name) === farmKey(selectedFarm))
+    : [];
+
   if (!isOpen) return null;
 
   const handleCreate = async (e: {preventDefault: () => void}) => {
     e.preventDefault();
-    if (!selectedFarm.trim() || !clientName.trim()) {
+    const farmName = selectedFarm.trim();
+    if (!farmName || !clientName.trim()) {
       setNotice({text: 'Selecciona una finca y escribe el nombre del responsable.', error: true});
+      return;
+    }
+    if (!reviewedFor(farmName)) {
+      setNotice({
+        text: 'Esta finca no tiene un informe revisado. Márcalo como revisado y pulsa «Publicar en línea» antes de invitar. El Portal Finca no muestra borradores.',
+        error: true
+      });
       return;
     }
 
     setBusy(true);
     setNotice(null);
     try {
-      const targetVisit = visits.find(v => v.farm.trim() === selectedFarm.trim());
+      const targetVisit =
+        visits.find(v => farmKey(v.farm) === farmKey(farmName) && v.farmId) ||
+        visits.find(v => farmKey(v.farm) === farmKey(farmName));
       const newInv = await createFarmInvitation({
-        farm: selectedFarm.trim(),
+        farm: farmName,
         farmId: targetVisit?.farmId,
         clientName: clientName.trim(),
         clientRole: clientRole.trim(),
@@ -90,7 +122,7 @@ export function InvitationManagerModal({
         clientPhone: clientPhone.trim() || undefined
       });
       setInvitations(prev => [newInv, ...prev]);
-      setNotice({text: `¡Invitación para ${newInv.clientName} (${newInv.code}) generada exitosamente!`, error: false});
+      setNotice({text: `Invitación ${newInv.code} lista para ${newInv.clientName}. El portal empareja «${newInv.farm}» aunque cambien mayúsculas o espacios. URL del cliente: ${clientUrl}`, error: false});
       setClientName('');
       setClientPhone('');
       setClientEmail('');
@@ -138,19 +170,19 @@ export function InvitationManagerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="p-5 border-b border-[#007fa3]/20 flex items-center justify-between bg-gradient-to-r from-[#e8f6fb] via-white to-[#eef8e3] dark:from-slate-900 dark:to-slate-900/80">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl border border-[#007fa3]/35 bg-gradient-to-br from-[#007fa3] to-[#00b5e2] text-white flex items-center justify-center shadow-sm">
-              <KeyRound size={20} />
+        <div className="p-4 border-b border-[#007fa3]/35 flex items-center justify-between bg-gradient-to-r from-[#e8f6fb] via-white to-[#eef8e3] dark:from-slate-900 dark:to-slate-900/80">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg border border-[#005f7a]/40 bg-gradient-to-br from-[#007fa3] to-[#00b5e2] text-white flex items-center justify-center shadow-sm shrink-0">
+              <KeyRound size={16} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 m-0">
-                Invitaciones al Portal de Finca
+                Invitaciones
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
-                Emite código ASEG o enlace WhatsApp. El cliente entra en{' '}
-                <strong className="text-[#007fa3]">{getPortalOrigin()}</strong>
-                {' '}y solo ve los informes publicados de su finca.
+              <p className="text-xs text-slate-600 dark:text-slate-400 m-0 mt-0.5">
+                Portal Finca. Primero «Publicar en línea». El cliente entra en{' '}
+                <strong className="text-[#005f7a]">{clientUrl}</strong>
+                {' '}y solo ve la finca cuyo nombre coincide.
               </p>
             </div>
           </div>
@@ -172,10 +204,10 @@ export function InvitationManagerModal({
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {/* Creator Form */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/60">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-[#007fa3]/30 dark:border-[#007fa3]/40">
             <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#007fa3]/35 bg-gradient-to-br from-[#007fa3] to-[#00b5e2] text-white">
-                <Plus size={16} aria-hidden />
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[#005f7a]/35 bg-gradient-to-br from-[#007fa3] to-[#00b5e2] text-white">
+                <Plus size={14} aria-hidden />
               </span>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 m-0">
                 Emitir invitación de acceso
@@ -193,14 +225,14 @@ export function InvitationManagerModal({
                   className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#007fa3] outline-hidden"
                   required
                 >
-                  {uniqueFarms.length ? (
-                    uniqueFarms.map(f => (
+                  {exactFarms.length ? (
+                    exactFarms.map(f => (
                       <option key={f} value={f}>
                         {f}
                       </option>
                     ))
                   ) : (
-                    <option value="">No hay fincas registradas</option>
+                    <option value="">No hay fincas con nombre</option>
                   )}
                 </select>
               </div>
@@ -265,14 +297,34 @@ export function InvitationManagerModal({
               <div className="flex items-end">
                 <button
                   type="submit"
-                  disabled={busy}
-                  className="w-full py-2 px-4 bg-[#007fa3] hover:bg-[#005f7a] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-50"
+                  disabled={busy || !selectedFarm.trim() || !clientName.trim() || reviewedForSelected === 0}
+                  className="w-full py-2 px-4 bg-[#007fa3] hover:bg-[#005f7a] border border-[#005f7a] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-50"
                 >
-                  <KeyRound size={15} />
-                  {busy ? 'Generando…' : 'Crear Invitación'}
+                  <KeyRound size={14} />
+                  {busy ? 'Generando…' : 'Crear invitación'}
                 </button>
               </div>
             </form>
+            {!exactFarms.length && (
+              <p className="mt-3 mb-0 text-xs font-semibold text-[#7a5200] border border-[#f2a900]/70 bg-[#fff8e8] rounded-lg px-3 py-2">
+                Escribe el nombre de la finca en la visita antes de invitar.
+              </p>
+            )}
+            {selectedFarm && reviewedForSelected === 0 && (
+              <p className="mt-3 mb-0 text-xs font-semibold text-[#7a5200] border border-[#f2a900]/70 bg-[#fff8e8] rounded-lg px-3 py-2">
+                Esta finca no tiene un informe revisado. Márcalo como revisado y pulsa «Publicar en línea» antes de invitar. El Portal Finca no muestra borradores.
+              </p>
+            )}
+            {selectedFarm && reviewedForSelected > 0 && (
+              <p className="mt-3 mb-0 text-xs text-slate-700 dark:text-slate-300 border border-[#007fa3]/35 bg-white dark:bg-slate-900 rounded-lg px-3 py-2">
+                La invitación de <strong>«{selectedFarm}»</strong> muestra los informes de esa finca aunque el nombre publicado solo cambie en mayúsculas o espacios. Hay {reviewedForSelected} informe{reviewedForSelected === 1 ? '' : 's'} revisado{reviewedForSelected === 1 ? '' : 's'}. El cliente entra en <strong>{clientUrl}</strong> después de «Publicar en línea».
+              </p>
+            )}
+            {nameVariants.length > 0 && (
+              <p className="mt-3 mb-0 text-xs font-semibold text-[#7a5200] border border-[#f2a900]/70 bg-[#fff8e8] rounded-lg px-3 py-2">
+                Hay otro nombre parecido ({nameVariants.map(name => `«${name}»`).join(', ')}). El portal los trata como la misma finca. Invita con un solo nombre para no confundir al cliente.
+              </p>
+            )}
           </div>
 
           {/* Active Invitations List */}
@@ -293,10 +345,10 @@ export function InvitationManagerModal({
                 Aún no has generado invitaciones. Completa el formulario de arriba para enviar el primer acceso.
               </div>
             ) : (
-              <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="border border-[#007fa3]/25 dark:border-slate-700 rounded-xl overflow-hidden divide-y divide-[#d5e6ea] dark:divide-slate-800">
                 {invitations.map(inv => {
                   const isRevoked = inv.status === 'revoked';
-                  const farmVisitsCount = visits.filter(v => v.farm.trim() === inv.farm.trim()).length;
+                  const farmVisitsCount = reviewedFor(inv.farm.trim());
 
                   return (
                     <div
@@ -320,13 +372,13 @@ export function InvitationManagerModal({
                           <span className="font-semibold text-[#007fa3]">
                             {inv.farm}
                           </span>
-                          <span>• {farmVisitsCount} informe{farmVisitsCount === 1 ? '' : 's'} disponible{farmVisitsCount === 1 ? '' : 's'}</span>
+                          <span>• {farmVisitsCount ? `${farmVisitsCount} informe${farmVisitsCount === 1 ? '' : 's'} revisado${farmVisitsCount === 1 ? '' : 's'}` : 'Sin informe revisado'}</span>
                           <span>• Creada el {new Date(inv.createdAt).toLocaleDateString('es-CO')}</span>
                         </div>
 
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-500 font-medium">Código PIN:</span>
-                          <code className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-[#007fa3] font-mono font-bold text-xs rounded border border-slate-200 dark:border-slate-700">
+                          <span className="text-xs text-slate-500 font-medium">Código ASEG:</span>
+                          <code className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-[#007fa3] font-mono font-bold text-xs rounded border border-[#007fa3]/35">
                             {inv.code}
                           </code>
                           <button
@@ -335,7 +387,7 @@ export function InvitationManagerModal({
                             title="Copiar código"
                           >
                             {copiedId === inv.id + '_code' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                            {copiedId === inv.id + '_code' ? 'Copiado' : 'Copiar PIN'}
+                            {copiedId === inv.id + '_code' ? 'Copiado' : 'Copiar código'}
                           </button>
                         </div>
                       </div>
@@ -346,8 +398,8 @@ export function InvitationManagerModal({
                           <>
                             <button
                               onClick={() => handleCopyLink(inv)}
-                              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors"
-                              title="Copiar enlace directo de invitación"
+                              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[#9fb8c2] bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors"
+                              title="Copiar enlace del Portal Finca"
                             >
                               {copiedId === inv.id + '_link' ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                               <span>{copiedId === inv.id + '_link' ? 'Enlace copiado' : 'Copiar Enlace'}</span>
@@ -355,7 +407,7 @@ export function InvitationManagerModal({
 
                             <button
                               onClick={() => handleWhatsApp(inv)}
-                              className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[#25D366] hover:bg-[#1ebd5b] text-white flex items-center gap-1.5 shadow-2xs transition-colors"
+                              className="px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#128C7E] bg-[#25D366] hover:bg-[#1ebd5b] text-white flex items-center gap-1.5 transition-colors"
                               title="Enviar invitación por WhatsApp"
                             >
                               <MessageCircle size={13} />
@@ -365,11 +417,11 @@ export function InvitationManagerModal({
                             {onOpenPortalAsClient && (
                               <button
                                 onClick={() => onOpenPortalAsClient(inv)}
-                                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#007fa3]/10 hover:bg-[#007fa3]/20 text-[#007fa3] flex items-center gap-1.5 transition-colors"
-                                title="Ver portal como cliente"
+                                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[#007fa3]/45 bg-[#007fa3]/10 hover:bg-[#007fa3]/20 text-[#007fa3] flex items-center gap-1.5 transition-colors"
+                                title="Abrir el Portal Finca con esta invitación"
                               >
                                 <Globe size={13} />
-                                <span>Ver Portal</span>
+                                <span>Probar acceso</span>
                               </button>
                             )}
                           </>
@@ -378,7 +430,7 @@ export function InvitationManagerModal({
                         {!isRevoked ? (
                           <button
                             onClick={() => handleRevoke(inv.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-transparent hover:border-rose-200 transition-colors"
                             title="Revocar acceso"
                           >
                             <Trash2 size={15} />
@@ -400,9 +452,8 @@ export function InvitationManagerModal({
           <div className="flex items-center gap-2 min-w-0">
             <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
             <span>
-              URL del cliente (Firebase Hosting):{' '}
-              <strong className="text-slate-700 dark:text-slate-200">{getPortalOrigin()}</strong>
-              . Primero publica el informe con «Publicar en línea»; luego envía el código ASEG o el enlace.
+              URL del cliente: <strong className="text-slate-700 dark:text-slate-200">{clientUrl}</strong>
+              . El enlace agrega <strong>&invitation=</strong>. El nombre de la finca debe coincidir con el informe publicado.
             </span>
           </div>
           <button

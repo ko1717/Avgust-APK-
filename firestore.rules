@@ -26,36 +26,58 @@ service cloud.firestore {
       return request.query.limit != null && request.query.limit <= 100;
     }
 
-    // Invitaciones de acceso exclusivo para responsables de fincas
+    // New codes are ASEG-####. MIPE-#### stays valid so stored invitations can still be revoked.
+    function isPortalInvitationCode(code) {
+      return code is string && code.matches('^(ASEG|MIPE)-[0-9]{4}$');
+    }
+
+    function farmFieldOk() {
+      return request.resource.data.farm is string &&
+        request.resource.data.farm.size() > 0 &&
+        request.resource.data.farm.size() <= 250;
+    }
+
+    // Invitaciones de acceso exclusivo para responsables de fincas.
+    // Reads stay open (code lookup works without Anonymous Auth).
+    // Technician create/update stays on the client SDK (no auth required).
     match /invitations/{invitationId} {
       allow get: if isValidId(invitationId);
       allow list: if isSignedIn() || portalListOk();
-      allow create, update: if isValidId(invitationId) &&
-        request.resource.data.farm is string &&
-        request.resource.data.farm.size() > 0 &&
-        request.resource.data.code is string;
-      allow delete: if isAdmin() || isSignedIn();
+      allow create: if isValidId(invitationId) &&
+        farmFieldOk() &&
+        request.resource.data.status == 'active' &&
+        isPortalInvitationCode(request.resource.data.code);
+      allow update: if isValidId(invitationId) &&
+        farmFieldOk() &&
+        request.resource.data.status in ['active', 'revoked'] &&
+        (
+          isPortalInvitationCode(request.resource.data.code) ||
+          request.resource.data.code == resource.data.code
+        );
+      allow delete: if isAdmin();
     }
 
-    // Informes en línea para administradores y responsables de fincas
+    // Informes en línea. Client reads; technician publish is a client SDK write.
     match /reports/{reportId} {
       allow get: if isValidId(reportId);
       allow list: if isSignedIn() || portalListOk();
       allow create, update: if isValidId(reportId) &&
-        request.resource.data.farm is string &&
-        request.resource.data.farm.size() > 0 &&
-        request.resource.data.farm.size() <= 250 &&
-        request.resource.data.date is string;
+        farmFieldOk() &&
+        request.resource.data.date is string &&
+        request.resource.data.date.size() > 0 &&
+        request.resource.data.date.size() <= 40;
       allow delete: if isAdmin();
     }
 
-    // Sincronización en tiempo real de visitas y aseguramientos técnicos
+    // Visitas publicadas. Same client-SDK write path as reports (merge on stable id).
     match /visits/{visitId} {
       allow get: if isValidId(visitId);
       allow list: if isSignedIn() || portalListOk();
       allow create, update: if isValidId(visitId) &&
-        request.resource.data.farm is string &&
-        request.resource.data.date is string;
+        farmFieldOk() &&
+        request.resource.data.date is string &&
+        request.resource.data.date.size() > 0 &&
+        request.resource.data.date.size() <= 40;
       allow delete: if isAdmin();
     }
 

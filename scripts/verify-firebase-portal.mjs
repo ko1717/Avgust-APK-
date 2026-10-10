@@ -282,6 +282,23 @@ if (portalOriginTs) {
   } else {
     fail(`lib/portal-origin.ts default origin missing https://${EXPECTED_PROJECT}.web.app`);
   }
+  if (/\breturn origin\b/.test(portalOriginTs)) {
+    fail('lib/portal-origin.ts returns the window origin; links must stay on Hosting');
+  } else {
+    pass('lib/portal-origin.ts does not return the window origin');
+  }
+}
+
+if (rules && rules.includes('isPortalInvitationCode')) {
+  pass('rules accept ASEG-#### and legacy MIPE-#### invitation codes');
+} else if (rules) {
+  fail('rules missing isPortalInvitationCode (ASEG/MIPE format)');
+}
+
+if (firebaseTs && firebaseTs.includes('stableVisitId') && firebaseTs.includes('publishFailureMessage') && firebaseTs.includes('farmKey')) {
+  pass('lib/firebase.ts publishes with a stable id, farmKey, and Spanish failure text');
+} else if (firebaseTs) {
+  fail('lib/firebase.ts missing stable visit id, farmKey, or Spanish publish errors');
 }
 
 // ── Cursor MCP (agent → live project after login) ────────────────────────

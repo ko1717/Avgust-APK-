@@ -1,4 +1,6 @@
 import catalog from './catalog.json';
+import {farmKey as sharedFarmKey} from './portal-match.mjs';
+export {canonicalFarmName} from './portal-match.mjs';
 export { catalog };
 export type Answer = {value:string; observation:string; recommendation:string};
 export type ActionStatus='proposed'|'pending'|'progress'|'closed'|'cancelled';
@@ -130,7 +132,7 @@ export function findings(v:Visit){
 export function recommendationDraft(itemId:string){const item=catalog.flatMap(c=>c.items).find(q=>q.id===itemId);return `Corregir el incumplimiento identificado${item?` en ${item.id}`:''}, documentar la acción realizada y verificar su cierre en la próxima visita.`;}
 export function localDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 export function overdue(a:Action,today=localDate()){return ['pending','progress'].includes(a.status)&&!!a.due&&a.due<today;}
-export function farmKey(name:string){return name.trim().replace(/\s+/g,' ').toLocaleLowerCase('es');}
+export function farmKey(name:string){return sharedFarmKey(name);}
 export function sameChapterScope(a:Pick<Visit,'chapters'>,b:Pick<Visit,'chapters'>){
  const ids=(visit:Pick<Visit,'chapters'>)=>visit.chapters?.length?[...visit.chapters].sort((x,y)=>x-y):[1,2,3,4,5];
  return JSON.stringify(ids(a))===JSON.stringify(ids(b));

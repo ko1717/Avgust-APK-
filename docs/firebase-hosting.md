@@ -35,9 +35,7 @@ npm run deploy:portal
 
 ## Variables opcionales
 
-- `PUBLIC_PORTAL_ORIGIN` / `NEXT_PUBLIC_PORTAL_ORIGIN` — origen fijo para enlaces de invitación WhatsApp.
-  - Por defecto / en `build:firebase`: `https://gen-lang-client-0175464290.web.app`.
-  - En localhost / ChatGPT Sites / workers.dev el cliente también cae a ese Hosting URL (así WhatsApp no apunta al shell de Sites).
+- Los enlaces de invitación y de informe **siempre** usan `https://gen-lang-client-0175464290.web.app`, aunque el técnico esté en localhost, Sites o `firebaseapp.com`. Un `NEXT_PUBLIC_PORTAL_ORIGIN` distinto no redirige esos enlaces.
 
 ## Consola Firebase (una vez por proyecto)
 
@@ -76,8 +74,8 @@ Sin el secret `FIREBASE_TOKEN`, el workflow se salta el deploy (no falla el repo
 Arquitectura fija: la consola CARE 360 **no** vive en Hosting. La app (web/escritorio) escribe en Firestore; el portal Hosting solo lee.
 
 1. **Técnico** completa la visita en CARE 360 → pestaña **04 Informe** → **Publicar en línea**.
-2. La app escribe/actualiza `reports/{visitId}` y `visits/{visitId}` en el proyecto **gen-lang-client-0175464290** (mismo id = actualizar informe).
-3. **Invitaciones** → crea código **ASEG-####** o copia el enlace WhatsApp (origen fijo `https://gen-lang-client-0175464290.web.app`).
+2. La app escribe/actualiza `reports/{visitId}` y `visits/{visitId}` en el proyecto **gen-lang-client-0175464290** (mismo id = actualizar informe, con `farmKey` para emparejar mayúsculas y espacios).
+3. **Invitaciones** → crea código **ASEG-####** (los **MIPE-####** ya guardados siguen verificando) o copia el enlace WhatsApp (origen fijo `https://gen-lang-client-0175464290.web.app`).
 4. **Cliente** abre el portal Hosting, entra con código/enlace y ve las visitas publicadas de su finca.
 
 ## Qué incluye el portal (Hosting)
