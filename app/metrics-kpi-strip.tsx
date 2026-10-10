@@ -21,7 +21,9 @@ export default function MetricsKpiStrip({
   chapterTrends,
   comparisonLabel,
   collapsible=false,
-  defaultExpanded=false
+  defaultExpanded=false,
+  /** When false, hide empty “Sin comparación…” chrome (farm portal with &lt;2 comparable visits). */
+  showComparison=true
 }:{
   count:number;
   scope:string;
@@ -29,6 +31,7 @@ export default function MetricsKpiStrip({
   comparisonLabel:string;
   collapsible?:boolean;
   defaultExpanded?:boolean;
+  showComparison?:boolean;
 }){
   const listId=useId();
   const [expanded,setExpanded]=useState(Boolean(defaultExpanded));
@@ -40,6 +43,7 @@ export default function MetricsKpiStrip({
     ?Math.round((scored.reduce((sum,chapter)=>sum+(chapter.score as number),0)/scored.length)*10)/10
     :null;
   const showList=!collapsible||expanded;
+  const contextLabel=showComparison?comparisonLabel.trim():'';
 
   return <div className="metrics-kpi-strip" aria-label="Indicadores clave del aseguramiento">
     <article className="metrics-kpi-card metrics-assurance-count">
@@ -52,10 +56,10 @@ export default function MetricsKpiStrip({
       <span className="metrics-kpi-icon" aria-hidden="true"><ClipboardCheck size={23}/></span>
     </article>
 
-    <section className={`metrics-kpi-card metrics-chapter-trends${collapsible?' is-collapsible':''}${showList?' is-expanded':' is-collapsed'}`} aria-labelledby="chapter-trends-title">
+    <section className={`metrics-kpi-card metrics-chapter-trends${collapsible?' is-collapsible':''}${showList?' is-expanded':' is-collapsed'}${showComparison?'':' no-comparison'}`} aria-labelledby="chapter-trends-title">
       <div className="metrics-kpi-heading">
         <div><span className="metrics-section-kicker">CAPÍTULOS</span><h3 id="chapter-trends-title">Tendencia por capítulo</h3></div>
-        <span className="metrics-kpi-context">{comparisonLabel}</span>
+        {contextLabel?<span className="metrics-kpi-context">{contextLabel}</span>:null}
       </div>
 
       {collapsible&&(
@@ -92,14 +96,20 @@ export default function MetricsKpiStrip({
       {showList&&(
         <>
           <div className="metrics-chapter-trend-list" id={listId}>
-            {chapterTrends.map(chapter=><div className="metrics-chapter-trend" key={chapter.id}>
+            {chapterTrends.map(chapter=><div className={`metrics-chapter-trend${showComparison?'':' no-delta'}`} key={chapter.id}>
               <div className="metrics-chapter-trend-name"><strong>Cap. {chapter.id}</strong><span title={chapter.title}>{chapter.title}</span><small>{chapter.weightPct}%</small></div>
               <div className="metrics-chapter-trend-track" aria-label={chapter.score===null?'Sin evaluar':`Resultado ${chapter.score}%`}><span className={chapterTone(chapter.score)} style={{width:`${Math.min(100,Math.max(0,chapter.score??0))}%`}}/></div>
               <strong className="metrics-chapter-trend-score">{chapter.score===null?'—':`${formatPoints(chapter.score)}%`}</strong>
-              <div className="metrics-chapter-trend-change"><span className={`metrics-chapter-trend-delta ${chapter.delta===null?'neutral':chapter.delta>0?'positive':chapter.delta<0?'negative':'neutral'}`} title={chapter.delta===null?'Sin una comparación comparable':`${chapter.comparisons} ${chapter.comparisons===1?'comparación':'comparaciones'}`}>{chapter.delta===null?'Sin base':chapter.delta===0?'Sin cambio':<>{chapter.delta>0?<TrendingUp size={13}/>:<TrendingDown size={13}/>} {chapter.delta>0?'+':''}{formatPoints(chapter.delta)} pts</>}</span>{chapter.delta!==null&&<small>{chapter.comparisons} {chapter.comparisons===1?'comparación':'comparaciones'}</small>}</div>
+              {showComparison?(
+                <div className="metrics-chapter-trend-change"><span className={`metrics-chapter-trend-delta ${chapter.delta===null?'neutral':chapter.delta>0?'positive':chapter.delta<0?'negative':'neutral'}`} title={chapter.delta===null?'Sin una comparación comparable':`${chapter.comparisons} ${chapter.comparisons===1?'comparación':'comparaciones'}`}>{chapter.delta===null?'Sin base':chapter.delta===0?'Sin cambio':<>{chapter.delta>0?<TrendingUp size={13}/>:<TrendingDown size={13}/>} {chapter.delta>0?'+':''}{formatPoints(chapter.delta)} pts</>}</span>{chapter.delta!==null&&<small>{chapter.comparisons} {chapter.comparisons===1?'comparación':'comparaciones'}</small>}</div>
+              ):null}
             </div>)}
           </div>
-          <p className="metrics-chapter-trend-note">El resultado corresponde al aseguramiento consultado; la variación solo compara con el anterior cuando tienen el mismo alcance de capítulos.</p>
+          <p className="metrics-chapter-trend-note">
+            {showComparison
+              ?'El resultado corresponde al aseguramiento consultado; la variación solo compara con el anterior cuando tienen el mismo alcance de capítulos.'
+              :'Resultado por capítulo del aseguramiento consultado. La comparación aparecerá cuando existan al menos dos visitas con el mismo alcance.'}
+          </p>
         </>
       )}
     </section>

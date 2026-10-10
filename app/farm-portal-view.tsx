@@ -21,7 +21,6 @@ import {
 } from '@/lib/invitations';
 import {exportWord} from '@/lib/export-word';
 import {
-  actionLabels,
   CHAPTER_WEIGHTS,
   farmKey,
   findings,
@@ -41,6 +40,7 @@ import {
   subscribeToFarmVisits,
   type AssuranceRequest
 } from '@/lib/firebase';
+import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
 import MetricsKpiStrip from './metrics-kpi-strip';
 import './b2b-metrics.css';
 import './farm-portal.css';
@@ -253,20 +253,23 @@ export function FarmPortalView({
 
   const selectedProblems = useMemo(() => {
     if (!current) return [];
-    return findings(current.visit).map(f => ({
-      id: f.id,
-      text: f.text,
-      observation: f.answer.observation,
-      recommendation: f.answer.recommendation,
-      chapter: Number(f.id.split('.')[0]),
-      weightPct: Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])] || 0) * 100),
-      action: {
-        owner: f.action.owner,
-        due: f.action.due,
-        status: f.action.status
-      }
-    }));
+    return findings(current.visit).map(f => {
+      const presentation = portalActionPresentation({
+        observation: f.answer.observation,
+        recommendation: f.answer.recommendation,
+        action: f.action
+      });
+      return {
+        id: f.id,
+        text: stripMarkdownLite(f.text) || f.text,
+        chapter: Number(f.id.split('.')[0]),
+        weightPct: Math.round((CHAPTER_WEIGHTS[Number(f.id.split('.')[0])] || 0) * 100),
+        ...presentation
+      };
+    });
   }, [current]);
+
+  const showVisitComparison = comparableChapterPair;
 
   const podium = useMemo(() => {
     if (!historyAnalysis) return [];
@@ -475,8 +478,11 @@ export function FarmPortalView({
 
         <div className="fp-topbar-actions">
           {current && (
-            <div className={`fp-status-chip ${latestStatus}`} title={metricStatusDescriptions[latestStatus]}>
-              <span>Índice</span>
+            <div
+              className={`fp-status-chip ${latestStatus}`}
+              title={`Índice oficial del aseguramiento: ${latestScore === null ? '—' : `${latestScore}%`}. ${metricStatusDescriptions[latestStatus]}`}
+            >
+              <span>Índice oficial</span>
               <strong>
                 {latestScore === null ? '—' : `${latestScore}%`}
               </strong>
@@ -513,7 +519,7 @@ export function FarmPortalView({
           </div>
           <div className="fp-hero-actions">
             <a className="fp-hero-cta" href="#fp-metrics-anchor">
-              Ver indicadores {latestScore === null ? '' : `· ${latestScore}%`}
+              Ver índice oficial {latestScore === null ? '' : `· ${latestScore}%`}
             </a>
             {current && (
               <>
@@ -804,22 +810,22 @@ export function FarmPortalView({
                 </div>
                 <div
                   className="metrics-outcome-score"
-                  aria-label={`Resultado de aseguramiento ${latestScore} por ciento`}
+                  aria-label={`Índice oficial de aseguramiento ${latestScore} por ciento`}
                 >
                   <strong>
                     {latestScore}
                     <span>%</span>
                   </strong>
-                  <small>Resultado ponderado</small>
+                  <small>Índice oficial</small>
+                  <p className="fp-score-explain">
+                    Resultado ponderado de los capítulos evaluados en esta visita. Es el único
+                    indicador de referencia del portal.
+                  </p>
                   <div className="metrics-score-track">
                     <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
                   </div>
                 </div>
-                <div className="metrics-outcome-facts">
-                  <div>
-                    <span>Puntaje</span>
-                    <strong>{current.pointsEarned} / 100</strong>
-                  </div>
+                <div className={`metrics-outcome-facts${showVisitComparison ? '' : ' fp-facts-no-delta'}`}>
                   <div>
                     <span>Desviaciones</span>
                     <strong>{current.findings}</strong>
@@ -828,24 +834,18 @@ export function FarmPortalView({
                     <span>Cobertura</span>
                     <strong>{current.evaluatedChapters}/5 capítulos</strong>
                   </div>
-                  <div>
-                    <span>Variación vs. anterior</span>
-                    <strong
-                      className={
-                        selectedDelta === null
-                          ? ''
-                          : selectedDelta > 0
-                            ? 'positive'
-                            : selectedDelta < 0
-                              ? 'negative'
-                              : ''
-                      }
-                    >
-                      {selectedDelta === null
-                        ? 'Sin comparación'
-                        : `${selectedDelta > 0 ? '+' : ''}${selectedDelta} pts`}
-                    </strong>
-                  </div>
+                  {showVisitComparison && selectedDelta !== null && (
+                    <div>
+                      <span>Variación vs. anterior</span>
+                      <strong
+                        className={
+                          selectedDelta > 0 ? 'positive' : selectedDelta < 0 ? 'negative' : ''
+                        }
+                      >
+                        {`${selectedDelta > 0 ? '+' : ''}${selectedDelta} pts`}
+                      </strong>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -854,10 +854,9 @@ export function FarmPortalView({
                 scope={`${historyAnalysis?.farm || invitation.farm} · aseguramientos revisados`}
                 chapterTrends={chapterTrends}
                 comparisonLabel={
-                  comparableChapterPair
-                    ? 'Vs. aseguramiento anterior'
-                    : 'Sin comparación comparable'
+                  showVisitComparison ? 'Vs. aseguramiento anterior' : ''
                 }
+                showComparison={showVisitComparison}
                 collapsible
               />
 
@@ -875,7 +874,7 @@ export function FarmPortalView({
                   {selectedProblems.length ? (
                     <ul className="metrics-action-list">
                       {(expandedActions ? selectedProblems : selectedProblems.slice(0, 3)).map(problem => (
-                        <li key={problem.id}>
+                        <li key={problem.id} className={problem.thin ? 'is-thin-action' : undefined}>
                           <div className="metrics-action-title">
                             <strong>
                               {problem.id} · {problem.text}
@@ -885,26 +884,20 @@ export function FarmPortalView({
                             </span>
                           </div>
                           <p className="metrics-action-observation">
-                            <strong>Hallazgo / observación:</strong>{' '}
-                            {problem.observation || 'Sin observación registrada en este informe.'}
+                            <strong>Hallazgo / observación:</strong> {problem.observation}
                           </p>
                           <p className="metrics-action-recommendation">
-                            <strong>Recomendación sugerida:</strong>{' '}
-                            {problem.recommendation || 'Definir y documentar la acción correctiva.'}
+                            <strong>Acción recomendada:</strong> {problem.recommendation}
                           </p>
                           <div className="metrics-action-meta">
                             <span>
-                              Responsable: <b>{problem.action.owner || 'Sin asignar'}</b>
+                              Responsable: <b>{problem.owner}</b>
                             </span>
                             <span>
-                              Fecha: <b>{problem.action.due || 'Sin definir'}</b>
+                              Fecha: <b>{problem.due}</b>
                             </span>
                             <span>
-                              Estado:{' '}
-                              <b>
-                                {actionLabels[problem.action.status as keyof typeof actionLabels] ||
-                                  problem.action.status}
-                              </b>
+                              Estado: <b>{problem.statusLabel}</b>
                             </span>
                           </div>
                         </li>
@@ -927,14 +920,16 @@ export function FarmPortalView({
                 </section>
               </div>
 
-              {podium.length > 0 && (
+              {podium.length > 1 && (
                 <section className="metrics-podium-panel">
                   <div className="metrics-section-heading">
                     <div>
-                      <div className="metrics-section-kicker">Cambio reciente</div>
+                      <div className="metrics-section-kicker">Historial reciente</div>
                       <h3>Últimos aseguramientos</h3>
                     </div>
-                    <span className="metrics-note">Comparamos solo con el mismo alcance</span>
+                    {showVisitComparison ? (
+                      <span className="metrics-note">Comparamos solo con el mismo alcance</span>
+                    ) : null}
                   </div>
                   <div className="metrics-podium-list">
                     {podium.map((point, index) => (
@@ -950,27 +945,23 @@ export function FarmPortalView({
                           <StatusBadge value={point.record.status} />
                         </div>
                         <strong className="metrics-podium-score">{point.record.score}%</strong>
-                        <span
-                          className={`metrics-podium-delta ${
-                            point.delta === null
-                              ? 'neutral'
-                              : point.delta > 0
+                        {point.delta !== null ? (
+                          <span
+                            className={`metrics-podium-delta ${
+                              point.delta > 0
                                 ? 'positive'
                                 : point.delta < 0
                                   ? 'negative'
                                   : 'neutral'
-                          }`}
-                        >
-                          {point.delta === null
-                            ? point.hasPrevious
-                              ? 'Sin comparación'
-                              : 'Línea base'
-                            : point.delta > 0
+                            }`}
+                          >
+                            {point.delta > 0
                               ? `+${point.delta} pts`
                               : point.delta < 0
                                 ? `${point.delta} pts`
                                 : 'Sin cambio'}
-                        </span>
+                          </span>
+                        ) : null}
                       </article>
                     ))}
                   </div>

@@ -1078,6 +1078,27 @@
   animation: fp-fade-up 0.5s ease 0.06s both;
 }
 
+.farm-portal .fp-score-explain {
+  margin: 2px 0 6px;
+  max-width: 16rem;
+  color: #5b6b73;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.farm-portal .metrics-outcome-facts.fp-facts-no-delta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.farm-portal .metrics-chapter-trend.no-delta {
+  grid-template-columns: minmax(150px, 1fr) minmax(70px, 0.7fr) 57px;
+}
+
+.farm-portal .metrics-action-list > li.is-thin-action .metrics-action-meta b {
+  color: #475569;
+  font-weight: 700;
+}
+
 .farm-portal .metrics-kpi-strip,
 .farm-portal .metrics-overview-grid {
   animation: fp-fade-up 0.55s ease 0.12s both;

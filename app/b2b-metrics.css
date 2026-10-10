@@ -995,6 +995,7 @@ html.dark .b2b-alert-card p {
 .metrics-kpi-context { max-width: 45%; color: #73838a; font-size: 10px; line-height: 1.35; text-align: right; }
 .metrics-chapter-trend-list { display: grid; }
 .metrics-chapter-trend { display: grid; grid-template-columns: minmax(150px,1fr) minmax(70px,.7fr) 57px 86px; align-items: center; gap: 10px; min-height: 37px; border-top: 1px solid #eef2f3; }
+.metrics-chapter-trend.no-delta { grid-template-columns: minmax(150px,1fr) minmax(70px,.7fr) 57px; }
 .metrics-chapter-trend-name { display: flex; min-width: 0; align-items: baseline; gap: 6px; white-space: nowrap; }
 .metrics-chapter-trend-name strong { color: #176a7d; font-size: 10px; }
 .metrics-chapter-trend-name span { overflow: hidden; color: #344d55; font-size: 10px; text-overflow: ellipsis; }
