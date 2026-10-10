@@ -1,6 +1,6 @@
 'use client';
 import {useEffect, useState} from 'react';
-import {farmKey} from '@/lib/model';
+import {canonicalFarmName, farmKey} from '@/lib/model';
 import {clientPortalEntryUrl} from '@/lib/portal-origin';
 import {
   KeyRound,
@@ -42,9 +42,21 @@ export function InvitationManagerModal({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{text: string; error?: boolean} | null>(null);
 
-  const exactFarms = Array.from(new Set(visits.map(v => v.farm.trim()).filter(Boolean))).sort((a, b) =>
-    a.localeCompare(b, 'es')
-  );
+  const exactFarms = (() => {
+    const byKey = new Map<string, {name: string; reviewed: boolean}>();
+    for (const visit of visits) {
+      const name = canonicalFarmName(visit.farm);
+      if (!name) continue;
+      const key = farmKey(name);
+      const reviewed = Boolean(visit.reviewed && visit.id);
+      const current = byKey.get(key);
+      if (!current) byKey.set(key, {name, reviewed});
+      else if (!current.reviewed && reviewed) byKey.set(key, {name, reviewed: true});
+    }
+    return Array.from(byKey.values())
+      .map(item => item.name)
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  })();
   const farmListKey = exactFarms.join('\u0000');
   const clientUrl = clientPortalEntryUrl();
 
@@ -86,9 +98,6 @@ export function InvitationManagerModal({
   const reviewedFor = (farm: string) =>
     visits.filter(visit => farmKey(visit.farm) === farmKey(farm) && visit.reviewed && Boolean(visit.id)).length;
   const reviewedForSelected = selectedFarm ? reviewedFor(selectedFarm) : 0;
-  const nameVariants = selectedFarm
-    ? exactFarms.filter(name => name !== selectedFarm && farmKey(name) === farmKey(selectedFarm))
-    : [];
 
   if (!isOpen) return null;
 
@@ -318,11 +327,6 @@ export function InvitationManagerModal({
             {selectedFarm && reviewedForSelected > 0 && (
               <p className="mt-3 mb-0 text-xs text-slate-700 dark:text-slate-300 border border-[#007fa3]/35 bg-white dark:bg-slate-900 rounded-lg px-3 py-2">
                 La invitación de <strong>«{selectedFarm}»</strong> muestra los informes de esa finca aunque el nombre publicado solo cambie en mayúsculas o espacios. Hay {reviewedForSelected} informe{reviewedForSelected === 1 ? '' : 's'} revisado{reviewedForSelected === 1 ? '' : 's'}. El cliente entra en <strong>{clientUrl}</strong> después de «Publicar en línea».
-              </p>
-            )}
-            {nameVariants.length > 0 && (
-              <p className="mt-3 mb-0 text-xs font-semibold text-[#7a5200] border border-[#f2a900]/70 bg-[#fff8e8] rounded-lg px-3 py-2">
-                Hay otro nombre parecido ({nameVariants.map(name => `«${name}»`).join(', ')}). El portal los trata como la misma finca. Invita con un solo nombre para no confundir al cliente.
               </p>
             )}
           </div>
