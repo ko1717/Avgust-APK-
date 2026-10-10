@@ -1,0 +1,29 @@
+name: Firebase Hosting deploy
+
+on:
+  push:
+    branches:
+      - codex/nuevas-metricas-mipe
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build for Firebase Hosting
+        run: npm run build:firebase
+
+      - name: Deploy hosting + Firestore
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npx firebase deploy --only hosting,firestore --project avgustscare360 --non-interactive
