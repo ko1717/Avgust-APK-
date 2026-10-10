@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const DEFAULT_FIREBASE_HOSTING_ORIGIN = 'https://gen-lang-client-0175464290.web.app';
+const DEFAULT_FIREBASE_HOSTING_ORIGIN = 'https://avgustscare360.web.app';
 
 /** Mirror of lib/portal-origin.ts for unit coverage without a TS loader. */
 function getPortalOrigin(env = {}, windowOrigin = '') {
@@ -42,7 +42,7 @@ test('portal origin uses Firebase Hosting when env and window are unset', () => 
 
 test('portal origin keeps production Hosting origin as-is', () => {
   assert.equal(
-    getPortalOrigin({}, 'https://gen-lang-client-0175464290.web.app'),
-    'https://gen-lang-client-0175464290.web.app'
+    getPortalOrigin({}, 'https://avgustscare360.web.app'),
+    'https://avgustscare360.web.app'
   );
 });

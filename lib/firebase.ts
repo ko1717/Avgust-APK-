@@ -268,7 +268,7 @@ export async function ensurePortalAuth(): Promise<User | null> {
       lastPortalAuthWarning =
         'Auth anónimo desactivado en Firebase. Un administrador debe habilitar Authentication → Sign-in method → Anonymous. El portal puede seguir con reglas públicas de invitación.';
       console.error(
-        '[CARE360 portal] Firebase Anonymous Auth is disabled. Enable Authentication → Sign-in method → Anonymous in project gen-lang-client-0175464290.'
+        '[CARE360 portal] Firebase Anonymous Auth is disabled. Enable Authentication → Sign-in method → Anonymous in project avgustscare360.'
       );
     } else if (code === 'auth/unauthorized-domain') {
       lastPortalAuthWarning =

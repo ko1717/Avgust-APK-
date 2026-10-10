@@ -10,7 +10,7 @@
     "dev:portal": "vinext dev --host 0.0.0.0 -p 3000",
     "build": "node build.js",
     "build:web": "vinext build",
-    "build:firebase": "NEXT_PUBLIC_PORTAL_ORIGIN=${NEXT_PUBLIC_PORTAL_ORIGIN:-https://gen-lang-client-0175464290.web.app} vinext build && node scripts/prepare-firebase-hosting.mjs",
+    "build:firebase": "NEXT_PUBLIC_PORTAL_ORIGIN=${NEXT_PUBLIC_PORTAL_ORIGIN:-https://avgustscare360.web.app} vinext build && node scripts/prepare-firebase-hosting.mjs",
     "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting,firestore",
     "firebase:deploy": "npm run deploy:firebase",
     "firebase:deploy:hosting": "npm run build:firebase && firebase deploy --only hosting",

@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "database": "ai-studio-avgustapk-f7ec9dbe-9fd2-41ac-9388-c71e7384bb8a",
+    "database": "(default)",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
