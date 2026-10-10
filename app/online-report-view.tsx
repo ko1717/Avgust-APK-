@@ -16,9 +16,9 @@ import {catalog,metricStatusLabels,type MetricStatus} from '@/lib/model';
 
 function StatusBadge({value}:{value:string}){
   const labels:Record<string,string>={
-    healthy:'Saludable (≥95%)',
-    acceptable:'Aceptable (85-94%)',
-    critical:'Crítico (<85%)',
+    healthy:'Saludable (95-100%)',
+    acceptable:'Alerta (80-94%)',
+    critical:'Vulnerable (<80%)',
     pending:'Sin evaluar'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value as MetricStatus] || value}</span>;
@@ -51,7 +51,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
 
   const shareWhatsApp=()=>{
     if(!report) return;
-    const msg=`*AVGUST CARE 360 · Informe Técnico en Línea*\nFinca: *${report.farm}*\nFecha: ${report.date}\nÍndice MIPE: *${report.score}%* (${report.status==='healthy'?'Saludable':report.status==='acceptable'?'Aceptable':'Crítico'})\nHallazgos: ${report.findingsCount}\n\nPuedes consultar el informe digital completo y sus evidencias en el siguiente enlace:\n${shareUrl}`;
+    const msg=`*AVGUST CARE 360 · Informe Técnico en Línea*\nFinca: *${report.farm}*\nFecha: ${report.date}\nÍndice MIPE: *${report.score}%* (${report.status==='healthy'?'Saludable':report.status==='acceptable'?'Alerta':'Vulnerable'})\nHallazgos: ${report.findingsCount}\n\nPuedes consultar el informe digital completo y sus evidencias en el siguiente enlace:\n${shareUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,'_blank');
   };
 
@@ -159,7 +159,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
                 <StatusBadge value={report.status}/>
               </div>
               <span className="text-[11px] text-slate-500 mt-1">
-                {report.score!==null && report.score>=95 ? 'Meta Saludable alcanzada' : report.score!==null && report.score>=85 ? 'Nivel Aceptable (estándar ≥85%)' : 'Estado Crítico (requiere intervención)'}
+                {report.score!==null && report.score>=95 ? 'Meta Saludable alcanzada' : report.score!==null && report.score>=80 ? 'En alerta (80-94%)' : 'Estado vulnerable (requiere intervención)'}
               </span>
             </div>
           </div>

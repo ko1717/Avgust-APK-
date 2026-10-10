@@ -68,6 +68,7 @@ export function FirebaseAuthBar({onSyncNow: _onSyncNow}:{onSyncNow?:()=>void} = 
             onClick={() => setShowModal(true)}
             className="flex items-center gap-1.5 bg-[#007fa3]/10 hover:bg-[#007fa3]/20 text-[#007fa3] dark:text-[#38bdf8] border border-[#007fa3]/30 px-2.5 py-1 rounded-full font-bold text-[11px] transition-all cursor-pointer shadow-xs"
             title="Conectar Firebase Auth para sincronizar visitas e informes en tiempo real"
+            aria-label="Acceso nube"
           >
             <LogIn size={13} />
             <span>Acceso Nube / Admin</span>

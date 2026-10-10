@@ -5,7 +5,7 @@ import {Tabs,TabsList,TabsTrigger,TabsContent} from '@/components/ui/tabs';
 import {Checkbox} from '@/components/ui/checkbox';
 import {RadioGroup,RadioGroupItem} from '@/components/ui/radio-group';
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/ui/select';
-import {blankVisit,todayDate,catalog,metrics,issues,measurementGroups,measurementLabels,findings,overdue,farmKey,recommendationDraft,MAX_PHOTOS,MAX_PHOTO_BYTES,type Visit,type Answer} from '@/lib/model';
+import {blankVisit,todayDate,catalog,metrics,issues,measurementGroups,measurementLabels,farmKey,recommendationDraft,MAX_PHOTOS,MAX_PHOTO_BYTES,type Visit,type Answer} from '@/lib/model';
 import {publishOnlineReport,saveVisitRealtime,subscribeToVisits} from '@/lib/firebase';
 import {StandaloneOnlineReport} from './online-report-view';
 import {FirebaseAuthBar} from './firebase-auth-bar';

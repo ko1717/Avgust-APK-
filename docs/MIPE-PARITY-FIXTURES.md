@@ -6,7 +6,7 @@ Estas pruebas congelan casos de referencia del motor oficial existente en `enhan
 1. Los 37 criterios en SI producen 100 puntos.
 2. Los 37 criterios en NO producen 0 puntos.
 3. Una auditoría parcial de capítulos 2 y 5 normaliza el resultado únicamente sobre el peso auditado.
-4. Los pesos oficiales permanecen 5/30/5/30/30.
+4. Los pesos oficiales permanecen 5/25/10/30/30.
 
 ## Resultado esperado del fixture parcial
 Con capítulo 2 = 50% y capítulo 5 = 66,7%:

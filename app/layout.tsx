@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import './metric-chapter-details.css';
 export const metadata: Metadata = {
   title: 'AVGUST CARE 360',
   description: 'Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en fincas de flores con registro de visitas técnicas, auditoría, mediciones y generación de informes.',

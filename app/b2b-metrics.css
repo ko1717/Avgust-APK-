@@ -959,6 +959,8 @@ html.dark .b2b-alert-card p {
 .metrics-outcome-facts strong { color: #172b34; font-weight: 800; }
 .metrics-outcome-facts strong.positive, .metrics-podium-delta.positive { color: #188044; }
 .metrics-outcome-facts strong.negative, .metrics-podium-delta.negative { color: #be123c; }
+.metrics-outcome-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.metrics-podium-place { display: inline-flex; min-width: 1.6em; color: #64748b; font-variant-numeric: tabular-nums; font-weight: 800; }
 .metrics-overview-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; align-items: start; }
 .metrics-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .metrics-section-heading h3 { margin-top: 4px; }

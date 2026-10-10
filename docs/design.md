@@ -31,9 +31,9 @@ La paleta sigue las pautas oficiales de marca para el sector agroquímico y flor
 | `--avgust-cyan-light` | `#00b5e2` | **Cian Fitosanitario / Agua** | Cumplimiento de criterios, gradientes de fondo sutiles, detalles analíticos. |
 | `--avgust-green` | `#78be20` | **Verde Agro Avgust (Salud Vegetal)** | Cumplimiento Óptimo (≥ 95%), Dosificación (Cap 2), cero hallazgos. |
 | `--avgust-green-dark` | `#15803d` / `#5c9914` | **Verde Bosque / Éxito** | Texto de estados óptimos y etiquetas de meta en gráficas. |
-| `--avgust-gold` | `#f2a900` | **Oro Cosecha Avgust (Advertencia)** | Rango Aceptable (85-94%), Transporte (Cap 3), desviaciones no críticas. |
-| `--avgust-gold-dark` | `#b45309` | **Ámbar / Alerta** | Texto de advertencias, líneas de umbral de 85%. |
-| `--avgust-red` | `#dc2626` | **Riesgo Crítico / No Conformidad** | Puntuaciones < 85%, desviaciones recurrentes, respuestas "No". |
+| `--avgust-gold` | `#f2a900` | **Oro Cosecha Avgust (Advertencia)** | Rango Alerta (80-94%), Transporte (Cap 3), desviaciones no críticas. |
+| `--avgust-gold-dark` | `#b45309` | **Ámbar / Alerta** | Texto de advertencias, líneas de umbral de 80%. |
+| `--avgust-red` | `#dc2626` | **Riesgo Crítico / No Conformidad** | Puntuaciones < 80%, desviaciones recurrentes, respuestas "No". |
 | `--avgust-slate-900` | `#0f172a` | **Neutro Primario / Títulos** | Títulos de tarjetas, cifras numéricas tabulares principales. |
 | `--avgust-slate-500` | `#64748b` | **Neutro Secundario / Metadatos** | Subtítulos de contexto, etiquetas de ejes, textos descriptivos. |
 | `--avgust-bg-surface` | `#ffffff` a `#fbfcfd` | **Superficie de Tarjeta** | Fondo limpio de tarjetas con micro-gradiente vertical. |
@@ -69,10 +69,10 @@ Las 5 tarjetas maestras del módulo de métricas se estructuran según los sigui
 │ ~~~~~~~ SPARKLINE INTERACTIVO (Recharts Area/Line) ~~~~~~~~ │
 ├─────────────────────────────────────────────────────────────┤
 │ Interpretación Ejecutiva:                                   │
-│ "Nivel Aceptable (85-94%): finca bajo control operativo;   │
+│ "Nivel Alerta (80-94%): finca bajo control operativo;   │
 │ subsanar desviaciones abiertas para consolidar el 95%."     │
 ├─────────────────────────────────────────────────────────────┤
-│ ━━━━━━━ Barra de progreso con marcas de umbral (85% y 95%) ━│
+│ ━━━━━━━ Barra de progreso con marcas de umbral (80% y 95%) ━│
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -82,7 +82,7 @@ Las 5 tarjetas maestras del módulo de métricas se estructuran según los sigui
    - *Categoría:* `PROGRAMA OFICIAL MIPE` (Color: Cian `#007fa3`, Icono: `ShieldCheck`).
    - *Valor Principal:* Porcentaje global ponderado (ej. `92.0%`) y desglose `(puntos ganados / 100 pts oficiales)`.
    - *Sparkline:* Histórico temporal del score por visita.
-   - *Interpretación:* Clasificación normativa clara (Óptimo $\ge$ 95%, Aceptable 85-94%, Crítico < 85%).
+   - *Interpretación:* Clasificación normativa clara (Saludable $\ge$ 95%, Alerta 80-94%, Vulnerable < 80%).
    - *Interacción:* Clic enfoca la gráfica principal en `score`.
 
 2. **Tarjeta 2: Trayectoria Temporal (Variación vs Línea Base)**
@@ -123,15 +123,15 @@ El gráfico interactivo (`AreaChart` con Recharts) es el corazón del análisis 
 - **Ejes Limpios y Asépticos:** Eje X sin líneas superfluas (`tickLine={false}`, `axisLine={false}`), etiquetas de fecha formateadas en español (`dd/mmm/aaaa`).
 - **Líneas de Referencia Normativa Fijas:**
   - `Meta Óptima Oficial MIPE (≥ 95%)`: Línea segmentada en verde oscuro (`#16a34a`), grosor 2px, texto superior derecho.
-  - `Umbral Aceptable (85%)`: Línea segmentada en ámbar (`#d97706`), grosor 1.5px, texto inferior derecho.
+  - `Umbral de alerta (80%)`: Línea segmentada en ámbar (`#d97706`), grosor 1.5px, texto inferior derecho.
 - **Selector de Rango Rápido Segmentado:** Botones de cambio de vista (*Ambos Índices, Solo Índice MIPE, 5 Procesos MIPE, Solo Conformidad, Hallazgos, Cobertura*) con estado activo en blanco puro y sombra suave.
 - **Tooltip Técnico Contextual (`CustomTooltip`):**
   - Fondo oscuro de alto contraste (`#0f172a`).
   - Muestra la fecha exacta, estado general con insignia de color, Índice MIPE, Puntos Ganados, Cumplimiento de Criterios, Cobertura y Hallazgos.
   - Si está en vista de *5 Procesos*, muestra el desglose exacto de cada capítulo con sus pesos:
     - 1. Almacén (5%)
-    - 2. Dosificación (30%)
-    - 3. Transporte (5%)
+    - 2. Dosificación (25%)
+    - 3. Transporte (10%)
     - 4. Mezclas (30%)
     - 5. Aplicación (30%)
 

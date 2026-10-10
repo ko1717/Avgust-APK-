@@ -40,4 +40,4 @@ The official MIPE score remains the **methodological score (0–100 points)**. M
 
 **Operational:** Audit completeness, audit velocity, data quality.
 
-This structure is deliberately separate from the existing official weighting of 5/30/5/30/30.
+This structure is deliberately separate from the existing official weighting of 5/25/10/30/30.

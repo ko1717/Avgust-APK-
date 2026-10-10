@@ -309,13 +309,13 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                 Índice MIPE Actual (Última Visita)
               </span>
               <div className="flex items-baseline justify-center gap-1 my-1">
-                <span className={`text-4xl md:text-5xl font-black ${latestScore === null ? 'text-slate-400' : latestScore >= 95 ? 'text-emerald-400' : latestScore >= 85 ? 'text-amber-400' : 'text-rose-400'}`}>
+                <span className={`text-4xl md:text-5xl font-black ${latestScore === null ? 'text-slate-400' : latestScore >= 95 ? 'text-emerald-400' : latestScore >= 80 ? 'text-amber-400' : 'text-rose-400'}`}>
                   {latestScore === null ? '—' : `${latestScore}%`}
                 </span>
               </div>
               <div className="mt-2">
-                <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${latestScore === null ? 'bg-slate-800 text-slate-400 border-slate-700' : latestScore >= 95 ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50' : latestScore >= 85 ? 'bg-amber-950/80 text-amber-300 border-amber-500/50' : 'bg-rose-950/80 text-rose-300 border-rose-500/50'}`}>
-                  {latestScore === null ? 'Sin evaluación' : latestScore >= 95 ? '● Saludable (≥95%)' : latestScore >= 85 ? '● Aceptable (85-94%)' : '● Crítico (<85%)'}
+                <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${latestScore === null ? 'bg-slate-800 text-slate-400 border-slate-700' : latestScore >= 95 ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50' : latestScore >= 80 ? 'bg-amber-950/80 text-amber-300 border-amber-500/50' : 'bg-rose-950/80 text-rose-300 border-rose-500/50'}`}>
+                  {latestScore === null ? 'Sin evaluación' : latestScore >= 95 ? '● Saludable (≥95%)' : latestScore >= 80 ? '● Alerta (80-94%)' : '● Vulnerable (<80%)'}
                 </span>
               </div>
               <span className="text-[10px] text-slate-500 block mt-2">
@@ -406,11 +406,11 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-full bg-[#d97706] inline-block"></span>
-                    <span className="text-slate-300">Aceptable 85-94%</span>
+                    <span className="text-slate-300">Alerta 80-94%</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-full bg-[#dc2626] inline-block"></span>
-                    <span className="text-slate-300">Crítico &lt;85%</span>
+                    <span className="text-slate-300">Vulnerable &lt;80%</span>
                   </span>
                 </div>
               </div>
@@ -447,7 +447,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                           }}
                         />
                         <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value: 'Meta Saludable (≥95%)', fill: '#4ade80', fontSize: 10, position: 'insideTopRight'}}/>
-                        <ReferenceLine y={85} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value: 'Umbral Aceptable (85%)', fill: '#fbbf24', fontSize: 10, position: 'insideBottomRight'}}/>
+                        <ReferenceLine y={80} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value: 'Umbral de alerta (80%)', fill: '#fbbf24', fontSize: 10, position: 'insideBottomRight'}}/>
                         <Area type="monotone" name="Índice MIPE" dataKey="score" stroke="#00b5e2" strokeWidth={3} fillOpacity={1} fill="url(#portalColorMipe)" dot={{r: 5, fill: '#00b5e2', strokeWidth: 2, stroke: '#ffffff'}} activeDot={{r: 7}}/>
                       </AreaChart>
                     </ResponsiveContainer>
@@ -484,7 +484,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                   ? 'bg-slate-800 text-slate-400 border-slate-700'
                   : score >= 95
                     ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
-                    : score >= 85
+                    : score >= 80
                       ? 'bg-amber-950/80 text-amber-300 border-amber-500/50'
                       : 'bg-rose-950/80 text-rose-300 border-rose-500/50';
 
@@ -502,7 +502,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                           Auditoría del {visit.date}
                         </strong>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
-                          {score === null ? 'Sin evaluación' : score >= 95 ? 'Saludable (≥95%)' : score >= 85 ? 'Aceptable (85-94%)' : 'Crítico (<85%)'}
+                          {score === null ? 'Sin evaluación' : score >= 95 ? 'Saludable (≥95%)' : score >= 80 ? 'Alerta (80-94%)' : 'Vulnerable (<80%)'}
                         </span>
                       </div>
 
@@ -549,7 +549,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                 Comportamiento por Proceso Normativo MIPE
               </h3>
               <p className="text-xs text-slate-400 m-0 mt-0.5">
-                Ponderación oficial: Almacén (5%), Dosificación (30%), Transporte (5%), Mezclas (30%) y Aplicación (30%).
+                Ponderación oficial: Almacén (5%), Dosificación (25%), Transporte (10%), Mezclas (30%) y Aplicación (30%).
               </p>
             </div>
 
@@ -574,7 +574,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                     </div>
                     <strong className="text-sm font-bold text-white block">{proc.title}</strong>
                     <div className="my-2">
-                      <span className={`text-2xl font-black ${score === null ? 'text-slate-500' : score >= 95 ? 'text-emerald-400' : score >= 85 ? 'text-amber-400' : 'text-rose-400'}`}>
+                      <span className={`text-2xl font-black ${score === null ? 'text-slate-500' : score >= 95 ? 'text-emerald-400' : score >= 80 ? 'text-amber-400' : 'text-rose-400'}`}>
                         {score === null ? '—' : `${score}%`}
                       </span>
                     </div>

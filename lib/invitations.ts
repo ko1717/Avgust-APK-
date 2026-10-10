@@ -242,7 +242,7 @@ El equipo técnico de AVGUST te ha habilitado acceso exclusivo al servidor en l�
 ${url}
 
 En este portal podrás:
-• Consultar el semáforo y estatus oficial MIPE (Saludable ≥95%, Aceptable 85-94%, Crítico <85%)
+• Consultar el semáforo y estatus oficial MIPE (Saludable 95-100%, Alerta 80-94%, Vulnerable <80%)
 • Ver la evolución de todas las visitas técnicas sin imprimir papel
 • Revisar las recomendaciones y compromisos acordados
 • Descargar los informes en Word o PDF

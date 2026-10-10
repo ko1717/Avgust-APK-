@@ -71,7 +71,7 @@ Guía técnica integral, bitácora de arquitectura y documento de referencia par
 - [ ] **Comparación Temporal Avanzada**: Permitir la selección arbitraria de dos visitas cualesquiera para cálculo instantáneo de delta por criterio.
 
 ### 4. Documentación para Usuarios Finales
-- [ ] Elaborar guía visual del modelo de evaluación MIPE ponderado (5% Almacén, 30% Dosificación, 5% Transporte, 30% Mezclas, 30% Aplicación).
+- [ ] Elaborar guía visual del modelo de evaluación MIPE ponderado (5% Almacén, 25% Dosificación, 10% Transporte, 30% Mezclas, 30% Aplicación).
 - [ ] Instrucciones de creación y restauración de archivos de respaldo `.care360`.
 
 ---

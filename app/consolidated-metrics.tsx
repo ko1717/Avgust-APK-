@@ -278,8 +278,8 @@ export default function ConsolidatedMetrics({visits,loading,onImport}:{visits:Vi
             <section className="metrics-podium-panel">
               <div className="metrics-section-heading"><div><div className="metrics-section-kicker">Cambio entre aseguramientos comparables</div><h3>Podios de evolución</h3></div><span className="metrics-note">Mismo alcance de capítulos</span></div>
               <div className="metrics-podium-columns">
-                <div className="metrics-podium-group improve"><h4><TrendingUp size={17}/> Mejoras</h4>{improvingFarms.length?improvingFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>+{farm.recentDelta} pts</strong></div>):<p>No hay mejoras comparables en el periodo.</p>}</div>
-                <div className="metrics-podium-group decline"><h4><TrendingDown size={17}/> Desmejoras</h4>{decliningFarms.length?decliningFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span>{['🥇','🥈','🥉'][index]} {farm.farm}</span><strong>{farm.recentDelta} pts</strong></div>):<p>No hay desmejoras comparables en el periodo.</p>}</div>
+                <div className="metrics-podium-group improve"><h4><TrendingUp size={17}/> Mejoras</h4>{improvingFarms.length?improvingFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span><b className="metrics-podium-place">{String(index+1).padStart(2,'0')}</b> {farm.farm}</span><strong>+{farm.recentDelta} pts</strong></div>):<p>No hay mejoras comparables en el periodo.</p>}</div>
+                <div className="metrics-podium-group decline"><h4><TrendingDown size={17}/> Desmejoras</h4>{decliningFarms.length?decliningFarms.map((farm,index)=><div className="metrics-podium-farm" key={farm.key}><span><b className="metrics-podium-place">{String(index+1).padStart(2,'0')}</b> {farm.farm}</span><strong>{farm.recentDelta} pts</strong></div>):<p>No hay desmejoras comparables en el periodo.</p>}</div>
               </div>
             </section>
 

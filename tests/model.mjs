@@ -69,7 +69,7 @@ validate({...v,chapters:[],serviceKind:'training',conclusion:'Capacitación real
 assert.throws(()=>validate({...v,chapters:[],serviceKind:'training',conclusion:'',reviewed:true}),/422/);
 console.log('PASS: proposals never overdue and activity reports require results');
 const historical={...v,chapters:[1],answers:Object.fromEntries(catalog[0].items.map(q=>[q.id,{value:'SI',observation:'',recommendation:''}]))};
-assert.equal(metrics(historical).score,100);assert.equal(metricStatus(85),'acceptable');assert.equal(metricStatus(84),'critical');assert.equal(metricStatus(95),'healthy');
+assert.equal(metrics(historical).score,100);assert.equal(metricStatus(85),'acceptable');assert.equal(metricStatus(80),'acceptable');assert.equal(metricStatus(79),'critical');assert.equal(metricStatus(95),'healthy');
 const prior=visitMetric({...historical,date:'2025-01-20'}),current=visitMetric({...historical,date:'2026-01-20',answers:{...historical.answers,'1.4':{value:'NO',observation:'Inventario atrasado',recommendation:'Actualizar'}}});
 assert.equal(metricTrend(prior,current),'declined');
 console.log('PASS: official chapters one and two plus farm metric status and trend');
@@ -81,7 +81,7 @@ const history=farmMetricHistory([currentFarm,initial,followup],initial.farm);
 assert.equal(history.records.length,3);assert.equal(history.latest?.score,50);assert.equal(history.latest?.weightedScore,50);assert.equal(history.latest?.weightedCoveragePct,5);assert.equal(history.latest?.evaluatedChapters,1);assert.equal(history.trend,'declined');assert.equal(history.delta,-50);assert.equal(history.yearly.length,3);assert.equal(history.problems.find(p=>p.id==='1.2')?.occurrences,2);assert.equal(history.chapters[0].findings,2);
 const weightedComparison={...historical,farm:'Finca Ponderada',chapters:[1,2],answers:{...Object.fromEntries(catalog[0].items.map(q=>[q.id,{value:'SI'}])),...Object.fromEntries(catalog[1].items.map(q=>[q.id,{value:'NO'}]))}};
 const supplemental=farmMetricHistory([weightedComparison],weightedComparison.farm).latest;
-assert.equal(supplemental?.score,17);assert.equal(supplemental?.weightedScore,16.7);assert.equal(supplemental?.criteriaCompliance,33.3);assert.equal(supplemental?.weightedCoveragePct,30);
+assert.equal(supplemental?.score,17);assert.equal(supplemental?.weightedScore,16.7);assert.equal(supplemental?.criteriaCompliance,33);assert.equal(supplemental?.weightedCoveragePct,30);
 await exportFarmMetricsWord(history);assert.ok(captured.size>3000);
 const consolidated=consolidatedMetricAnalysis([initial,followup,currentFarm,{...currentFarm,id:'44444444-4444-4444-4444-444444444444',farm:'Otra finca',date:'2026-09-01',serviceKind:'training'}]);
 assert.equal(consolidated.records.length,3);assert.equal(consolidated.farms,1);assert.equal(consolidated.items.find(item=>item.id==='1.2')?.findings,2);assert.equal(consolidated.chapters[0].findings,3);assert.equal(consolidated.matrix.length,12);

@@ -1,6 +1,6 @@
 'use client';
 import {useMemo,useState} from 'react';
-import {BarChart3 as BarChartIcon,FileText as FileTextIcon,Printer as PrinterIcon,Building2 as Building2Icon,Info as InfoIcon} from 'lucide-react';
+import {BarChart3 as BarChartIcon,ExternalLink as ExternalLinkIcon,FileText as FileTextIcon,Printer as PrinterIcon,Building2 as Building2Icon,Info as InfoIcon} from 'lucide-react';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {actionLabels,CHAPTER_WEIGHTS,farmKey,findings,sameChapterScope,metricStatusDescriptions,metricStatusLabels,type MetricStatus,type Visit} from '@/lib/model';
 import {exportFarmMetricsWord} from '@/lib/export-metrics-word';
@@ -218,6 +218,11 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                 <h3>{data.farm}</h3>
                 <StatusBadge value={current.status}/>
                 <p className="metrics-outcome-copy">{metricStatusDescriptions[current.status]}</p>
+                <div className="metrics-outcome-actions no-print">
+                  <button type="button" className="b2b-btn b2b-btn-secondary" onClick={()=>onOpen(current.visit)}>
+                    <ExternalLinkIcon size={16}/> Abrir informe
+                  </button>
+                </div>
               </div>
               <div className="metrics-outcome-score" aria-label={`Resultado de aseguramiento ${current.score} por ciento`}>
                 <strong>{current.score}<span>%</span></strong>
