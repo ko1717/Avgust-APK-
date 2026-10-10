@@ -445,21 +445,27 @@
 .fp-lateral-left {
   left: 0;
   background:
-    linear-gradient(90deg, rgba(28, 78, 22, 0.55) 0%, rgba(92, 153, 20, 0.28) 48%, transparent 100%),
-    linear-gradient(180deg, rgba(0, 95, 122, 0.18), transparent 40%, rgba(92, 153, 20, 0.35) 100%),
-    var(--fp-photo-field) left center / cover no-repeat;
-  border-right: 3px solid rgba(120, 190, 32, 0.55);
-  box-shadow: inset -28px 0 48px rgba(20, 70, 18, 0.18);
+    linear-gradient(90deg, rgba(22, 70, 18, 0.42) 0%, rgba(92, 153, 20, 0.22) 42%, rgba(120, 190, 32, 0.08) 78%, transparent 100%),
+    linear-gradient(180deg, rgba(0, 95, 122, 0.12), transparent 38%, rgba(92, 153, 20, 0.28) 100%),
+    var(--fp-photo-field) 18% center / cover no-repeat;
+  border-right: 4px solid rgba(120, 190, 32, 0.72);
+  box-shadow:
+    inset -18px 0 36px rgba(20, 70, 18, 0.16),
+    4px 0 18px rgba(92, 153, 20, 0.12);
+  filter: saturate(1.28) contrast(1.1) brightness(1.03);
 }
 
 .fp-lateral-right {
   right: 0;
   background:
-    linear-gradient(270deg, rgba(28, 78, 22, 0.55) 0%, rgba(92, 153, 20, 0.28) 48%, transparent 100%),
-    linear-gradient(180deg, rgba(0, 95, 122, 0.16), transparent 42%, rgba(120, 190, 32, 0.34) 100%),
-    var(--fp-photo-ornamental) right center / cover no-repeat;
-  border-left: 3px solid rgba(198, 236, 106, 0.45);
-  box-shadow: inset 28px 0 48px rgba(20, 70, 18, 0.18);
+    linear-gradient(270deg, rgba(22, 70, 18, 0.42) 0%, rgba(92, 153, 20, 0.22) 42%, rgba(120, 190, 32, 0.08) 78%, transparent 100%),
+    linear-gradient(180deg, rgba(0, 95, 122, 0.1), transparent 40%, rgba(120, 190, 32, 0.28) 100%),
+    var(--fp-photo-ornamental) 82% center / cover no-repeat;
+  border-left: 4px solid rgba(198, 236, 106, 0.62);
+  box-shadow:
+    inset 18px 0 36px rgba(20, 70, 18, 0.16),
+    -4px 0 18px rgba(92, 153, 20, 0.12);
+  filter: saturate(1.28) contrast(1.1) brightness(1.03);
 }
 
 .fp-lateral-brand {
