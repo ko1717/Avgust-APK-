@@ -2,7 +2,6 @@
 import {useState, useEffect, useMemo} from 'react';
 import {
   ShieldCheck,
-  Building2,
   FileText,
   Download,
   Globe,
@@ -11,7 +10,10 @@ import {
   LogOut,
   Layers,
   Lock,
-  KeyRound
+  KeyRound,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus
 } from 'lucide-react';
 import {
   AreaChart,
@@ -31,10 +33,21 @@ import {
   type FarmInvitation
 } from '@/lib/invitations';
 import {exportWord} from '@/lib/export-word';
-import {farmKey, metrics, type Visit} from '@/lib/model';
+import {
+  catalog,
+  CHAPTER_WEIGHTS,
+  farmKey,
+  metrics,
+  metricStatusLabels,
+  metricTrendLabels,
+  actionLabels,
+  type MetricStatus,
+  type Visit
+} from '@/lib/model';
 import {farmMetricHistory, type FarmMetricAnalysis} from '@/lib/metric-analysis';
 import {ensurePortalAuth, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
 import {StandaloneOnlineReport} from './online-report-view';
+import './farm-portal.css';
 
 type FarmPortalViewProps = {
   initialToken?: string;
@@ -42,24 +55,51 @@ type FarmPortalViewProps = {
   onExitPortal: () => void;
 };
 
+type PortalTab = 'overview' | 'reports' | 'processes' | 'commitments';
+
+const STATUS_CLASS: Record<MetricStatus, string> = {
+  healthy: 'is-healthy',
+  acceptable: 'is-alert',
+  critical: 'is-critical',
+  pending: 'is-pending'
+};
+
+const CHAPTER_BLURBS: Record<number, string> = {
+  1: 'Almacenamiento y rotulado',
+  2: 'Calibración y probetas',
+  3: 'Traslado y contención',
+  4: 'Orden y pre-dilución',
+  5: 'Boquillas, aforo y EPP'
+};
+
+function statusClass(status: MetricStatus | null | undefined) {
+  return STATUS_CLASS[status || 'pending'];
+}
+
+function statusLabel(score: number | null, status?: MetricStatus) {
+  if (score === null || !status || status === 'pending') return 'Sin evaluación';
+  if (status === 'healthy') return 'Saludable (≥95%)';
+  if (status === 'acceptable') return 'Alerta (80-94%)';
+  return 'Vulnerable (<80%)';
+}
+
 export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalViewProps) {
   const [invitation, setInvitation] = useState<FarmInvitation | null>(null);
   const [inputCode, setInputCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'processes' | 'commitments'>('overview');
+  const [activeTab, setActiveTab] = useState<PortalTab>('overview');
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
+  const [cloudSyncedFarm, setCloudSyncedFarm] = useState('');
 
-  // Attempt automatic login from URL token or existing session
   useEffect(() => {
     async function initAuth() {
       setLoading(true);
       setErrorMsg('');
       await ensurePortalAuth();
 
-      // 1. Try URL token if provided
       if (initialToken) {
         const found = await verifyFarmInvitation(initialToken);
         if (found) {
@@ -67,12 +107,10 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
           setClientSession(found);
           setLoading(false);
           return;
-        } else {
-          setErrorMsg('El enlace de invitación no es válido o ha sido revocado. Ingresa tu código manualmente.');
         }
+        setErrorMsg('El enlace de invitación no es válido o ha sido revocado. Ingresa tu código manualmente.');
       }
 
-      // 2. Try stored session
       const stored = getClientSession();
       if (stored) {
         const recheck = await verifyFarmInvitation(stored.code || stored.token);
@@ -89,19 +127,20 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     void initAuth();
   }, [initialToken]);
 
-  // Load and subscribe to the invited farm from Firebase (servidor en línea)
   useEffect(() => {
-    if (!invitation?.farm) {
-      setCloudVisits([]);
-      return;
-    }
+    if (!invitation?.farm) return;
 
     let active = true;
-    void listFarmCloudVisits(invitation.farm).then(list => {
-      if (active && list.length) setCloudVisits(list);
+    const farm = invitation.farm;
+    void listFarmCloudVisits(farm).then(list => {
+      if (!active) return;
+      if (list.length) setCloudVisits(list);
+      setCloudSyncedFarm(farm);
+    }).catch(() => {
+      if (active) setCloudSyncedFarm(farm);
     });
 
-    const unsubscribe = subscribeToFarmVisits(invitation.farm, list => {
+    const unsubscribe = subscribeToFarmVisits(farm, list => {
       if (!active) return;
       setCloudVisits(current => {
         const map = new Map(current.map(item => [item.id, item]));
@@ -110,6 +149,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         }
         return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
       });
+      setCloudSyncedFarm(farm);
     });
 
     return () => {
@@ -118,7 +158,9 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     };
   }, [invitation?.farm]);
 
-  // Filter visits belonging STRICTLY to the invited farm (local props + Firebase cloud)
+  const cloudFarm = invitation?.farm || '';
+  const cloudLoading = Boolean(cloudFarm) && cloudSyncedFarm !== cloudFarm;
+
   const farmVisits = useMemo(() => {
     if (!invitation) return [];
     const targetKey = farmKey(invitation.farm);
@@ -131,18 +173,19 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [invitation, visits, cloudVisits]);
 
-  // Farm metric history analysis
   const historyAnalysis: FarmMetricAnalysis | null = useMemo(() => {
     if (!invitation || !farmVisits.length) return null;
     return farmMetricHistory(farmVisits, invitation.farm);
   }, [invitation, farmVisits]);
 
-  // Latest visit data
   const latestVisit = farmVisits.at(-1);
   const latestMetrics = latestVisit ? metrics(latestVisit) : null;
   const latestScore = latestMetrics?.score ?? null;
+  const latestStatus = latestMetrics?.status ?? 'pending';
+  const coveragePct = latestMetrics ? Math.round(latestMetrics.auditedWeight * 100) : 0;
+  const trend = historyAnalysis?.trend ?? 'pending';
+  const recentDelta = historyAnalysis?.recentDelta ?? null;
 
-  // Manual code submit
   const handleVerifyCode = async (e: {preventDefault: () => void}) => {
     e.preventDefault();
     if (!inputCode.trim()) return;
@@ -160,7 +203,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         setErrorMsg('Código no encontrado o revocado. Verifica el código con tu técnico de AVGUST.');
       }
     } catch {
-      setErrorMsg('Error al conectar con el servidor de autenticación.');
+      setErrorMsg('Error al conectar con el servidor de autenticación. Intenta de nuevo en unos segundos.');
     } finally {
       setVerifying(false);
     }
@@ -172,7 +215,6 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     onExitPortal();
   };
 
-  // If viewing a single full report
   if (viewingReportId) {
     return (
       <StandaloneOnlineReport
@@ -182,500 +224,580 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     );
   }
 
-  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white text-center">
-        <div className="w-12 h-12 border-4 border-[#007fa3] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <h2 className="text-lg font-bold">Verificando invitación y credenciales del servidor…</h2>
-        <p className="text-xs text-slate-400 mt-1">Conectando con AVGUST Cloud Platform</p>
+      <div className="fp-loading">
+        <div className="fp-spinner" aria-hidden />
+        <h2>Conectando con AVGUST Cloud</h2>
+        <p>Verificando invitación y credenciales del Portal de Finca…</p>
       </div>
     );
   }
 
-  // Security Gate / Login Screen
   if (!invitation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#002f3c] flex flex-col items-center justify-center p-4 text-white">
-        <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-md">
-          {/* Brand */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#007fa3] to-[#78be20] flex items-center justify-center shadow-lg">
-              <ShieldCheck size={28} className="text-white" />
+      <div className="fp-gate">
+        <section className="fp-gate-brand" aria-label="Identidad AVGUST">
+          <div>
+            <div className="fp-gate-logo">
+              <img src="/avgust-logo.svg" alt="AVGUST Crop Protection" />
             </div>
-            <div>
-              <span className="text-xs font-extrabold tracking-widest text-[#78be20] block">AVGUST CARE 360</span>
-              <h1 className="text-xl font-black text-white m-0">Portal de Aseguramiento</h1>
-            </div>
-          </div>
-
-          <div className="text-center mb-6">
-            <h2 className="text-base font-bold text-slate-100">Acceso Exclusivo para Responsables de Finca</h2>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Para consultar los informes técnicos y el historial de tu finca en línea sin imprimir papel, ingresa el código de invitación emitido por tu técnico agrícola AVGUST.
+            <span className="fp-gate-kicker">CARE 360 · Servidor en línea</span>
+            <h1 className="fp-gate-product">
+              Portal de <span>Finca</span>
+            </h1>
+            <p className="fp-gate-lead">
+              Consulta el estado MIPE de tu finca, la evolución por proceso y los informes de
+              aseguramiento sin depender del papel.
             </p>
+            <ul className="fp-gate-points">
+              <li>Índice MIPE con umbrales oficiales: Saludable ≥95%, Alerta 80–94%, Vulnerable &lt;80%.</li>
+              <li>Informes en línea con evidencias y descarga Word cuando lo necesites.</li>
+              <li>Hallazgos, recomendaciones y compromisos visibles para el responsable de finca.</li>
+            </ul>
           </div>
+          <p className="fp-gate-foot">AVGUST · Juntos Crecemos Bien</p>
+        </section>
 
-          {errorMsg && (
-            <div className="mb-4 p-3 bg-rose-950/80 border border-rose-800/80 rounded-xl text-xs text-rose-200 text-center font-medium">
-              {errorMsg}
-            </div>
-          )}
+        <section className="fp-gate-panel">
+          <div className="fp-gate-card">
+            <h2>Acceso con código de invitación</h2>
+            <p>
+              Ingresa el PIN emitido por tu técnico AVGUST para ver solo la información de tu finca.
+            </p>
 
-          <form onSubmit={handleVerifyCode} className="space-y-4">
-            <div>
-              <label htmlFor="portalPinInput" className="block text-xs font-semibold text-slate-300 mb-1 text-center">
-                Código de Invitación (PIN)
-              </label>
-              <div className="relative">
-                <input
-                  id="portalPinInput"
-                  type="text"
-                  placeholder="Ej. MIPE-7482"
-                  value={inputCode}
-                  onChange={e => setInputCode(e.target.value.toUpperCase())}
-                  className="w-full py-3.5 px-4 text-center font-mono text-lg font-bold tracking-widest rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:border-[#78be20] focus:ring-2 focus:ring-[#78be20]/30 outline-hidden uppercase transition-all"
-                  required
-                />
-                <Lock size={16} className="absolute left-4 top-4 text-slate-500 pointer-events-none" />
+            {errorMsg && (
+              <div className="fp-error" role="alert">
+                {errorMsg}
               </div>
-            </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={verifying}
-              className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-[#007fa3] to-[#78be20] hover:from-[#006e8d] hover:to-[#6ba91d] text-white font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <KeyRoundIcon size={16} />
-              {verifying ? 'Validando invitación…' : 'Acceder al Servidor en Línea'}
-            </button>
-          </form>
+            <form onSubmit={handleVerifyCode} className="fp-form">
+              <label htmlFor="portalPinInput">
+                Código de invitación
+                <div className="fp-pin-wrap">
+                  <Lock size={16} aria-hidden />
+                  <input
+                    id="portalPinInput"
+                    type="text"
+                    placeholder="EJ. MIPE-7482"
+                    value={inputCode}
+                    onChange={e => setInputCode(e.target.value.toUpperCase())}
+                    autoComplete="one-time-code"
+                    inputMode="text"
+                    required
+                  />
+                </div>
+              </label>
 
-          <div className="mt-8 pt-6 border-t border-slate-800/80 text-center space-y-3">
-            <p className="text-[11px] text-slate-400">
-              ¿No tienes un código de acceso? Solicítalo directamente a tu técnico comercial o responsable de zona de AVGUST.
-            </p>
-            <div>
-              <button
-                type="button"
-                onClick={onExitPortal}
-                className="text-xs text-slate-400 hover:text-white transition-colors underline"
-              >
+              <button type="submit" className="fp-btn-primary" disabled={verifying}>
+                <KeyRound size={16} aria-hidden />
+                {verifying ? 'Validando…' : 'Entrar al portal'}
+              </button>
+            </form>
+
+            <div className="fp-gate-help">
+              <p>
+                ¿Sin código? Solicítalo a tu técnico comercial o responsable de zona AVGUST.
+              </p>
+              <button type="button" className="fp-link-btn" onClick={onExitPortal}>
                 Volver a la consola de trabajo
               </button>
             </div>
           </div>
-        </div>
+        </section>
       </div>
     );
   }
 
-  // Trajectory chart data across ALL visits
   const trajectoryData = farmVisits.map((v, idx) => {
     const m = metrics(v);
     return {
       index: idx + 1,
       date: v.date,
-      label: `V${idx + 1} (${v.date})`,
+      label: `V${idx + 1}`,
+      fullLabel: `Visita ${idx + 1} · ${v.date}`,
       score: m.score ?? 0,
       compliance: m.criteriaCompliance ?? 0,
       findings: m.findings,
-      responsible: v.responsible
+      responsible: v.responsible,
+      status: m.status
     };
   });
 
+  const TrendIcon = recentDelta === null
+    ? Minus
+    : recentDelta >= 5
+      ? ArrowUpRight
+      : recentDelta <= -5
+        ? ArrowDownRight
+        : Minus;
+
+  const tabs: {id: PortalTab; label: string; icon: typeof TrendingUp}[] = [
+    {id: 'overview', label: 'Estado actual', icon: TrendingUp},
+    {id: 'reports', label: `Informes (${farmVisits.length})`, icon: FileText},
+    {id: 'processes', label: '5 procesos', icon: Layers},
+    {id: 'commitments', label: 'Hallazgos y compromisos', icon: AlertTriangle}
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
-      {/* Executive Topbar */}
-      <header className="bg-slate-950/80 border-b border-slate-800/80 px-6 py-4 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <img src="/avgust-logo.svg" alt="Avgust" className="h-8 brightness-110" />
-          <div className="border-l border-slate-700 pl-3">
-            <span className="text-[10px] font-extrabold tracking-widest text-[#78be20] block">
-              SERVIDOR EN LÍNEA · GESTIÓN CLIENTE
-            </span>
-            <strong className="text-sm font-extrabold text-white flex items-center gap-2">
-              <Building2 size={15} className="text-[#00b5e2]" />
-              {invitation.farm}
-            </strong>
+    <div className="farm-portal">
+      <header className="fp-topbar">
+        <div className="fp-topbar-brand">
+          <img src="/avgust-logo.svg" alt="AVGUST" />
+          <div className="fp-topbar-meta">
+            <small>Portal de Finca · En línea</small>
+            <strong title={invitation.farm}>{invitation.farm}</strong>
           </div>
         </div>
 
-        {/* Verification Chip & Actions */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-full text-xs">
-            <ShieldCheck size={14} className="text-emerald-400" />
-            <span className="text-slate-300">
-              Invitado: <strong className="text-white">{invitation.clientName}</strong>
+        <div className="fp-topbar-actions">
+          <div className="fp-chip is-desktop">
+            <ShieldCheck size={14} aria-hidden />
+            <span>
+              Invitado: <strong>{invitation.clientName}</strong>
             </span>
-            <span className="text-slate-500">• Código {invitation.code}</span>
+            <span aria-hidden>·</span>
+            <span>Código {invitation.code}</span>
           </div>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors"
-            title="Cerrar sesión de invitado"
-          >
-            <LogOut size={14} />
-            <span>Salir</span>
+          <button type="button" className="fp-btn-ghost" onClick={handleLogout} title="Cerrar sesión">
+            <LogOut size={14} aria-hidden />
+            Salir
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
-        {/* Executive Hero Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800/90 to-[#003847]/80 border border-slate-700/80 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            <div className="md:col-span-2 space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
-                <ShieldCheck size={14} />
-                Acceso Verificado por Técnico AVGUST ({invitation.createdBy})
-              </div>
-              <h1 className="text-2xl md:text-3xl font-black text-white m-0 tracking-tight">
-                Aseguramiento MIPE · {invitation.farm}
-              </h1>
-              <p className="text-xs md:text-sm text-slate-300 max-w-2xl leading-relaxed m-0">
-                Consulta los resultados técnicos de tus auditorías, la evolución del estándar normativo y los compromisos de mejora sin recurrir a informes impresos en papel.
-              </p>
-            </div>
-
-            {/* Semaphore Score Card */}
-            <div className="bg-slate-950/90 border border-slate-700/90 rounded-2xl p-5 text-center shadow-lg">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Índice MIPE Actual (Última Visita)
+      <main className="fp-main">
+        <section className="fp-hero" aria-labelledby="fp-hero-title">
+          <div className="fp-hero-copy">
+            <small>
+              <ShieldCheck size={13} aria-hidden />
+              Acceso verificado · Técnico {invitation.createdBy || 'AVGUST'}
+            </small>
+            <h1 id="fp-hero-title">Aseguramiento MIPE</h1>
+            <p>
+              Lee en segundos el estado de tu finca: índice ponderado, cobertura de procesos,
+              hallazgos abiertos y la tendencia frente a la visita anterior.
+            </p>
+            <div className="fp-hero-meta">
+              <span>
+                Finca: <strong>{invitation.farm}</strong>
               </span>
-              <div className="flex items-baseline justify-center gap-1 my-1">
-                <span className={`text-4xl md:text-5xl font-black ${latestScore === null ? 'text-slate-400' : latestScore >= 95 ? 'text-emerald-400' : latestScore >= 80 ? 'text-amber-400' : 'text-rose-400'}`}>
-                  {latestScore === null ? '—' : `${latestScore}%`}
-                </span>
-              </div>
-              <div className="mt-2">
-                <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${latestScore === null ? 'bg-slate-800 text-slate-400 border-slate-700' : latestScore >= 95 ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50' : latestScore >= 80 ? 'bg-amber-950/80 text-amber-300 border-amber-500/50' : 'bg-rose-950/80 text-rose-300 border-rose-500/50'}`}>
-                  {latestScore === null ? 'Sin evaluación' : latestScore >= 95 ? '● Saludable (≥95%)' : latestScore >= 80 ? '● Alerta (80-94%)' : '● Vulnerable (<80%)'}
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-500 block mt-2">
-                Fecha del informe: {latestVisit?.date || 'Sin visitas'}
+              <span>
+                Última visita:{' '}
+                <strong>{latestVisit?.date || (cloudLoading ? 'Cargando…' : 'Sin informes')}</strong>
+              </span>
+              <span>
+                Tendencia:{' '}
+                <strong>
+                  {metricTrendLabels[trend]}
+                  {recentDelta !== null ? ` (${recentDelta > 0 ? '+' : ''}${recentDelta} pts)` : ''}
+                </strong>
               </span>
             </div>
           </div>
+
+          <div className={`fp-score ${statusClass(latestStatus)}`} aria-live="polite">
+            <span className="fp-score-label">Índice MIPE actual</span>
+            <span className={`fp-score-value farm-portal-tabular ${statusClass(latestStatus)}`}>
+              {latestScore === null ? '—' : `${latestScore}%`}
+            </span>
+            <span className={`fp-status ${statusClass(latestStatus)}`}>
+              {statusLabel(latestScore, latestStatus)}
+            </span>
+            <span className="fp-score-date">
+              {latestVisit
+                ? `Informe del ${latestVisit.date} · Resp. ${latestVisit.responsible}`
+                : cloudLoading
+                  ? 'Sincronizando informes en la nube…'
+                  : 'Aún no hay visitas revisadas para esta finca'}
+            </span>
+          </div>
+        </section>
+
+        <div className="fp-snapshot" aria-label="Resumen operativo">
+          <div className="fp-snapshot-item">
+            <span>Auditorías</span>
+            <strong className="farm-portal-tabular">{farmVisits.length}</strong>
+            <em>{cloudLoading && !farmVisits.length ? 'Buscando en la nube…' : 'Visitas revisadas en línea'}</em>
+          </div>
+          <div className="fp-snapshot-item">
+            <span>Conformidad</span>
+            <strong className="farm-portal-tabular is-accent">
+              {latestMetrics ? `${latestMetrics.positive}/${latestMetrics.applicable}` : '—'}
+            </strong>
+            <em>
+              {latestMetrics?.criteriaCompliance != null
+                ? `${latestMetrics.criteriaCompliance}% criterios con Sí`
+                : 'Sin criterios aplicables'}
+            </em>
+          </div>
+          <div className="fp-snapshot-item">
+            <span>Hallazgos abiertos</span>
+            <strong
+              className={`farm-portal-tabular ${(latestMetrics?.findings ?? 0) > 0 ? 'is-bad' : 'is-good'}`}
+            >
+              {latestMetrics?.findings ?? 0}
+            </strong>
+            <em>
+              {(latestMetrics?.findings ?? 0) === 0
+                ? 'Sin desviaciones en la última visita'
+                : 'Requieren plan correctivo'}
+            </em>
+          </div>
+          <div className="fp-snapshot-item">
+            <span>Cobertura ponderada</span>
+            <strong className="farm-portal-tabular">
+              {latestMetrics ? `${coveragePct}%` : '—'}
+            </strong>
+            <em>
+              {latestVisit
+                ? `${latestMetrics?.evaluatedChapters.length ?? 0}/5 capítulos con peso auditado`
+                : 'Pesos oficiales 5 / 25 / 10 / 30 / 30'}
+            </em>
+          </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
-          {[
-            {id: 'overview', label: 'Evolución y Tablero Integral', icon: TrendingUp},
-            {id: 'reports', label: `Historial de Informes (${farmVisits.length})`, icon: FileText},
-            {id: 'processes', label: '5 Procesos Normativos', icon: Layers},
-            {id: 'commitments', label: 'Compromisos y Hallazgos', icon: AlertTriangle}
-          ].map(tab => {
+        <nav className="fp-tabs" aria-label="Secciones del portal">
+          {tabs.map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${active ? 'bg-[#007fa3] text-white shadow-md' : 'bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+                type="button"
+                className={`fp-tab${active ? ' is-active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={active ? 'page' : undefined}
               >
-                <Icon size={15} />
-                <span>{tab.label}</span>
+                <Icon size={15} aria-hidden />
+                {tab.label}
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        {/* TAB 1: OVERVIEW & MULTI-VISIT EVOLUTION */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-                <span className="text-xs font-semibold text-slate-400 block">Total Auditorías Registradas</span>
-                <strong className="text-2xl font-black text-white mt-1 block">{farmVisits.length}</strong>
-                <span className="text-[11px] text-slate-400 mt-1 block">Visitas técnicas auditadas en campo</span>
-              </div>
-
-              <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-                <span className="text-xs font-semibold text-slate-400 block">Conformidad de Criterios</span>
-                <strong className="text-2xl font-black text-[#00b5e2] mt-1 block">
-                  {latestMetrics?.positive ?? 0}/{latestMetrics?.applicable ?? 0}
-                </strong>
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  {latestMetrics?.criteriaCompliance ?? 0}% criterios con respuesta Sí
-                </span>
-              </div>
-
-              <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-                <span className="text-xs font-semibold text-slate-400 block">Hallazgos Abiertos Actuales</span>
-                <strong className={`text-2xl font-black mt-1 block ${(latestMetrics?.findings ?? 0) > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {latestMetrics?.findings ?? 0}
-                </strong>
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  {(latestMetrics?.findings ?? 0) === 0 ? 'Cero desviaciones en la última visita' : 'Desviaciones técnicas con plan correctivo'}
-                </span>
-              </div>
-
-              <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-                <span className="text-xs font-semibold text-slate-400 block">Cobertura de Procesos</span>
-                <strong className="text-2xl font-black text-white mt-1 block">
-                  {latestVisit?.chapters.length ?? 0}/5
-                </strong>
-                <span className="text-[11px] text-slate-400 mt-1 block">Capítulos MIPE evaluados en la visita</span>
-              </div>
+          <div className="fp-panel">
+            <div className="fp-section-head">
+              <h2>Evolución del índice MIPE</h2>
+              <p>
+                Curva de todas las auditorías revisadas. Líneas de referencia en 95% (Saludable) y 80% (Alerta).
+              </p>
             </div>
 
-            {/* Trajectory Recharts Graph Across ALL Visits */}
-            <div className="bg-slate-800/60 border border-slate-700/60 rounded-3xl p-6 shadow-lg">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-white m-0">
-                    Evolución Cronológica Integral (Todas las Visitas)
-                  </h3>
-                  <p className="text-xs text-slate-400 m-0 mt-0.5">
-                    Curva de desempeño que compara la totalidad de auditorías técnicas de la finca en el tiempo.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-[#16a34a] inline-block"></span>
-                    <span className="text-slate-300">Saludable ≥95%</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-[#d97706] inline-block"></span>
-                    <span className="text-slate-300">Alerta 80-94%</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-[#dc2626] inline-block"></span>
-                    <span className="text-slate-300">Vulnerable &lt;80%</span>
+            {trajectoryData.length > 0 ? (
+              <div className="fp-chart">
+                <div className="fp-chart-legend">
+                  <span><i style={{background: '#78be20'}} />Saludable ≥95%</span>
+                  <span><i style={{background: '#f2a900'}} />Alerta 80–94%</span>
+                  <span><i style={{background: '#c23131'}} />Vulnerable &lt;80%</span>
+                  <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                    <TrendIcon size={13} aria-hidden />
+                    {metricTrendLabels[trend]}
+                    {recentDelta !== null ? ` · ${recentDelta > 0 ? '+' : ''}${recentDelta} pts vs. visita previa` : ''}
                   </span>
                 </div>
-              </div>
-
-              {trajectoryData.length > 0 ? (
                 <div className="w-full overflow-x-auto">
-                  <div style={{minWidth: Math.max(500, trajectoryData.length * 90)}}>
-                    <ResponsiveContainer width="100%" height={290}>
-                      <AreaChart data={trajectoryData} margin={{top: 15, right: 20, left: -15, bottom: 4}}>
+                  <div style={{minWidth: Math.max(420, trajectoryData.length * 72)}}>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <AreaChart data={trajectoryData} margin={{top: 12, right: 16, left: -12, bottom: 0}}>
                         <defs>
                           <linearGradient id="portalColorMipe" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#007fa3" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#007fa3" stopOpacity={0.0}/>
+                            <stop offset="5%" stopColor="#007fa3" stopOpacity={0.28} />
+                            <stop offset="95%" stopColor="#007fa3" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155"/>
-                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{fontSize: 11, fill: '#94a3b8'}}/>
-                        <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} tick={{fontSize: 11, fill: '#94a3b8'}}/>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d5dee4" />
+                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{fontSize: 11, fill: '#5b6b75'}} />
+                        <YAxis
+                          domain={[0, 100]}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={v => `${v}%`}
+                          tick={{fontSize: 11, fill: '#5b6b75'}}
+                        />
                         <Tooltip
                           content={({active, payload}) => {
                             if (!active || !payload?.length) return null;
-                            const item = payload[0].payload as typeof trajectoryData[0];
+                            const item = payload[0].payload as (typeof trajectoryData)[0];
                             return (
-                              <div className="bg-slate-950 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
-                                <strong className="text-white block font-bold">{item.label}</strong>
-                                <div className="text-slate-300">Responsable AVGUST: {item.responsible}</div>
-                                <div className="text-[#00b5e2] font-semibold">Índice MIPE: {item.score}%</div>
-                                <div className="text-slate-400">Conformidad: {item.compliance}%</div>
-                                <div className={item.findings > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                              <div className="fp-tooltip">
+                                <strong>{item.fullLabel}</strong>
+                                <div>Responsable AVGUST: {item.responsible}</div>
+                                <div style={{color: '#007fa3', fontWeight: 700}}>Índice MIPE: {item.score}%</div>
+                                <div>Conformidad: {item.compliance}%</div>
+                                <div style={{fontWeight: 700, color: item.findings > 0 ? '#c23131' : '#5c9914'}}>
                                   Hallazgos: {item.findings}
                                 </div>
                               </div>
                             );
                           }}
                         />
-                        <ReferenceLine y={95} stroke="#16a34a" strokeWidth={2} strokeDasharray="4 4" label={{value: 'Meta Saludable (≥95%)', fill: '#4ade80', fontSize: 10, position: 'insideTopRight'}}/>
-                        <ReferenceLine y={80} stroke="#d97706" strokeWidth={1.5} strokeDasharray="3 3" label={{value: 'Umbral de alerta (80%)', fill: '#fbbf24', fontSize: 10, position: 'insideBottomRight'}}/>
-                        <Area type="monotone" name="Índice MIPE" dataKey="score" stroke="#00b5e2" strokeWidth={3} fillOpacity={1} fill="url(#portalColorMipe)" dot={{r: 5, fill: '#00b5e2', strokeWidth: 2, stroke: '#ffffff'}} activeDot={{r: 7}}/>
+                        <ReferenceLine
+                          y={95}
+                          stroke="#78be20"
+                          strokeWidth={1.5}
+                          strokeDasharray="4 4"
+                          label={{value: '≥95%', fill: '#5c9914', fontSize: 10, position: 'insideTopRight'}}
+                        />
+                        <ReferenceLine
+                          y={80}
+                          stroke="#f2a900"
+                          strokeWidth={1.5}
+                          strokeDasharray="3 3"
+                          label={{value: '80%', fill: '#b45309', fontSize: 10, position: 'insideBottomRight'}}
+                        />
+                        <Area
+                          type="monotone"
+                          name="Índice MIPE"
+                          dataKey="score"
+                          stroke="#007fa3"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#portalColorMipe)"
+                          dot={{r: 4, fill: '#00b5e2', strokeWidth: 2, stroke: '#fff'}}
+                          activeDot={{r: 6}}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
-              ) : (
-                <div className="p-8 text-center text-xs text-slate-500">
-                  No hay visitas auditadas suficientes para graficar la evolución.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: REPORTS LIST (DIGITAL & PAPERLESS) */}
-        {activeTab === 'reports' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <h3 className="text-base font-bold text-white m-0">
-                  Historial de Informes de Aseguramiento en Línea
-                </h3>
-                <p className="text-xs text-slate-400 m-0 mt-0.5">
-                  Consulta cada informe digital con sus evidencias fotográficas, o descárgalo en Word/PDF oficial.
+              </div>
+            ) : (
+              <div className="fp-empty">
+                <strong>
+                  {cloudLoading ? 'Sincronizando informes…' : 'Aún no hay auditorías para graficar'}
+                </strong>
+                <p>
+                  {cloudLoading
+                    ? 'Estamos cargando las visitas revisadas desde AVGUST Cloud.'
+                    : 'Cuando tu técnico publique un informe revisado, aquí verás la evolución del índice MIPE.'}
                 </p>
               </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 gap-3">
-              {farmVisits.slice().reverse().map((visit, idx) => {
-                const m = metrics(visit);
-                const score = m.score;
-                const statusCls = score === null
-                  ? 'bg-slate-800 text-slate-400 border-slate-700'
-                  : score >= 95
-                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
-                    : score >= 80
-                      ? 'bg-amber-950/80 text-amber-300 border-amber-500/50'
-                      : 'bg-rose-950/80 text-rose-300 border-rose-500/50';
-
-                return (
-                  <div
-                    key={visit.id}
-                    className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-600 transition-all"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-[#00b5e2]">
-                          Informe #{farmVisits.length - idx}
-                        </span>
-                        <strong className="text-sm font-bold text-white">
-                          Auditoría del {visit.date}
-                        </strong>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
-                          {score === null ? 'Sin evaluación' : score >= 95 ? 'Saludable (≥95%)' : score >= 80 ? 'Alerta (80-94%)' : 'Vulnerable (<80%)'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
-                        <span>Responsable AVGUST: <strong className="text-slate-300">{visit.responsible}</strong></span>
-                        <span>Representante finca: <strong className="text-slate-300">{visit.technician}</strong></span>
-                        <span>Capítulos: <strong className="text-slate-300">{visit.chapters.length}/5</strong></span>
-                        <span>Hallazgos: <strong className={m.findings > 0 ? 'text-rose-400' : 'text-emerald-400'}>{m.findings}</strong></span>
-                      </div>
+            {historyAnalysis?.chapters && farmVisits.length > 0 && (
+              <div className="fp-chapters" aria-label="Vista rápida por proceso">
+                {historyAnalysis.chapters.map(chapter => (
+                  <div key={chapter.id} className={`fp-chapter ${statusClass(chapter.status)}`}>
+                    <div className="fp-chapter-top">
+                      <span style={{background: 'transparent', padding: 0, color: 'inherit'}}>
+                        Cap. {chapter.id}
+                      </span>
+                      <span>{chapter.weightPct}%</span>
                     </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => setViewingReportId(visit.id)}
-                        className="px-3 py-2 rounded-xl bg-[#007fa3] hover:bg-[#006e8d] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                        title="Ver informe interactivo sin papel"
-                      >
-                        <Globe size={14} />
-                        <span>Ver en Línea (Sin papel)</span>
-                      </button>
-
-                      <button
-                        onClick={() => void exportWord(visit)}
-                        className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title="Descargar documento Word editable"
-                      >
-                        <Download size={14} />
-                        <span>Word</span>
-                      </button>
-                    </div>
+                    <h3>{chapter.title}</h3>
+                    <strong className={`farm-portal-tabular ${statusClass(chapter.status)}`}>
+                      {chapter.score === null ? '—' : `${chapter.score}%`}
+                    </strong>
+                    <p>{metricStatusLabels[chapter.status]}</p>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 3: 5 PROCESSES EVOLUTION */}
-        {activeTab === 'processes' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-white m-0">
-                Comportamiento por Proceso Normativo MIPE
-              </h3>
-              <p className="text-xs text-slate-400 m-0 mt-0.5">
-                Ponderación oficial: Almacén (5%), Dosificación (25%), Transporte (10%), Mezclas (30%) y Aplicación (30%).
+        {activeTab === 'reports' && (
+          <div className="fp-panel">
+            <div className="fp-section-head">
+              <h2>Historial de informes en línea</h2>
+              <p>
+                Abre el informe digital con evidencias o descárgalo en Word. Solo visitas revisadas de tu finca.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              {[
-                {id: 1, title: 'Almacén', weight: '5%', desc: 'Almacenamiento y rotulado'},
-                {id: 2, title: 'Dosificación', weight: '30%', desc: 'Calibración y probetas'},
-                {id: 3, title: 'Transporte', weight: '5%', desc: 'Traslado y contención'},
-                {id: 4, title: 'Mezclas', weight: '30%', desc: 'Orden y pre-dilución'},
-                {id: 5, title: 'Aplicación', weight: '30%', desc: 'Boquillas, aforo y EPP'}
-              ].map(proc => {
-                const chapterStats = historyAnalysis?.chapters.find(c => c.id === proc.id);
-                const score = chapterStats?.score ?? null;
-
-                return (
-                  <div key={proc.id} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#00b5e2]">Capítulo {proc.id}</span>
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-700/60 px-2 py-0.5 rounded">
-                        Peso {proc.weight}
-                      </span>
-                    </div>
-                    <strong className="text-sm font-bold text-white block">{proc.title}</strong>
-                    <div className="my-2">
-                      <span className={`text-2xl font-black ${score === null ? 'text-slate-500' : score >= 95 ? 'text-emerald-400' : score >= 80 ? 'text-amber-400' : 'text-rose-400'}`}>
-                        {score === null ? '—' : `${score}%`}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-slate-400 block">{proc.desc}</span>
-                  </div>
-                );
-              })}
-            </div>
+            {farmVisits.length === 0 ? (
+              <div className="fp-empty">
+                <strong>
+                  {cloudLoading ? 'Buscando informes en la nube…' : 'No hay informes publicados aún'}
+                </strong>
+                <p>
+                  {cloudLoading
+                    ? 'La sincronización puede tardar unos segundos la primera vez.'
+                    : 'Tu técnico AVGUST debe marcar la visita como revisada y publicarla para que aparezca aquí.'}
+                </p>
+              </div>
+            ) : (
+              farmVisits
+                .slice()
+                .reverse()
+                .map((visit, idx) => {
+                  const m = metrics(visit);
+                  const score = m.score;
+                  return (
+                    <article key={visit.id} className="fp-report">
+                      <div className="fp-report-main">
+                        <div className="fp-report-title">
+                          <span>Informe #{farmVisits.length - idx}</span>
+                          <strong>Auditoría del {visit.date}</strong>
+                          <span className={`fp-status ${statusClass(m.status)}`}>
+                            {statusLabel(score, m.status)}
+                          </span>
+                        </div>
+                        <div className="fp-report-meta">
+                          <span>
+                            Índice:{' '}
+                            <strong className="farm-portal-tabular">
+                              {score === null ? '—' : `${score}%`}
+                            </strong>
+                          </span>
+                          <span>
+                            Responsable AVGUST: <strong>{visit.responsible}</strong>
+                          </span>
+                          <span>
+                            Representante finca: <strong>{visit.technician || '—'}</strong>
+                          </span>
+                          <span>
+                            Capítulos: <strong>{visit.chapters.length}/5</strong>
+                          </span>
+                          <span>
+                            Hallazgos:{' '}
+                            <strong style={{color: m.findings > 0 ? '#c23131' : '#5c9914'}}>
+                              {m.findings}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="fp-report-actions">
+                        <button
+                          type="button"
+                          className="fp-btn-action"
+                          onClick={() => setViewingReportId(visit.id)}
+                          title="Ver informe interactivo"
+                        >
+                          <Globe size={14} aria-hidden />
+                          Ver en línea
+                        </button>
+                        <button
+                          type="button"
+                          className="fp-btn-secondary"
+                          onClick={() => void exportWord(visit)}
+                          title="Descargar Word"
+                        >
+                          <Download size={14} aria-hidden />
+                          Word
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })
+            )}
           </div>
         )}
 
-        {/* TAB 4: COMMITMENTS & ACTION PLAN */}
+        {activeTab === 'processes' && (
+          <div className="fp-panel">
+            <div className="fp-section-head">
+              <h2>Comportamiento por proceso normativo</h2>
+              <p className="fp-weights-note">
+                Ponderación oficial MIPE: Almacén 5%, Dosificación 25%, Transporte 10%, Mezclas 30% y Aplicación 30%.
+              </p>
+            </div>
+
+            {!farmVisits.length ? (
+              <div className="fp-empty">
+                <strong>Sin datos de procesos todavía</strong>
+                <p>
+                  Los cinco capítulos aparecerán con su puntaje cuando exista al menos una visita revisada.
+                </p>
+              </div>
+            ) : (
+              <div className="fp-chapters">
+                {catalog.map(chapter => {
+                  const chapterStats = historyAnalysis?.chapters.find(c => c.id === chapter.id);
+                  const score = chapterStats?.score ?? null;
+                  const status = chapterStats?.status ?? 'pending';
+                  const weightPct = Math.round((CHAPTER_WEIGHTS[chapter.id] ?? 0) * 100);
+                  return (
+                    <div key={chapter.id} className={`fp-chapter ${statusClass(status)}`}>
+                      <div className="fp-chapter-top">
+                        <span style={{background: 'transparent', padding: 0, color: 'inherit'}}>
+                          Capítulo {chapter.id}
+                        </span>
+                        <span>Peso {weightPct}%</span>
+                      </div>
+                      <h3>{chapter.title}</h3>
+                      <strong className={`farm-portal-tabular ${statusClass(status)}`}>
+                        {score === null ? '—' : `${score}%`}
+                      </strong>
+                      <p>{CHAPTER_BLURBS[chapter.id] || metricStatusLabels[status]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'commitments' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-white m-0">
-                Plan de Acción y Recomendaciones Técnicas
-              </h3>
-              <p className="text-xs text-slate-400 m-0 mt-0.5">
-                Desviaciones identificadas por el técnico para que la finca mantenga su estándar de calidad.
+          <div className="fp-panel">
+            <div className="fp-section-head">
+              <h2>Hallazgos y compromisos de mejora</h2>
+              <p>
+                Desviaciones de la última auditoría, con recomendación técnica y estado del compromiso cuando exista.
               </p>
             </div>
 
             {historyAnalysis?.problems && historyAnalysis.problems.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {historyAnalysis.problems.map(prob => (
-                  <div
-                    key={prob.id}
-                    className="bg-slate-800/60 border border-rose-900/40 rounded-2xl p-4 space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-rose-400">Criterio {prob.id}</span>
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-700/60 px-2 py-0.5 rounded">
-                        Capítulo {prob.chapter}
-                      </span>
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-100 m-0 leading-relaxed">{prob.text}</h4>
-                    <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300">
-                      <strong className="text-[#78be20] block mb-0.5">Recomendación Técnica AVGUST:</strong>
-                      {prob.recommendation || 'Sin recomendación registrada.'}
-                    </div>
-                    <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-                      <span>Recurrencia: {prob.occurrences} informe{prob.occurrences === 1 ? '' : 's'}</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="fp-problems">
+                {historyAnalysis.problems.map(prob => {
+                  const actionStatus = (prob.action.status || 'proposed') as keyof typeof actionLabels;
+                  return (
+                    <article key={prob.id} className="fp-problem">
+                      <div className="fp-problem-top">
+                        <span>Criterio {prob.id}</span>
+                        <em>
+                          Cap. {prob.chapter} · Peso {prob.weightPct}%
+                          {prob.isRecurrent ? ' · Recurrente' : prob.isNew ? ' · Nuevo' : ''}
+                        </em>
+                      </div>
+                      <h3>{prob.text}</h3>
+                      <div className="fp-problem-rec">
+                        <strong>Recomendación AVGUST</strong>
+                        {prob.recommendation || 'Sin recomendación registrada.'}
+                      </div>
+                      <div className="fp-problem-foot">
+                        <span>
+                          Compromiso:{' '}
+                          <strong>
+                            {actionLabels[actionStatus] || actionStatus}
+                          </strong>
+                        </span>
+                        {prob.action.owner ? <span>Responsable: {prob.action.owner}</span> : null}
+                        {prob.action.due ? <span>Vence: {prob.action.due}</span> : null}
+                        <span>
+                          Recurrencia: {prob.occurrences} informe{prob.occurrences === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             ) : (
-              <div className="p-8 text-center bg-slate-800/40 border border-emerald-900/40 rounded-2xl text-emerald-300 text-xs font-semibold">
-                ✓ ¡Excelente! No se registran hallazgos ni desviaciones abiertas en la última auditoría de la finca.
+              <div className="fp-empty is-good">
+                <strong>
+                  {farmVisits.length
+                    ? 'Sin hallazgos abiertos en la última auditoría'
+                    : cloudLoading
+                      ? 'Cargando hallazgos…'
+                      : 'Sin auditorías para revisar compromisos'}
+                </strong>
+                <p>
+                  {farmVisits.length
+                    ? 'Mantén el estándar: la finca no tiene desviaciones registradas en el informe más reciente.'
+                    : 'Cuando se publique una visita con hallazgos, los verás aquí con su plan de acción.'}
+                </p>
               </div>
             )}
           </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500 bg-slate-950/60">
-        AVGUST CARE 360 · Servidor en Línea para Responsables de Finca · Juntos Crecemos Bien
+      <footer className="fp-footer">
+        AVGUST CARE 360 · Portal de Finca · Juntos Crecemos Bien
       </footer>
     </div>
   );
-}
-
-function KeyRoundIcon(props: {size?: number; className?: string}) {
-  return <KeyRound {...props} />;
 }
