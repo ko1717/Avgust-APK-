@@ -217,7 +217,7 @@
         },
         "code": {
           "type": "string",
-          "description": "Código corto de acceso (ej. MIPE-7482)"
+          "description": "Código corto de acceso (ej. ASEG-7482)"
         },
         "token": {
           "type": "string",

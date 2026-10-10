@@ -75,4 +75,4 @@ Sin el secret `FIREBASE_TOKEN`, el workflow se salta el deploy (no falla el repo
 - Hosting sirve el **shell estático** del build vinext. El portal y los informes en línea usan **Firestore + Auth en el cliente**.
 - Las rutas `/api/*` (D1/R2 / Sites) **no** corren en Hosting estático. El app completo autenticado sigue en Vinext/Cloudflare Sites (`npm run start` / Sites deploy).
 - No se aprovisionan usuarios Auth reales en este flujo (anónimo + códigos de invitación).
-- Proyecto anterior (`gen-lang-client-0175464290` / DB nombrada AI Studio): ya no es el target de deploy ni de invitaciones.
+- Solo el proyecto **avgustscare360** es el target de Hosting, Firestore e invitaciones.
