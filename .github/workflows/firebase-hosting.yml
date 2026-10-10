@@ -10,20 +10,40 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check FIREBASE_TOKEN
+        id: creds
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::FIREBASE_TOKEN secret is not configured; skipping Firebase deploy."
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.creds.outputs.available == 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.creds.outputs.available == 'true'
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
+        if: steps.creds.outputs.available == 'true'
         run: npm install
 
       - name: Build for Firebase Hosting
+        if: steps.creds.outputs.available == 'true'
         run: npm run build:firebase
 
       - name: Deploy hosting + Firestore
+        if: steps.creds.outputs.available == 'true'
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: npx firebase deploy --only hosting,firestore --project avgustscare360 --non-interactive
+
+      - name: Skip deploy (missing secret)
+        if: steps.creds.outputs.available != 'true'
+        run: echo "Skipping Firebase deploy until FIREBASE_TOKEN is added to repo secrets."
