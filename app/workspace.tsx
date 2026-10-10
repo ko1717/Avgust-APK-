@@ -153,7 +153,7 @@ export default function Workspace({desktop=false}:{desktop?:boolean}){
  const module=modules.find(x=>x.id===section)!;
  if(showPortal) return (
   <Suspense fallback={<div className="fp-loading" style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#005f7a',color:'#fff',fontFamily:'Manrope,Segoe UI,sans-serif'}}><p>Cargando Portal de Finca…</p></div>}>
-    <FarmPortalView initialToken={portalToken||undefined} visits={visits} onExitPortal={()=>{ window.history.replaceState({},'','/'); setShowPortal(false); setPortalToken(null); }}/>
+    <FarmPortalView initialToken={portalToken||undefined} visits={visits} portalOnly={false} onExitPortal={()=>{ window.history.replaceState({},'','/'); setShowPortal(false); setPortalToken(null); }}/>
   </Suspense>
  );
  if(onlineReportId) return <StandaloneOnlineReport reportId={onlineReportId} onClose={()=>{ window.history.replaceState({},'','/'); setOnlineReportId(null); }}/>;

@@ -7,9 +7,11 @@
  *   2. Boots `vinext start` briefly to prerender `/` (SSR HTML shell).
  *   3. Copies client assets + index.html into dist/firebase-hosting.
  *
- * Firebase Hosting serves this statically. Portal clients use Firestore/Auth
- * in the browser (`/?portal=finca`). D1/R2 API routes are not available on
- * Hosting — keep Cloudflare Sites / wrangler for the full authenticated app.
+ * Firebase Hosting serves this statically as the **farm client portal only**.
+ * Portal clients use Firestore/Auth in the browser. The technician CARE 360
+ * workspace is not mounted on Hosting (NEXT_PUBLIC_HOSTING_PORTAL_ONLY=1).
+ * D1/R2 API routes are not available — keep Vinext / Sites / desktop for the
+ * full authenticated app.
  */
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
@@ -52,7 +54,8 @@ async function ensureVinextBuild() {
       NEXT_PUBLIC_PORTAL_ORIGIN:
         process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
         process.env.PUBLIC_PORTAL_ORIGIN ||
-        'https://gen-lang-client-0175464290.web.app'
+        'https://gen-lang-client-0175464290.web.app',
+      NEXT_PUBLIC_HOSTING_PORTAL_ONLY: '1'
     }
   });
   if (!exists(path.join(clientDir, '_next'))) {
@@ -109,8 +112,8 @@ function fetchText(url) {
 }
 
 async function prerenderIndexHtml() {
-  const url = `http://${host}:${port}/`;
-  console.log(`Starting vinext start on ${url} to capture SSR shell…`);
+  const url = `http://${host}:${port}/?portal=finca`;
+  console.log(`Starting vinext start on ${url} to capture portal SSR shell…`);
   // Detached process group so we can SIGKILL workerd grandchildren on cleanup.
   const child = spawn('npx', ['vinext', 'start', '--port', String(port), '--hostname', host], {
     cwd: rootDir,
@@ -121,7 +124,8 @@ async function prerenderIndexHtml() {
       NEXT_PUBLIC_PORTAL_ORIGIN:
         process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
         process.env.PUBLIC_PORTAL_ORIGIN ||
-        'https://gen-lang-client-0175464290.web.app'
+        'https://gen-lang-client-0175464290.web.app',
+      NEXT_PUBLIC_HOSTING_PORTAL_ONLY: '1'
     },
     shell: process.platform === 'win32',
     detached: process.platform !== 'win32'
@@ -186,11 +190,22 @@ function copyClientAssets() {
   }
 }
 
+/** Inject early redirect so `/` and deep links always advertise portal=finca. */
+function injectPortalLock(html) {
+  const lockScript = `<script>(function(){try{var h=location.hostname.toLowerCase();if(h!=='gen-lang-client-0175464290.web.app'&&h!=='gen-lang-client-0175464290.firebaseapp.com')return;var u=new URL(location.href);if(u.searchParams.get('portal')==='finca')return;u.searchParams.set('portal','finca');location.replace(u.pathname+u.search+u.hash);}catch(e){}})();</script>`;
+  if (html.includes('<!-- firebase-portal-lock -->')) return html;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head([^>]*)>/i, `<head$1><!-- firebase-portal-lock -->${lockScript}`);
+  }
+  return `<!-- firebase-portal-lock -->${lockScript}${html}`;
+}
+
 function writeHtml(html) {
+  const locked = injectPortalLock(html);
   const indexPath = path.join(outDir, 'index.html');
-  fs.writeFileSync(indexPath, html, 'utf8');
+  fs.writeFileSync(indexPath, locked, 'utf8');
   // Firebase uses 404.html as SPA fallback when a path is missing.
-  fs.writeFileSync(path.join(outDir, '404.html'), html, 'utf8');
+  fs.writeFileSync(path.join(outDir, '404.html'), locked, 'utf8');
   return indexPath;
 }
 
@@ -211,8 +226,9 @@ function assertPortalAssets() {
 }
 
 async function main() {
-  console.log('--- Preparing Firebase Hosting bundle (portal / CARE 360 static shell) ---');
+  console.log('--- Preparing Firebase Hosting bundle (farm client portal only) ---');
   await ensureVinextBuild();
+  // Prerender portal route so the static shell matches client intent.
   const html = await prerenderIndexHtml();
   copyClientAssets();
   const indexPath = writeHtml(html);
@@ -220,7 +236,7 @@ async function main() {
 
   const sizeKb = Math.round(fs.statSync(indexPath).size / 1024);
   console.log(`✅ Firebase Hosting public dir ready: dist/firebase-hosting/ (index.html ${sizeKb} KB)`);
-  console.log('   Portal URL after deploy: https://<project>.web.app/?portal=finca');
+  console.log('   Portal-only URL: https://gen-lang-client-0175464290.web.app/');
   console.log('   Deploy: npm run deploy:firebase   # requires firebase login / CI token');
 }
 

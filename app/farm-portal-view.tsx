@@ -1,6 +1,7 @@
 'use client';
 import {lazy, Suspense, useState, useEffect, useMemo} from 'react';
 import {
+  CalendarDays,
   Download,
   Globe,
   LogOut,
@@ -29,7 +30,15 @@ import {
   type Visit
 } from '@/lib/model';
 import {farmMetricHistory} from '@/lib/metric-analysis';
-import {ensurePortalAuth, getLastPortalAuthWarning, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
+import {
+  createAssuranceRequest,
+  ensurePortalAuth,
+  getLastPortalAuthWarning,
+  listFarmAssuranceRequests,
+  listFarmCloudVisits,
+  subscribeToFarmVisits,
+  type AssuranceRequest
+} from '@/lib/firebase';
 import MetricsKpiStrip from './metrics-kpi-strip';
 import './b2b-metrics.css';
 import './farm-portal.css';
@@ -42,6 +51,8 @@ type FarmPortalViewProps = {
   initialToken?: string;
   visits: Visit[];
   onExitPortal: () => void;
+  /** When true (Firebase Hosting), hide paths back to the technician console. */
+  portalOnly?: boolean;
 };
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -68,7 +79,12 @@ function StatusBadge({value}: {value: MetricStatus}) {
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
 }
 
-export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalViewProps) {
+export function FarmPortalView({
+  initialToken,
+  visits,
+  onExitPortal,
+  portalOnly = false
+}: FarmPortalViewProps) {
   const [invitation, setInvitation] = useState<FarmInvitation | null>(null);
   const [inputCode, setInputCode] = useState('');
   const [loading, setLoading] = useState(true);
@@ -80,6 +96,13 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
   const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
   const [cloudSyncedFarm, setCloudSyncedFarm] = useState('');
   const [authWarning, setAuthWarning] = useState('');
+  const [requestDate, setRequestDate] = useState('');
+  const [requestNotes, setRequestNotes] = useState('');
+  const [requestPhone, setRequestPhone] = useState('');
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [requestMsg, setRequestMsg] = useState<{text: string; error?: boolean} | null>(null);
+  const [assuranceRequests, setAssuranceRequests] = useState<AssuranceRequest[]>([]);
 
   useEffect(() => {
     async function initAuth() {
@@ -122,6 +145,10 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
 
     let active = true;
     const farm = invitation.farm;
+    setRequestPhone(invitation.clientPhone || '');
+    setRequestEmail(invitation.clientEmail || '');
+    setRequestMsg(null);
+
     void listFarmCloudVisits(farm).then(list => {
       if (!active) return;
       if (list.length) setCloudVisits(list);
@@ -129,6 +156,14 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     }).catch(() => {
       if (active) setCloudSyncedFarm(farm);
     });
+
+    void listFarmAssuranceRequests(farm)
+      .then(list => {
+        if (active) setAssuranceRequests(list);
+      })
+      .catch(() => {
+        if (active) setAssuranceRequests([]);
+      });
 
     const unsubscribe = subscribeToFarmVisits(farm, list => {
       if (!active) return;
@@ -146,7 +181,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
       active = false;
       unsubscribe();
     };
-  }, [invitation?.farm]);
+  }, [invitation?.farm, invitation?.clientPhone, invitation?.clientEmail]);
 
   const cloudFarm = invitation?.farm || '';
   const cloudLoading = Boolean(cloudFarm) && cloudSyncedFarm !== cloudFarm;
@@ -279,8 +314,46 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
   const handleLogout = () => {
     clearClientSession();
     setInvitation(null);
-    onExitPortal();
+    setAssuranceRequests([]);
+    setRequestMsg(null);
+    // Stay on the portal gate; do not open the technician console.
   };
+
+  const handleAssuranceRequest = async (e: {preventDefault: () => void}) => {
+    e.preventDefault();
+    if (!invitation?.farm) return;
+    setRequestBusy(true);
+    setRequestMsg(null);
+    try {
+      await withTimeout(ensurePortalAuth(), 8000, null);
+      const created = await createAssuranceRequest({
+        farm: invitation.farm,
+        farmId: invitation.farmId,
+        clientName: invitation.clientName,
+        clientPhone: requestPhone,
+        clientEmail: requestEmail,
+        preferredDate: requestDate,
+        notes: requestNotes,
+        invitationCode: invitation.code
+      });
+      setAssuranceRequests(current => [created, ...current.filter(item => item.id !== created.id)]);
+      setRequestNotes('');
+      setRequestMsg({
+        text: 'Solicitud enviada. El equipo técnico AVGUST la verá como pendiente y te contactará para confirmar la fecha.'
+      });
+    } catch {
+      setRequestMsg({
+        text: 'No se pudo enviar la solicitud. Revisa tu conexión e inténtalo de nuevo.',
+        error: true
+      });
+    } finally {
+      setRequestBusy(false);
+    }
+  };
+
+  const pendingRequests = assuranceRequests.filter(
+    item => item.status === 'pending' || item.status === 'scheduled'
+  );
 
   if (viewingReportId) {
     return (
@@ -361,9 +434,11 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
 
               <div className="fp-gate-help">
                 <p>¿Sin código? Pídelo a tu técnico o responsable de zona AVGUST.</p>
-                <button type="button" className="fp-link-btn" onClick={onExitPortal}>
-                  Volver a la consola de trabajo
-                </button>
+                {!portalOnly && (
+                  <button type="button" className="fp-link-btn" onClick={onExitPortal}>
+                    Volver a la consola de trabajo
+                  </button>
+                )}
               </div>
             </form>
           </section>
@@ -439,6 +514,10 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                 <a className="fp-hero-cta" href="#fp-metrics-anchor">
                   Ver estado de aseguramiento {latestScore === null ? '' : `· ${latestScore}%`}
                 </a>
+                <a className="fp-hero-cta fp-hero-cta-schedule" href="#fp-schedule-anchor">
+                  <CalendarDays size={16} aria-hidden />
+                  Agendar aseguramiento
+                </a>
                 <button
                   type="button"
                   className="b2b-btn b2b-btn-secondary"
@@ -457,15 +536,109 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                 </button>
               </>
             ) : (
-              <a className="fp-hero-cta" href="#fp-metrics-anchor">
-                Ver estado de aseguramiento
-              </a>
+              <>
+                <a className="fp-hero-cta" href="#fp-metrics-anchor">
+                  Ver estado de aseguramiento
+                </a>
+                <a className="fp-hero-cta fp-hero-cta-schedule" href="#fp-schedule-anchor">
+                  <CalendarDays size={16} aria-hidden />
+                  Agendar aseguramiento
+                </a>
+              </>
             )}
           </div>
         </div>
       </section>
 
       <main className="fp-main" id="fp-metrics-anchor">
+        <section className="fp-schedule-panel" id="fp-schedule-anchor" aria-labelledby="fp-schedule-title">
+          <div className="metrics-section-heading">
+            <div>
+              <div className="metrics-section-kicker">Solicitud al equipo técnico</div>
+              <h3 id="fp-schedule-title">Agendar un aseguramiento</h3>
+            </div>
+            <span className="metrics-note">
+              {pendingRequests.length
+                ? `${pendingRequests.length} pendiente${pendingRequests.length === 1 ? '' : 's'}`
+                : 'Sin calendario completo'}
+            </span>
+          </div>
+          <p className="fp-schedule-lead">
+            Envía una solicitud con tu fecha preferida. El técnico AVGUST la recibe como pendiente y
+            confirma la visita; no reserva un cupo automático.
+          </p>
+          <form className="fp-schedule-form" onSubmit={e => void handleAssuranceRequest(e)}>
+            <label>
+              Fecha preferida
+              <input
+                type="date"
+                value={requestDate}
+                onChange={e => setRequestDate(e.target.value)}
+                min={new Date().toISOString().slice(0, 10)}
+              />
+            </label>
+            <label>
+              Teléfono de contacto
+              <input
+                type="tel"
+                maxLength={40}
+                value={requestPhone}
+                onChange={e => setRequestPhone(e.target.value)}
+                placeholder="Celular o fijo"
+                autoComplete="tel"
+              />
+            </label>
+            <label>
+              Correo (opcional)
+              <input
+                type="email"
+                maxLength={120}
+                value={requestEmail}
+                onChange={e => setRequestEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+                autoComplete="email"
+              />
+            </label>
+            <label className="fp-schedule-notes">
+              Comentario para el técnico
+              <textarea
+                maxLength={2000}
+                value={requestNotes}
+                onChange={e => setRequestNotes(e.target.value)}
+                placeholder="Cultivo, urgencia, ventana horaria u observaciones de campo…"
+                rows={3}
+              />
+            </label>
+            <div className="fp-schedule-actions">
+              <button type="submit" className="fp-btn-primary" disabled={requestBusy}>
+                <CalendarDays size={16} aria-hidden />
+                {requestBusy ? 'Enviando…' : 'Solicitar aseguramiento'}
+              </button>
+            </div>
+          </form>
+          {requestMsg && (
+            <div className={`fp-schedule-msg ${requestMsg.error ? 'error' : 'ok'}`} role="status">
+              {requestMsg.text}
+            </div>
+          )}
+          {pendingRequests.length > 0 && (
+            <ul className="fp-schedule-list" aria-label="Solicitudes recientes">
+              {pendingRequests.slice(0, 5).map(item => (
+                <li key={item.id}>
+                  <strong>
+                    {item.status === 'scheduled' ? 'Programada' : 'Pendiente'}
+                    {item.preferredDate ? ` · preferida ${item.preferredDate}` : ''}
+                  </strong>
+                  <span>
+                    Enviada {item.createdAt ? new Date(item.createdAt).toLocaleDateString('es-CO') : 'reciente'}
+                    {item.notes ? ` · ${item.notes}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <div className="b2b-metrics-wrapper" aria-label="Indicadores de aseguramiento">
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>

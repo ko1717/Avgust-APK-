@@ -160,7 +160,7 @@ if (firebaseJson) {
 console.log('\nfirestore.rules');
 const rules = readText('firestore.rules');
 if (rules) {
-  for (const collection of ['invitations', 'visits', 'reports']) {
+  for (const collection of ['invitations', 'visits', 'reports', 'assuranceRequests']) {
     if (rules.includes(`match /${collection}/{`)) {
       pass(`rules cover /${collection}/{…}`);
     } else {
@@ -229,6 +229,40 @@ if (firebaseTs) {
     pass('lib/firebase.ts uses reports collection');
   } else {
     fail('lib/firebase.ts does not reference reports collection');
+  }
+  if (firebaseTs.includes('createAssuranceRequest')) {
+    pass('lib/firebase.ts exports createAssuranceRequest');
+  } else {
+    fail('lib/firebase.ts missing createAssuranceRequest');
+  }
+}
+
+const hostingPortalTs = readText('lib/hosting-portal.ts');
+if (hostingPortalTs) {
+  if (hostingPortalTs.includes(EXPECTED_PROJECT) && hostingPortalTs.includes('HOSTING_PORTAL_ONLY')) {
+    pass('lib/hosting-portal.ts locks Hosting to portal-only');
+  } else {
+    fail('lib/hosting-portal.ts missing Hosting portal-only lock');
+  }
+} else {
+  fail('lib/hosting-portal.ts missing');
+}
+
+const pageTsx = readText('app/page.tsx');
+if (pageTsx) {
+  if (pageTsx.includes('FarmPortalHost') && pageTsx.includes('isHostingPortalOnlyBuild')) {
+    pass('app/page.tsx mounts FarmPortalHost for Hosting builds');
+  } else {
+    fail('app/page.tsx does not gate Hosting to FarmPortalHost');
+  }
+}
+
+const buildFirebase = readText('scripts/build-firebase.mjs');
+if (buildFirebase) {
+  if (buildFirebase.includes('NEXT_PUBLIC_HOSTING_PORTAL_ONLY')) {
+    pass('build:firebase sets NEXT_PUBLIC_HOSTING_PORTAL_ONLY');
+  } else {
+    fail('build:firebase missing NEXT_PUBLIC_HOSTING_PORTAL_ONLY');
   }
 }
 

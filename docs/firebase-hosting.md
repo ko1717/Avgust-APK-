@@ -1,6 +1,8 @@
-# Firebase Hosting — portal / servidor en línea
+# Firebase Hosting — portal de finca (solo clientes)
 
-Publica el portal de finca (`/?portal=finca`) en Firebase Hosting (estático) junto con las reglas de Firestore del proyecto **gen-lang-client-0175464290** (Proyecto nanda / cuenta `vixnine777@gmail.com`).
+Publica **solo** el portal de finca para clientes/responsables en Firebase Hosting (estático), junto con las reglas de Firestore del proyecto **gen-lang-client-0175464290** (Proyecto nanda / cuenta `vixnine777@gmail.com`).
+
+La consola técnica completa de AVGUST CARE 360 **no** se sirve en Hosting: permanece en Vinext / Cloudflare Sites / escritorio. El build de Hosting fija `NEXT_PUBLIC_HOSTING_PORTAL_ONLY=1`, monta `FarmPortalHost` (sin `workspace`) y fuerza `portal=finca` en la URL.
 
 ## Verificación local (antes de deploy)
 
@@ -21,7 +23,7 @@ El script (`scripts/verify-firebase-portal.mjs`) exige `firebase-applet-config.j
    (o clic derecho en `deploy-portal.ps1` → *Ejecutar con PowerShell*).
 3. Cuando se abra el navegador, inicia sesión con la cuenta de Google que tiene acceso a Firebase (`vixnine777@gmail.com`).
 4. Espera a que termine el build y el deploy.
-5. Abre: **https://gen-lang-client-0175464290.web.app/?portal=finca**
+5. Abre: **https://gen-lang-client-0175464290.web.app/** (portal de finca; `/?portal=finca` es equivalente)
 
 No hace falta configurar secrets de GitHub ni tokens de CI. El script hace: `npm install` (si falta), `firebase login`, selecciona `gen-lang-client-0175464290` y `npm run deploy:firebase`.
 
@@ -69,9 +71,16 @@ El workflow [`.github/workflows/firebase-hosting.yml`](../.github/workflows/fire
 
 Sin el secret `FIREBASE_TOKEN`, el workflow se salta el deploy (no falla el repo).
 
+## Qué incluye el portal (Hosting)
+
+- Acceso con código / enlace de invitación.
+- Consulta de aseguramientos e informes en línea de la finca.
+- Solicitud para **agendar un aseguramiento** (`assuranceRequests` en Firestore, estado `pending`); el técnico la revisa después — no es un calendario completo.
+
 ## Limitaciones
 
-- Hosting sirve el **shell estático** del build vinext. El portal y los informes en línea usan **Firestore + Auth en el cliente**.
+- Hosting sirve el **shell estático portal-only** del build vinext. El portal y los informes en línea usan **Firestore + Auth en el cliente**.
 - Las rutas `/api/*` (D1/R2 / Sites) **no** corren en Hosting estático. El app completo autenticado sigue en Vinext/Cloudflare Sites (`npm run start` / Sites deploy).
+- En Hosting no hay camino a la consola de técnicos (sin “Volver a la consola de trabajo”).
 - No se aprovisionan usuarios Auth reales en este flujo (anónimo + códigos de invitación).
 - Solo el proyecto **gen-lang-client-0175464290** es el target de Hosting, Firestore e invitaciones.

@@ -348,6 +348,78 @@ export async function listFarmCloudVisits(farmName: string): Promise<Visit[]> {
   return Array.from(byId.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/** Client-submitted request to schedule an assurance visit (farm portal). */
+export type AssuranceRequest = {
+  id: string;
+  farm: string;
+  farmId?: string;
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  preferredDate?: string;
+  notes?: string;
+  status: 'pending' | 'scheduled' | 'cancelled' | 'done';
+  source: 'farm-portal';
+  invitationCode?: string;
+  createdAt: string;
+};
+
+/**
+ * Creates a pending assurance scheduling request from the farm portal.
+ * Technicians can review these later in Firestore (`assuranceRequests`).
+ */
+export async function createAssuranceRequest(input: {
+  farm: string;
+  farmId?: string;
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  preferredDate?: string;
+  notes?: string;
+  invitationCode?: string;
+}): Promise<AssuranceRequest> {
+  const id = `areq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const path = `assuranceRequests/${id}`;
+  const data: AssuranceRequest = {
+    id,
+    farm: input.farm.trim(),
+    farmId: input.farmId,
+    clientName: input.clientName.trim() || 'Responsable de finca',
+    clientPhone: input.clientPhone?.trim() || undefined,
+    clientEmail: input.clientEmail?.trim() || undefined,
+    preferredDate: input.preferredDate?.trim() || undefined,
+    notes: input.notes?.trim() || undefined,
+    status: 'pending',
+    source: 'farm-portal',
+    invitationCode: input.invitationCode,
+    createdAt: new Date().toISOString()
+  };
+  try {
+    await setDoc(doc(db, 'assuranceRequests', id), data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+  return data;
+}
+
+/** Lists recent assurance requests for one farm (portal + technician visibility). */
+export async function listFarmAssuranceRequests(farmName: string): Promise<AssuranceRequest[]> {
+  const path = 'assuranceRequests';
+  try {
+    const q = query(
+      collection(db, 'assuranceRequests'),
+      where('farm', '==', farmName),
+      limit(50)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs
+      .map(d => d.data() as AssuranceRequest)
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
 /**
  * Custom React hook for Firebase Auth management
  */
