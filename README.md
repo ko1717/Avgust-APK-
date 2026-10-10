@@ -11,6 +11,8 @@ Firebase Hosting (**gen-lang-client-0175464290**, cuenta `vixnine777@gmail.com`)
 - Detalle: `docs/firebase-hosting.md`
 - Comprobar config sin deploy: `npm run verify:firebase-portal`
 
+**Conexión app ↔ portal:** la app CARE 360 usa el mismo proyecto Firebase (`firebase-applet-config.json` → `gen-lang-client-0175464290`). Flujo: Visitas → Informe → **Publicar en línea** (Firestore) → **Invitaciones** (código ASEG / WhatsApp) → el cliente abre el portal Hosting y ve los informes de su finca. Volver a publicar actualiza el mismo `visit.id`.
+
 Trabaja siempre sobre la rama `main` (`git checkout main && git pull`).
 
 ## App

@@ -71,6 +71,15 @@ El workflow [`.github/workflows/firebase-hosting.yml`](../.github/workflows/fire
 
 Sin el secret `FIREBASE_TOKEN`, el workflow se salta el deploy (no falla el repo).
 
+## Flujo técnico → cliente (app → Firestore → portal)
+
+Arquitectura fija: la consola CARE 360 **no** vive en Hosting. La app (web/escritorio) escribe en Firestore; el portal Hosting solo lee.
+
+1. **Técnico** completa la visita en CARE 360 → pestaña **04 Informe** → **Publicar en línea**.
+2. La app escribe/actualiza `reports/{visitId}` y `visits/{visitId}` en el proyecto **gen-lang-client-0175464290** (mismo id = actualizar informe).
+3. **Invitaciones** → crea código **ASEG-####** o copia el enlace WhatsApp (origen fijo `https://gen-lang-client-0175464290.web.app`).
+4. **Cliente** abre el portal Hosting, entra con código/enlace y ve las visitas publicadas de su finca.
+
 ## Qué incluye el portal (Hosting)
 
 - Acceso con código / enlace de invitación.

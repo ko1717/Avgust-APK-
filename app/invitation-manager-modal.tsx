@@ -17,6 +17,7 @@ import {
   revokeFarmInvitation,
   buildInvitationPortalUrl,
   buildWhatsAppInvitationMessage,
+  getPortalOrigin,
   type FarmInvitation
 } from '@/lib/invitations';
 import type {Visit} from '@/lib/model';
@@ -147,7 +148,9 @@ export function InvitationManagerModal({
                 Gestión de Invitaciones y Servidor en Línea para Clientes
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
-                Genera accesos autorizados para que los administradores de fincas consulten únicamente sus informes y aseguramientos.
+                Genera código ASEG o enlace WhatsApp. El cliente entra en el portal Hosting{' '}
+                <strong className="text-[#007fa3]">{getPortalOrigin()}</strong>
+                {' '}y solo ve los informes publicados de su finca.
               </p>
             </div>
           </div>
@@ -391,10 +394,14 @@ export function InvitationManagerModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-emerald-600" />
-            <span>Seguridad AVGUST: Las invitaciones restringen la consulta estrictamente a la finca asignada.</span>
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-between text-xs text-slate-500 gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
+            <span>
+              URL del cliente (Firebase Hosting):{' '}
+              <strong className="text-slate-700 dark:text-slate-200">{getPortalOrigin()}</strong>
+              . Primero publica el informe con «Publicar en línea»; luego envía el código ASEG o el enlace.
+            </span>
           </div>
           <button
             onClick={onClose}
