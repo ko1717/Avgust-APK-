@@ -298,13 +298,15 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
           <div>
             <div className="fp-gate-logo">
               <img src="/avgust-logo.svg" alt="AVGUST Crop Protection" />
+              <span>CARE 360</span>
             </div>
-            <span className="fp-gate-kicker">CARE 360 · Portal de finca</span>
+            <span className="fp-gate-kicker">Portal de finca en línea</span>
             <h1 className="fp-gate-product">
-              Aseguramiento <span>MIPE</span>
+              AVGUST <span>CARE 360</span>
             </h1>
             <p className="fp-gate-lead">
-              La misma lectura de indicadores del programa AVGUST, disponible para el responsable de tu finca.
+              Aseguramiento MIPE con la misma lectura de métricas del programa — resultado, capítulos y acciones
+              correctivas para el responsable de tu finca.
             </p>
             <ul className="fp-gate-points">
               <li>Resultado ponderado con umbrales oficiales: Saludable 95–100%, Alerta 80–94%, Vulnerable &lt;80%.</li>
@@ -312,12 +314,16 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
               <li>Informes de aseguramiento en línea y descarga Word.</li>
             </ul>
           </div>
-          <p className="fp-gate-foot">AVGUST · Juntos Crecemos Bien</p>
+          <p className="fp-gate-foot">AVGUST Crop Protection · Juntos Crecemos Bien</p>
         </section>
 
         <section className="fp-gate-panel">
           <div className="fp-gate-card">
-            <h2>Acceso con código de invitación</h2>
+            <div className="fp-gate-card-brand">
+              <img src="/avgust-logo.svg" alt="" aria-hidden />
+              <small>Acceso seguro</small>
+            </div>
+            <h2>Código de invitación</h2>
             <p>
               Ingresa el PIN emitido por tu técnico AVGUST para consultar solo la información de tu finca.
             </p>
@@ -375,7 +381,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         <div className="fp-topbar-brand">
           <img src="/avgust-logo.svg" alt="AVGUST" />
           <div className="fp-topbar-meta">
-            <small>Portal de Finca · Aseguramiento</small>
+            <small>Portal de Finca · CARE 360</small>
             <strong title={invitation.farm}>{invitation.farm}</strong>
           </div>
         </div>
@@ -395,39 +401,45 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         </div>
       </header>
 
-      <main className="fp-main">
-        <div className="b2b-metrics-wrapper" aria-labelledby="farm-portal-title">
-          <div className="b2b-header">
-            <div className="b2b-header-title">
-              <div className="b2b-kicker">AVGUST CROP PROTECTION · JUNTOS CRECEMOS BIEN</div>
-              <h2 id="farm-portal-title">Aseguramiento técnico de la finca</h2>
-              <p>
-                Resultado, prioridad de atención y avance reciente — la misma lectura del módulo de métricas,
-                para el cliente de finca.
-              </p>
+      <section className="fp-hero" aria-labelledby="farm-portal-title">
+        <div className="fp-hero-inner">
+          <div className="fp-hero-copy">
+            <div className="fp-hero-brand">
+              <img src="/avgust-logo.svg" alt="" aria-hidden />
+              <span>AVGUST CARE 360</span>
             </div>
-            {current && (
-              <div className="b2b-header-actions">
-                <button
-                  type="button"
-                  className="b2b-btn b2b-btn-secondary"
-                  onClick={() => setViewingReportId(current.visit.id)}
-                >
-                  <ExternalLink size={16} aria-hidden />
-                  Abrir último informe
-                </button>
-                <button
-                  type="button"
-                  className="b2b-btn b2b-btn-primary"
-                  onClick={() => void exportWord(current.visit)}
-                >
-                  <FileText size={16} aria-hidden />
-                  Descargar Word
-                </button>
-              </div>
-            )}
+            <span className="fp-hero-kicker">Aseguramiento técnico MIPE</span>
+            <h1 id="farm-portal-title">{invitation.farm}</h1>
+            <p>
+              Resultado ponderado, tendencia por capítulo y acciones correctivas — la misma lectura del módulo
+              de métricas, para el responsable de finca.
+            </p>
           </div>
+          {current && (
+            <div className="fp-hero-actions">
+              <button
+                type="button"
+                className="b2b-btn b2b-btn-secondary"
+                onClick={() => setViewingReportId(current.visit.id)}
+              >
+                <ExternalLink size={16} aria-hidden />
+                Abrir último informe
+              </button>
+              <button
+                type="button"
+                className="b2b-btn b2b-btn-primary"
+                onClick={() => void exportWord(current.visit)}
+              >
+                <FileText size={16} aria-hidden />
+                Descargar Word
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
+      <main className="fp-main">
+        <div className="b2b-metrics-wrapper" aria-label="Indicadores de aseguramiento">
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
           ) : !current ? (
@@ -711,7 +723,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
       </main>
 
       <footer className="fp-footer">
-        AVGUST CARE 360 · Portal de Finca · Juntos Crecemos Bien
+        <span>AVGUST CARE 360 · Portal de Finca · Juntos Crecemos Bien</span>
       </footer>
     </div>
   );
