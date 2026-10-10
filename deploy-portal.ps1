@@ -6,8 +6,8 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
-$PortalUrl = 'https://avgustscare360.web.app/?portal=finca'
-$ProjectId = 'avgustscare360'
+$PortalUrl = 'https://gen-lang-client-0175464290.web.app/?portal=finca'
+$ProjectId = 'gen-lang-client-0175464290'
 
 Write-Host ''
 Write-Host '========================================'
@@ -47,7 +47,7 @@ if (-not (Test-Path (Join-Path $Root 'node_modules'))) {
 
 Write-Host ''
 Write-Host '[2/4] Inicio de sesion Firebase (se abre el navegador)...'
-Write-Host '      Usa la cuenta de Google con acceso al proyecto avgustscare360.'
+Write-Host "      Usa la cuenta de Google con acceso al proyecto $ProjectId (vixnine777@gmail.com)."
 npx firebase login
 if ($LASTEXITCODE -ne 0) { Fail 'firebase login fallo.' }
 

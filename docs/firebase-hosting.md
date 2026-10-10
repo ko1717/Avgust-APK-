@@ -1,6 +1,6 @@
 # Firebase Hosting — portal / servidor en línea
 
-Publica el portal de finca (`/?portal=finca`) en Firebase Hosting (estático) junto con las reglas de Firestore del proyecto **avgustscare360**.
+Publica el portal de finca (`/?portal=finca`) en Firebase Hosting (estático) junto con las reglas de Firestore del proyecto **gen-lang-client-0175464290** (Proyecto nanda / cuenta `vixnine777@gmail.com`).
 
 ## Verificación local (antes de deploy)
 
@@ -10,7 +10,7 @@ Sin login de Firebase, el repo puede comprobar que la config del portal no se ha
 npm run verify:firebase-portal
 ```
 
-El script (`scripts/verify-firebase-portal.mjs`) exige `firebase-applet-config.json` completo (apiKey, appId, measurementId, …), `.firebaserc` → **avgustscare360**, reglas con `invitations` / `visits` / `reports` + `portalListOk`, y los scripts de prepare/hosting. Sale con código ≠ 0 si falta algo.
+El script (`scripts/verify-firebase-portal.mjs`) exige `firebase-applet-config.json` completo (apiKey, appId, …), `.firebaserc` → **gen-lang-client-0175464290**, Firestore named DB `ai-studio-avgustapk-…`, reglas con `invitations` / `visits` / `reports` + `portalListOk`, y los scripts de prepare/hosting. Sale con código ≠ 0 si falta algo.
 
 **Plugin / MCP Firebase en Cursor:** instala el plugin Firebase del Marketplace (o deja `.cursor/mcp.json` con el servidor `firebase` → `npx firebase-tools@latest mcp`). Tras `firebase login` en la máquina, el agente puede consultar el proyecto en vivo (apps, hosting, reglas). Hasta entonces, `npm run verify:firebase-portal` atrapa drift de config en local.
 
@@ -19,11 +19,11 @@ El script (`scripts/verify-firebase-portal.mjs`) exige `firebase-applet-config.j
 1. Instala [Node.js 22+](https://nodejs.org) si aún no lo tienes.
 2. En la carpeta del repo, **doble clic** en `deploy-portal.bat`  
    (o clic derecho en `deploy-portal.ps1` → *Ejecutar con PowerShell*).
-3. Cuando se abra el navegador, inicia sesión con la cuenta de Google que tiene acceso a Firebase.
+3. Cuando se abra el navegador, inicia sesión con la cuenta de Google que tiene acceso a Firebase (`vixnine777@gmail.com`).
 4. Espera a que termine el build y el deploy.
-5. Abre: **https://avgustscare360.web.app/?portal=finca**
+5. Abre: **https://gen-lang-client-0175464290.web.app/?portal=finca**
 
-No hace falta configurar secrets de GitHub ni tokens de CI. El script hace: `npm install` (si falta), `firebase login`, selecciona `avgustscare360` y `npm run deploy:firebase`.
+No hace falta configurar secrets de GitHub ni tokens de CI. El script hace: `npm install` (si falta), `firebase login`, selecciona `gen-lang-client-0175464290` y `npm run deploy:firebase`.
 
 Equivalente desde una terminal ya logueada:
 
@@ -34,23 +34,22 @@ npm run deploy:portal
 ## Variables opcionales
 
 - `PUBLIC_PORTAL_ORIGIN` / `NEXT_PUBLIC_PORTAL_ORIGIN` — origen fijo para enlaces de invitación WhatsApp.
-  - Por defecto / en `build:firebase`: `https://avgustscare360.web.app`.
+  - Por defecto / en `build:firebase`: `https://gen-lang-client-0175464290.web.app`.
   - En localhost / ChatGPT Sites / workers.dev el cliente también cae a ese Hosting URL (así WhatsApp no apunta al shell de Sites).
 
 ## Consola Firebase (una vez por proyecto)
 
-1. **Firestore → Crear base de datos** si aún no existe (modo producción o de prueba; ID `(default)`).
+1. **Firestore**: el portal usa la base named `ai-studio-avgustapk-f7ec9dbe-9fd2-41ac-9388-c71e7384bb8a` (no `(default)`).
 2. **Authentication → Sign-in method → Anonymous**: habilitar (portal llama `ensurePortalAuth`).
-3. **Authentication → Settings → Authorized domains**: confirmar `avgustscare360.web.app` y `avgustscare360.firebaseapp.com`.
-4. **Configuración del proyecto → Tus apps**: copiar `appId` y `messagingSenderId` a `firebase-applet-config.json`.
-5. Tras el primer deploy, **regenerar invitaciones**: Firestore está vacío en el proyecto nuevo; los enlaces viejos a `gen-lang-client-*.web.app` no sirven.
+3. **Authentication → Settings → Authorized domains**: confirmar `gen-lang-client-0175464290.web.app` y `gen-lang-client-0175464290.firebaseapp.com`.
+4. **Configuración del proyecto → Tus apps**: web app **AVGUST CARE 360** (`appId` / `messagingSenderId` en `firebase-applet-config.json`).
 
 ## Avanzado — comandos manuales
 
 ```bash
 npm install
 npx firebase login
-npx firebase use avgustscare360
+npx firebase use gen-lang-client-0175464290
 npm run build:firebase          # vinext build + stage dist/firebase-hosting
 npm run deploy:firebase         # hosting + firestore rules/indexes
 # o solo hosting:
@@ -59,7 +58,7 @@ npx firebase deploy --only hosting
 
 ## Avanzado — GitHub Actions + `login:ci`
 
-El workflow [`.github/workflows/firebase-hosting.yml`](../.github/workflows/firebase-hosting.yml) puede publicar a **avgustscare360** en push a `main` o con `workflow_dispatch`. Es **opcional**; el camino fácil es el `.bat` de arriba.
+El workflow [`.github/workflows/firebase-hosting.yml`](../.github/workflows/firebase-hosting.yml) puede publicar a **gen-lang-client-0175464290** en push a `main` o con `workflow_dispatch`. Es **opcional**; el camino fácil es el `.bat` de arriba.
 
 **Una sola vez — secret en el repo:**
 
@@ -75,4 +74,4 @@ Sin el secret `FIREBASE_TOKEN`, el workflow se salta el deploy (no falla el repo
 - Hosting sirve el **shell estático** del build vinext. El portal y los informes en línea usan **Firestore + Auth en el cliente**.
 - Las rutas `/api/*` (D1/R2 / Sites) **no** corren en Hosting estático. El app completo autenticado sigue en Vinext/Cloudflare Sites (`npm run start` / Sites deploy).
 - No se aprovisionan usuarios Auth reales en este flujo (anónimo + códigos de invitación).
-- Solo el proyecto **avgustscare360** es el target de Hosting, Firestore e invitaciones.
+- Solo el proyecto **gen-lang-client-0175464290** es el target de Hosting, Firestore e invitaciones.

@@ -4,9 +4,9 @@ Aplicación para registrar visitas y preparar informes técnicos por finca. Perm
 
 ## Portal de finca (Firebase)
 
-El portal en línea vive en el proyecto Firebase **avgustscare360**:
+El portal en línea vive en el proyecto Firebase **gen-lang-client-0175464290** (cuenta `vixnine777@gmail.com`):
 
-- URL: https://avgustscare360.web.app/?portal=finca
+- URL: https://gen-lang-client-0175464290.web.app/?portal=finca
 - Windows: doble clic en `deploy-portal.bat` (login Google → build → deploy)
 - Detalle: `docs/firebase-hosting.md`
 - Comprobar config sin deploy: `npm run verify:firebase-portal`
@@ -31,7 +31,7 @@ El respaldo JSON conserva campos y referencias a fotos, no los bytes de las foto
 
 Node 22.16 o posterior. Se requiere esta versión para la API de respaldo de SQLite que usa la edición Windows. `npm ci`, `npm run dev`, `npm run build`. `npm run db:generate` genera migraciones de Drizzle; no se crean tablas desde rutas de aplicación. El entorno local simula el inicio de sesión mediante `/signin-with-chatgpt`.
 
-Portal local: `npm run dev:portal`. Publicar: `deploy-portal.bat` / `npm run deploy:portal` (proyecto **avgustscare360**; ver sección Portal arriba). El deploy de Sites/Vinext (Cloudflare) no se reemplaza.
+Portal local: `npm run dev:portal`. Publicar: `deploy-portal.bat` / `npm run deploy:portal` (proyecto **gen-lang-client-0175464290**; ver sección Portal arriba). El deploy de Sites/Vinext (Cloudflare) no se reemplaza.
 
 Para preparar una base local nueva tras generar y construir, ejecutar las migraciones de `drizzle/` en orden numérico. Si la base local ya existía, aplicar solamente cada migración pendiente antes de iniciar `npm run dev`; por ejemplo: `npx wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_farm_dossier_indexes.sql`. Utilizar una ruta absoluta para `persist-to` si Wrangler resuelve la ruta desde `dist/server`. Nunca añadir `--remote` a este procedimiento sin una autorización y un entorno de prueba explícitos.
 

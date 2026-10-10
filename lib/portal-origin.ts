@@ -2,11 +2,11 @@
  * Production origin for invitation / online-report links.
  *
  * Override with PUBLIC_PORTAL_ORIGIN or NEXT_PUBLIC_PORTAL_ORIGIN
- * (e.g. https://avgustscare360.web.app) so WhatsApp links
+ * (e.g. https://gen-lang-client-0175464290.web.app) so WhatsApp links
  * point at Firebase Hosting even when the technician is on Sites/localhost.
  */
 export const DEFAULT_FIREBASE_HOSTING_ORIGIN =
-  'https://avgustscare360.web.app';
+  'https://gen-lang-client-0175464290.web.app';
 
 function isDevOrSitesShell(origin: string): boolean {
   return /localhost|127\.0\.0\.1|0\.0\.0\.0|chatgpt\.com|openai\.com|workers\.dev|pages\.dev/i.test(

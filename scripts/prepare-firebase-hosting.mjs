@@ -52,7 +52,7 @@ async function ensureVinextBuild() {
       NEXT_PUBLIC_PORTAL_ORIGIN:
         process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
         process.env.PUBLIC_PORTAL_ORIGIN ||
-        'https://avgustscare360.web.app'
+        'https://gen-lang-client-0175464290.web.app'
     }
   });
   if (!exists(path.join(clientDir, '_next'))) {
@@ -121,7 +121,7 @@ async function prerenderIndexHtml() {
       NEXT_PUBLIC_PORTAL_ORIGIN:
         process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
         process.env.PUBLIC_PORTAL_ORIGIN ||
-        'https://avgustscare360.web.app'
+        'https://gen-lang-client-0175464290.web.app'
     },
     shell: process.platform === 'win32',
     detached: process.platform !== 'win32'

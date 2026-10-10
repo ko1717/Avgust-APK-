@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Local readiness checks for the CARE360 farm portal on Firebase
- * (project avgustscare360). Catches config drift before deploy —
+ * (project gen-lang-client-0175464290). Catches config drift before deploy —
  * missing appId, wrong .firebaserc default, rules without portalListOk, etc.
  *
  * Usage: npm run verify:firebase-portal
@@ -12,7 +12,9 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const EXPECTED_PROJECT = 'avgustscare360';
+const EXPECTED_PROJECT = 'gen-lang-client-0175464290';
+const EXPECTED_FIRESTORE_DB =
+  'ai-studio-avgustapk-f7ec9dbe-9fd2-41ac-9388-c71e7384bb8a';
 
 /** @type {{ ok: string[]; fail: string[] }} */
 const results = {ok: [], fail: []};
@@ -73,7 +75,6 @@ if (applet) {
     'authDomain',
     'storageBucket',
     'messagingSenderId',
-    'measurementId',
     'firestoreDatabaseId'
   ];
   for (const key of required) {
@@ -96,6 +97,18 @@ if (applet) {
     pass('applet config: authDomain matches project');
   } else if (applet.authDomain) {
     fail(`applet config: authDomain "${applet.authDomain}" does not mention ${EXPECTED_PROJECT}`);
+  }
+  if (applet.firestoreDatabaseId === EXPECTED_FIRESTORE_DB) {
+    pass(`applet config: firestoreDatabaseId is named AI Studio DB`);
+  } else {
+    fail(
+      `applet config: firestoreDatabaseId is "${applet.firestoreDatabaseId}", expected "${EXPECTED_FIRESTORE_DB}"`
+    );
+  }
+  if (typeof applet.measurementId === 'string' && applet.measurementId.trim()) {
+    pass('applet config: measurementId present (optional Analytics)');
+  } else {
+    pass('applet config: measurementId empty (Analytics optional)');
   }
 }
 
@@ -128,10 +141,10 @@ if (firebaseJson) {
     fail(`firestore.rules is "${rulesPath ?? '(unset)'}", expected "firestore.rules"`);
   }
   const dbId = firebaseJson.firestore?.database;
-  if (dbId === '(default)' || dbId === undefined) {
-    pass(`firestore.database is ${dbId ?? '(default)'}`);
+  if (dbId === EXPECTED_FIRESTORE_DB) {
+    pass(`firestore.database is named AI Studio DB`);
   } else {
-    fail(`firestore.database is "${dbId}", portal expects "(default)"`);
+    fail(`firestore.database is "${dbId ?? '(unset)'}", expected "${EXPECTED_FIRESTORE_DB}"`);
   }
   const rewrite = (firebaseJson.hosting?.rewrites || []).some(
     r => r.source === '**' && r.destination === '/index.html'
@@ -185,6 +198,12 @@ if (pkg) {
       fail(`package.json missing scripts.${scriptName}`);
     }
   }
+  if (typeof pkg.scripts?.['deploy:portal'] === 'string' &&
+      pkg.scripts['deploy:portal'].includes(EXPECTED_PROJECT)) {
+    pass('package.json deploy:portal targets expected project');
+  } else {
+    fail(`package.json deploy:portal does not target ${EXPECTED_PROJECT}`);
+  }
 }
 
 // ── client wiring ────────────────────────────────────────────────────────
@@ -222,6 +241,15 @@ if (invitationsTs) {
   }
 }
 
+const portalOriginTs = readText('lib/portal-origin.ts');
+if (portalOriginTs) {
+  if (portalOriginTs.includes(`https://${EXPECTED_PROJECT}.web.app`)) {
+    pass('lib/portal-origin.ts default origin matches Hosting URL');
+  } else {
+    fail(`lib/portal-origin.ts default origin missing https://${EXPECTED_PROJECT}.web.app`);
+  }
+}
+
 // ── Cursor MCP (agent → live project after login) ────────────────────────
 console.log('\nCursor Firebase MCP');
 const mcp = readJson('.cursor/mcp.json');
@@ -246,5 +274,5 @@ if (failed > 0) {
   console.error('\nPortal Firebase config is NOT ready. Fix the gaps above before deploy.\n');
   process.exit(1);
 }
-console.log('\nPortal Firebase config looks ready for avgustscare360.\n');
+console.log(`\nPortal Firebase config looks ready for ${EXPECTED_PROJECT}.\n`);
 process.exit(0);

@@ -11,8 +11,8 @@ echo ========================================
 echo   CARE 360 — Publicar portal Firebase
 echo ========================================
 echo.
-echo Proyecto: avgustscare360
-echo URL:      https://avgustscare360.web.app/?portal=finca
+echo Proyecto: gen-lang-client-0175464290
+echo URL:      https://gen-lang-client-0175464290.web.app/?portal=finca
 echo.
 
 where node >nul 2>&1
@@ -46,7 +46,7 @@ if not exist "node_modules\" (
 
 echo.
 echo [2/4] Inicio de sesion Firebase ^(se abre el navegador^)...
-echo       Usa la cuenta de Google con acceso al proyecto avgustscare360.
+echo       Usa la cuenta de Google con acceso al proyecto gen-lang-client-0175464290 ^(vixnine777@gmail.com^).
 call npx firebase login
 if errorlevel 1 (
   echo [ERROR] firebase login fallo.
@@ -54,10 +54,10 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/4] Seleccionando proyecto avgustscare360...
-call npx firebase use avgustscare360
+echo [3/4] Seleccionando proyecto gen-lang-client-0175464290...
+call npx firebase use gen-lang-client-0175464290
 if errorlevel 1 (
-  echo [ERROR] No se pudo seleccionar avgustscare360.
+  echo [ERROR] No se pudo seleccionar gen-lang-client-0175464290.
   echo Verifica que tu cuenta tenga acceso al proyecto en Firebase Console.
   goto :end
 )
@@ -77,7 +77,7 @@ echo   LISTO — portal publicado
 echo ========================================
 echo.
 echo Abre en el navegador:
-echo   https://avgustscare360.web.app/?portal=finca
+echo   https://gen-lang-client-0175464290.web.app/?portal=finca
 echo.
 
 :end

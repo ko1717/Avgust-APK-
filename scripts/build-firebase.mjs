@@ -11,7 +11,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const portalOrigin =
   process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
   process.env.PUBLIC_PORTAL_ORIGIN ||
-  'https://avgustscare360.web.app';
+  'https://gen-lang-client-0175464290.web.app';
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
