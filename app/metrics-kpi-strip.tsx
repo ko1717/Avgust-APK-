@@ -1,12 +1,46 @@
 'use client';
-import {ClipboardCheck,TrendingDown,TrendingUp} from 'lucide-react';
+import {useId,useState} from 'react';
+import {ChevronDown,ClipboardCheck,TrendingDown,TrendingUp} from 'lucide-react';
 import './b2b-metrics.css';
+import './metrics-disclosure.css';
 
 export type ChapterTrendKpi={id:number;title:string;weightPct:number;score:number|null;delta:number|null;comparisons:number};
 
 function formatPoints(value:number){return Number.isInteger(value)?String(value):value.toFixed(1);}
 
-export default function MetricsKpiStrip({count,scope,chapterTrends,comparisonLabel}:{count:number;scope:string;chapterTrends:ChapterTrendKpi[];comparisonLabel:string}){
+function chapterTone(score:number|null){
+  if(score===null)return 'empty';
+  if(score>=95)return 'healthy';
+  if(score>=80)return 'acceptable';
+  return 'critical';
+}
+
+export default function MetricsKpiStrip({
+  count,
+  scope,
+  chapterTrends,
+  comparisonLabel,
+  collapsible=false,
+  defaultExpanded=false
+}:{
+  count:number;
+  scope:string;
+  chapterTrends:ChapterTrendKpi[];
+  comparisonLabel:string;
+  collapsible?:boolean;
+  defaultExpanded?:boolean;
+}){
+  const listId=useId();
+  const [expanded,setExpanded]=useState(Boolean(defaultExpanded));
+  const scored=chapterTrends.filter(chapter=>chapter.score!==null);
+  const weakest=scored.length
+    ?scored.reduce((worst,chapter)=>(chapter.score as number)<(worst.score as number)?chapter:worst)
+    :null;
+  const average=scored.length
+    ?Math.round((scored.reduce((sum,chapter)=>sum+(chapter.score as number),0)/scored.length)*10)/10
+    :null;
+  const showList=!collapsible||expanded;
+
   return <div className="metrics-kpi-strip" aria-label="Indicadores clave del aseguramiento">
     <article className="metrics-kpi-card metrics-assurance-count">
       <div className="metrics-kpi-count-content">
@@ -18,20 +52,56 @@ export default function MetricsKpiStrip({count,scope,chapterTrends,comparisonLab
       <span className="metrics-kpi-icon" aria-hidden="true"><ClipboardCheck size={23}/></span>
     </article>
 
-    <section className="metrics-kpi-card metrics-chapter-trends" aria-labelledby="chapter-trends-title">
+    <section className={`metrics-kpi-card metrics-chapter-trends${collapsible?' is-collapsible':''}${showList?' is-expanded':' is-collapsed'}`} aria-labelledby="chapter-trends-title">
       <div className="metrics-kpi-heading">
         <div><span className="metrics-section-kicker">CAPÍTULOS</span><h3 id="chapter-trends-title">Tendencia por capítulo</h3></div>
         <span className="metrics-kpi-context">{comparisonLabel}</span>
       </div>
-      <div className="metrics-chapter-trend-list">
-        {chapterTrends.map(chapter=><div className="metrics-chapter-trend" key={chapter.id}>
-          <div className="metrics-chapter-trend-name"><strong>Cap. {chapter.id}</strong><span title={chapter.title}>{chapter.title}</span><small>{chapter.weightPct}%</small></div>
-          <div className="metrics-chapter-trend-track" aria-label={chapter.score===null?'Sin evaluar':`Resultado ${chapter.score}%`}><span className={chapter.score===null?'empty':chapter.score>=95?'healthy':chapter.score>=80?'acceptable':'critical'} style={{width:`${Math.min(100,Math.max(0,chapter.score??0))}%`}}/></div>
-          <strong className="metrics-chapter-trend-score">{chapter.score===null?'—':`${formatPoints(chapter.score)}%`}</strong>
-          <div className="metrics-chapter-trend-change"><span className={`metrics-chapter-trend-delta ${chapter.delta===null?'neutral':chapter.delta>0?'positive':chapter.delta<0?'negative':'neutral'}`} title={chapter.delta===null?'Sin una comparación comparable':`${chapter.comparisons} ${chapter.comparisons===1?'comparación':'comparaciones'}`}>{chapter.delta===null?'Sin base':chapter.delta===0?'Sin cambio':<>{chapter.delta>0?<TrendingUp size={13}/>:<TrendingDown size={13}/>} {chapter.delta>0?'+':''}{formatPoints(chapter.delta)} pts</>}</span>{chapter.delta!==null&&<small>{chapter.comparisons} {chapter.comparisons===1?'comparación':'comparaciones'}</small>}</div>
-        </div>)}
-      </div>
-      <p className="metrics-chapter-trend-note">El resultado corresponde al aseguramiento consultado; la variación solo compara con el anterior cuando tienen el mismo alcance de capítulos.</p>
+
+      {collapsible&&(
+        <div className="metrics-chapter-summary">
+          <div className="metrics-chapter-summary-facts">
+            <div>
+              <span>Capítulos</span>
+              <strong>{chapterTrends.length}</strong>
+            </div>
+            <div>
+              <span>Promedio</span>
+              <strong>{average===null?'—':`${formatPoints(average)}%`}</strong>
+            </div>
+            <div>
+              <span>Más crítico</span>
+              <strong className={chapterTone(weakest?.score??null)}>
+                {weakest?`Cap. ${weakest.id} · ${formatPoints(weakest.score as number)}%`:'Sin datos'}
+              </strong>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="metrics-disclosure-button"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            onClick={()=>setExpanded(value=>!value)}
+          >
+            <span>{expanded?'Ocultar capítulos':'Ver capítulos'}</span>
+            <ChevronDown size={16} aria-hidden className={expanded?'is-open':''}/>
+          </button>
+        </div>
+      )}
+
+      {showList&&(
+        <>
+          <div className="metrics-chapter-trend-list" id={listId}>
+            {chapterTrends.map(chapter=><div className="metrics-chapter-trend" key={chapter.id}>
+              <div className="metrics-chapter-trend-name"><strong>Cap. {chapter.id}</strong><span title={chapter.title}>{chapter.title}</span><small>{chapter.weightPct}%</small></div>
+              <div className="metrics-chapter-trend-track" aria-label={chapter.score===null?'Sin evaluar':`Resultado ${chapter.score}%`}><span className={chapterTone(chapter.score)} style={{width:`${Math.min(100,Math.max(0,chapter.score??0))}%`}}/></div>
+              <strong className="metrics-chapter-trend-score">{chapter.score===null?'—':`${formatPoints(chapter.score)}%`}</strong>
+              <div className="metrics-chapter-trend-change"><span className={`metrics-chapter-trend-delta ${chapter.delta===null?'neutral':chapter.delta>0?'positive':chapter.delta<0?'negative':'neutral'}`} title={chapter.delta===null?'Sin una comparación comparable':`${chapter.comparisons} ${chapter.comparisons===1?'comparación':'comparaciones'}`}>{chapter.delta===null?'Sin base':chapter.delta===0?'Sin cambio':<>{chapter.delta>0?<TrendingUp size={13}/>:<TrendingDown size={13}/>} {chapter.delta>0?'+':''}{formatPoints(chapter.delta)} pts</>}</span>{chapter.delta!==null&&<small>{chapter.comparisons} {chapter.comparisons===1?'comparación':'comparaciones'}</small>}</div>
+            </div>)}
+          </div>
+          <p className="metrics-chapter-trend-note">El resultado corresponde al aseguramiento consultado; la variación solo compara con el anterior cuando tienen el mismo alcance de capítulos.</p>
+        </>
+      )}
     </section>
   </div>;
 }

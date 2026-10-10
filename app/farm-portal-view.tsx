@@ -73,6 +73,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
   const [errorMsg, setErrorMsg] = useState('');
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   const [expandedActions, setExpandedActions] = useState(false);
+  const [expandedReports, setExpandedReports] = useState(false);
   const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
   const [cloudSyncedFarm, setCloudSyncedFarm] = useState('');
 
@@ -362,6 +363,13 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
 
   return (
     <div className="farm-portal">
+      <div className="fp-lateral fp-lateral-left" aria-hidden>
+        <span className="fp-lateral-brand">AVGUST</span>
+      </div>
+      <div className="fp-lateral fp-lateral-right" aria-hidden>
+        <span className="fp-lateral-brand">CARE 360</span>
+      </div>
+
       <header className="fp-topbar">
         <div className="fp-topbar-brand">
           <img src="/avgust-logo.svg" alt="AVGUST" />
@@ -372,6 +380,15 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         </div>
 
         <div className="fp-topbar-actions">
+          {current && (
+            <div className={`fp-status-chip ${latestStatus}`} title={metricStatusDescriptions[latestStatus]}>
+              <span>MIPE</span>
+              <strong>
+                {latestScore === null ? '—' : `${latestScore}%`}
+              </strong>
+              <StatusBadge value={latestStatus} />
+            </div>
+          )}
           <div className="fp-chip is-desktop">
             <span>
               Invitado: <strong>{invitation.clientName}</strong>
@@ -403,6 +420,9 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
           <div className="fp-hero-actions">
             {current ? (
               <>
+                <a className="fp-hero-cta" href="#fp-metrics-anchor">
+                  Ver estado MIPE {latestScore === null ? '' : `· ${latestScore}%`}
+                </a>
                 <button
                   type="button"
                   className="b2b-btn b2b-btn-secondary"
@@ -532,6 +552,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                     ? 'Vs. aseguramiento anterior'
                     : 'Sin comparación comparable'
                 }
+                collapsible
               />
 
               <div className="metrics-overview-grid">
@@ -658,61 +679,79 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                   </div>
                   <span className="metrics-note">{farmVisits.length} revisados</span>
                 </div>
-                <div className="fp-reports-list">
-                  {farmVisits
-                    .slice()
-                    .reverse()
-                    .map((visit, idx) => {
-                      const record = historyAnalysis?.records.find(r => r.visit.id === visit.id);
-                      const score = record?.score ?? null;
-                      const status = record?.status ?? 'pending';
-                      return (
-                        <article key={visit.id} className="fp-report-row">
-                          <div className="fp-report-row-main">
-                            <div className="fp-report-row-title">
-                              <span>Informe #{farmVisits.length - idx}</span>
-                              <strong>Aseguramiento del {visit.date}</strong>
-                              <StatusBadge value={status} />
-                            </div>
-                            <div className="fp-report-row-meta">
-                              <span>
-                                Resultado:{' '}
-                                <strong>{score === null ? '—' : `${score}%`}</strong>
-                              </span>
-                              <span>
-                                Responsable AVGUST: <strong>{visit.responsible}</strong>
-                              </span>
-                              <span>
-                                Capítulos: <strong>{visit.chapters.length}/5</strong>
-                              </span>
-                              <span>
-                                Desviaciones:{' '}
-                                <strong>{record?.findings ?? 0}</strong>
-                              </span>
-                            </div>
-                          </div>
-                          <div className="fp-report-row-actions">
-                            <button
-                              type="button"
-                              className="b2b-btn b2b-btn-primary"
-                              onClick={() => setViewingReportId(visit.id)}
-                            >
-                              <Globe size={14} aria-hidden />
-                              Ver en línea
-                            </button>
-                            <button
-                              type="button"
-                              className="b2b-btn b2b-btn-secondary"
-                              onClick={() => void exportWord(visit)}
-                            >
-                              <Download size={14} aria-hidden />
-                              Word
-                            </button>
-                          </div>
-                        </article>
-                      );
-                    })}
+                <div className="fp-reports-summary">
+                  <p>
+                    {farmVisits.length === 1
+                      ? '1 aseguramiento revisado disponible.'
+                      : `${farmVisits.length} aseguramientos revisados disponibles.`}
+                  </p>
+                  <button
+                    type="button"
+                    className="metrics-disclosure-button"
+                    aria-expanded={expandedReports}
+                    aria-controls="fp-reports-list"
+                    onClick={() => setExpandedReports(value => !value)}
+                  >
+                    <span>{expandedReports ? 'Ocultar aseguramientos' : 'Ver aseguramientos'}</span>
+                  </button>
                 </div>
+                {expandedReports && (
+                  <div className="fp-reports-list" id="fp-reports-list">
+                    {farmVisits
+                      .slice()
+                      .reverse()
+                      .map((visit, idx) => {
+                        const record = historyAnalysis?.records.find(r => r.visit.id === visit.id);
+                        const score = record?.score ?? null;
+                        const status = record?.status ?? 'pending';
+                        return (
+                          <article key={visit.id} className="fp-report-row">
+                            <div className="fp-report-row-main">
+                              <div className="fp-report-row-title">
+                                <span>Informe #{farmVisits.length - idx}</span>
+                                <strong>Aseguramiento del {visit.date}</strong>
+                                <StatusBadge value={status} />
+                              </div>
+                              <div className="fp-report-row-meta">
+                                <span>
+                                  Resultado:{' '}
+                                  <strong>{score === null ? '—' : `${score}%`}</strong>
+                                </span>
+                                <span>
+                                  Responsable AVGUST: <strong>{visit.responsible}</strong>
+                                </span>
+                                <span>
+                                  Capítulos: <strong>{visit.chapters.length}/5</strong>
+                                </span>
+                                <span>
+                                  Desviaciones:{' '}
+                                  <strong>{record?.findings ?? 0}</strong>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="fp-report-row-actions">
+                              <button
+                                type="button"
+                                className="b2b-btn b2b-btn-primary"
+                                onClick={() => setViewingReportId(visit.id)}
+                              >
+                                <Globe size={14} aria-hidden />
+                                Ver en línea
+                              </button>
+                              <button
+                                type="button"
+                                className="b2b-btn b2b-btn-secondary"
+                                onClick={() => void exportWord(visit)}
+                              >
+                                <Download size={14} aria-hidden />
+                                Word
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                  </div>
+                )}
               </section>
             </div>
           )}
