@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import {ClipboardCheck,FileText,Plus,Save,ArrowRight,Camera,Images,Download,Mail,Home,Users,CalendarDays,ChartNoAxesCombined,ChartSpline,Search,Globe,KeyRound,Trash2} from 'lucide-react';
 import {Tabs,TabsList,TabsTrigger,TabsContent} from '@/components/ui/tabs';
 import {Checkbox} from '@/components/ui/checkbox';
@@ -9,8 +9,11 @@ import {blankVisit,todayDate,catalog,metrics,issues,measurementGroups,measuremen
 import {publishOnlineReport,saveVisitRealtime,subscribeToVisits} from '@/lib/firebase';
 import {StandaloneOnlineReport} from './online-report-view';
 import {FirebaseAuthBar} from './firebase-auth-bar';
-import {FarmPortalView} from './farm-portal-view';
 import {InvitationManagerModal} from './invitation-manager-modal';
+
+const FarmPortalView = lazy(() =>
+  import('./farm-portal-view').then(module => ({default: module.FarmPortalView}))
+);
 import Report from './report';
 import DesktopTools from './desktop-tools';
 import AccountBackup from './account-backup';
@@ -148,7 +151,11 @@ export default function Workspace({desktop=false}:{desktop?:boolean}){
  const exportBackup=()=>void task(()=>download(new Blob([JSON.stringify(v,null,2)],{type:'application/json'}),`respaldo-visita-${v.date}.json`));
  const modules=[{id:'home',label:'Inicio',short:'Inicio',icon:Home,description:''},{id:'farms',label:'Fincas y equipo',short:'Fincas',icon:Users,description:'Gestiona fincas, contactos y participantes.'},{id:'query',label:'Consulta de finca',short:'Consulta',icon:Search,description:'Encuentra el historial completo de una finca.'},{id:'requests',label:'Solicitudes',short:'Solicitudes',icon:CalendarDays,description:'Organiza el apoyo técnico y las fechas de servicio.'},{id:'visits',label:'Visitas e informes',short:'Visitas',icon:FileText,description:'Completa evaluaciones y descarga informes.'},{id:'metrics',label:'Métricas',short:'Métricas',icon:ChartSpline,description:'Consulta indicadores, estados y evolución.'},{id:'followup',label:'Seguimiento',short:'Seguimiento',icon:ChartNoAxesCombined,description:'Revisa pendientes y resultados de cada finca.'}];
  const module=modules.find(x=>x.id===section)!;
- if(showPortal) return <FarmPortalView initialToken={portalToken||undefined} visits={visits} onExitPortal={()=>{ window.history.replaceState({},'','/'); setShowPortal(false); setPortalToken(null); }}/>;
+ if(showPortal) return (
+  <Suspense fallback={<div className="fp-loading" style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#005f7a',color:'#fff',fontFamily:'Manrope,Segoe UI,sans-serif'}}><p>Cargando Portal de Finca…</p></div>}>
+    <FarmPortalView initialToken={portalToken||undefined} visits={visits} onExitPortal={()=>{ window.history.replaceState({},'','/'); setShowPortal(false); setPortalToken(null); }}/>
+  </Suspense>
+ );
  if(onlineReportId) return <StandaloneOnlineReport reportId={onlineReportId} onClose={()=>{ window.history.replaceState({},'','/'); setOnlineReportId(null); }}/>;
  return <><div className="no-print"><header className="topbar"><div className="brand"><img src="/avgust-logo.svg" alt="Avgust Crop Protection"/><span>CARE 360<small>ACOMPAÑAMIENTO EN CAMPO · JUNTOS CRECEMOS BIEN</small></span></div><div className="platform-state"><button className="secondary text-xs px-2 py-1 flex items-center gap-1.5" onClick={()=>setShowInvitationModal(true)} title="Gestionar invitaciones de acceso para clientes"><KeyRound size={14} className="text-[#007fa3]"/><span>Invitaciones</span></button><button className="secondary text-xs px-2 py-1 flex items-center gap-1.5" onClick={()=>{window.history.pushState({},'','/?portal=finca');setPortalToken('');setShowPortal(true);}} title="Servidor en línea para responsables de finca"><Globe size={14} className="text-[#78be20]"/><span>Portal Finca</span></button><FirebaseAuthBar/><GuideHelpButton onClick={()=>setShowGuidePresentation(true)}/>{!desktop&&<PwaInstall/>}<ThemeToggle/><span>{desktop?(nativeApp()?'Android · Sin conexión':'Windows · Sin conexión'):'Ornamentales · Colombia'}</span></div></header>
  <Tabs value={section} onValueChange={value=>navigate(String(value))} className="module-shell"><TabsList className="module-nav" aria-label="Funciones del programa">{modules.map(item=><TabsTrigger value={item.id} key={item.id} disabled={busy}><item.icon size={19}/><span className="nav-full">{item.label}</span><span className="nav-short">{item.short}</span>{item.id==='visits'&&dirty&&<span className="draft-dot" aria-label="Hay cambios sin guardar"/>}</TabsTrigger>)}</TabsList>

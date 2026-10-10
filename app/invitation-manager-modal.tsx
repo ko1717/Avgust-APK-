@@ -222,7 +222,7 @@ export function InvitationManagerModal({
                 <input
                   id="invClientRole"
                   type="text"
-                  placeholder="Ej. Administrador, Jefe MIPE, Dueño"
+                  placeholder="Ej. Administrador, Jefe de aseguramiento, Dueño"
                   value={clientRole}
                   onChange={e => setClientRole(e.target.value)}
                   className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#007fa3] outline-hidden"

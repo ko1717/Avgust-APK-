@@ -929,7 +929,7 @@ html.dark .b2b-alert-card p {
   }
 }
 
-/* New MIPE executive views: conclusion and corrective work lead the page. */
+/* Executive assurance views: conclusion and corrective work lead the page. */
 .metrics-executive-dashboard { display: grid; gap: 18px; }
 .metrics-outcome, .metrics-priority-panel, .metrics-podium-panel, .metrics-fleet-panel, .metrics-chapter-evolution {
   min-width: 0; padding: 24px; background: #fff; border: 1px solid #e4eaed; border-radius: 18px;

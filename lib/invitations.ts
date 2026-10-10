@@ -38,11 +38,12 @@ function saveLocalInvitations(list: FarmInvitation[]): void {
 }
 
 /**
- * Generates an easy-to-read invitation code (e.g. MIPE-8429)
+ * Generates an easy-to-read invitation code (e.g. ASEG-8429).
+ * Legacy MIPE-* codes remain valid for verification against stored invitations.
  */
 export function generateInvitationCode(): string {
   const num = Math.floor(1000 + Math.random() * 9000);
-  return `MIPE-${num}`;
+  return `ASEG-${num}`;
 }
 
 /**
@@ -103,7 +104,8 @@ export async function createFarmInvitation(input: {
 }
 
 /**
- * Verifies an invitation either by token (from URL) or by manual code (e.g. MIPE-1234)
+ * Verifies an invitation either by token (from URL) or by manual code (e.g. ASEG-1234).
+ * Also accepts legacy MIPE-* codes already stored in Firebase.
  */
 export async function verifyFarmInvitation(tokenOrCode: string): Promise<FarmInvitation | null> {
   const cleaned = tokenOrCode.trim().toUpperCase();
@@ -232,17 +234,17 @@ export function buildInvitationPortalUrl(token: string): string {
  */
 export function buildWhatsAppInvitationMessage(invitation: FarmInvitation): string {
   const url = buildInvitationPortalUrl(invitation.token);
-  return `*AVGUST CARE 360 · Servidor en Línea de Informes MIPE*
+  return `*AVGUST CARE 360 · Portal de Finca · Aseguramiento*
 
 Estimado(a) *${invitation.clientName}*,
-El equipo técnico de AVGUST te ha habilitado acceso exclusivo al servidor en línea de aseguramientos para la finca *${invitation.farm}*.
+El equipo técnico de AVGUST te ha habilitado acceso exclusivo al portal de aseguramiento para la finca *${invitation.farm}*.
 
-🔑 *Código de Acceso:* ${invitation.code}
+🔑 *Código de aseguramiento:* ${invitation.code}
 🔗 *Enlace directo:*
 ${url}
 
 En este portal podrás:
-• Consultar el semáforo y estatus oficial MIPE (Saludable 95-100%, Alerta 80-94%, Vulnerable <80%)
+• Consultar el semáforo y estatus oficial de aseguramiento (Saludable 95-100%, Alerta 80-94%, Vulnerable <80%)
 • Ver la evolución de todas las visitas técnicas sin imprimir papel
 • Revisar las recomendaciones y compromisos acordados
 • Descargar los informes en Word o PDF

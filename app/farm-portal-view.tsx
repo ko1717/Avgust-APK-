@@ -1,5 +1,5 @@
 'use client';
-import {useState, useEffect, useMemo} from 'react';
+import {lazy, Suspense, useState, useEffect, useMemo} from 'react';
 import {
   Download,
   Globe,
@@ -31,9 +31,12 @@ import {
 import {farmMetricHistory} from '@/lib/metric-analysis';
 import {ensurePortalAuth, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
 import MetricsKpiStrip from './metrics-kpi-strip';
-import {StandaloneOnlineReport} from './online-report-view';
 import './b2b-metrics.css';
 import './farm-portal.css';
+
+const StandaloneOnlineReport = lazy(() =>
+  import('./online-report-view').then(module => ({default: module.StandaloneOnlineReport}))
+);
 
 type FarmPortalViewProps = {
   initialToken?: string;
@@ -275,10 +278,12 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
 
   if (viewingReportId) {
     return (
-      <StandaloneOnlineReport
-        reportId={viewingReportId}
-        onClose={() => setViewingReportId(null)}
-      />
+      <Suspense fallback={<div className="fp-loading"><div className="fp-spinner" aria-hidden /><h2>Cargando informe…</h2><p>Preparando el aseguramiento en línea.</p></div>}>
+        <StandaloneOnlineReport
+          reportId={viewingReportId}
+          onClose={() => setViewingReportId(null)}
+        />
+      </Suspense>
     );
   }
 
@@ -306,13 +311,13 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
             </p>
             <h1 className="fp-gate-headline">Portal de finca</h1>
             <p className="fp-gate-lead">
-              Consulta el aseguramiento MIPE de tu cultivo con la misma lectura del programa.
+              Consulta el aseguramiento de tu cultivo con la misma lectura del programa Aptus.
             </p>
           </header>
 
           <section className="fp-gate-panel" aria-labelledby="portal-access-title">
             <form onSubmit={handleVerifyCode} className="fp-gate-access">
-              <h2 id="portal-access-title">Código de invitación</h2>
+              <h2 id="portal-access-title">Código de aseguramiento</h2>
               <p>PIN emitido por tu técnico AVGUST para acceder solo a tu finca.</p>
 
               {errorMsg && (
@@ -322,13 +327,13 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
               )}
 
               <label htmlFor="portalPinInput">
-                Código
+                Código de aseguramiento
                 <div className="fp-pin-wrap">
                   <Lock size={16} aria-hidden />
                   <input
                     id="portalPinInput"
                     type="text"
-                    placeholder="EJ. MIPE-7482"
+                    placeholder="EJ. ASEG-7482"
                     value={inputCode}
                     onChange={e => setInputCode(e.target.value.toUpperCase())}
                     autoComplete="one-time-code"
@@ -382,7 +387,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
         <div className="fp-topbar-actions">
           {current && (
             <div className={`fp-status-chip ${latestStatus}`} title={metricStatusDescriptions[latestStatus]}>
-              <span>MIPE</span>
+              <span>Índice</span>
               <strong>
                 {latestScore === null ? '—' : `${latestScore}%`}
               </strong>
@@ -394,7 +399,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
               Invitado: <strong>{invitation.clientName}</strong>
             </span>
             <span aria-hidden>·</span>
-            <span>Código {invitation.code}</span>
+            <span>Código de aseguramiento {invitation.code}</span>
           </div>
           <button type="button" className="b2b-btn b2b-btn-secondary" onClick={handleLogout} title="Cerrar sesión">
             <LogOut size={14} aria-hidden />
@@ -421,7 +426,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
             {current ? (
               <>
                 <a className="fp-hero-cta" href="#fp-metrics-anchor">
-                  Ver estado MIPE {latestScore === null ? '' : `· ${latestScore}%`}
+                  Ver estado de aseguramiento {latestScore === null ? '' : `· ${latestScore}%`}
                 </a>
                 <button
                   type="button"
@@ -442,7 +447,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
               </>
             ) : (
               <a className="fp-hero-cta" href="#fp-metrics-anchor">
-                Ver estado MIPE
+                Ver estado de aseguramiento
               </a>
             )}
           </div>
@@ -467,7 +472,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
                   : 'Cuando tu técnico publique un informe revisado, aquí verás el resultado ponderado, la tendencia por capítulo y las desviaciones con acción correctiva.'}
               </p>
               <ul className="fp-empty-preview" aria-hidden={cloudLoading ? true : undefined}>
-                <li><span>Índice MIPE</span><em>Saludable · Alerta · Vulnerable</em></li>
+                <li><span>Índice de aseguramiento</span><em>Saludable · Alerta · Vulnerable</em></li>
                 <li><span>5 procesos</span><em>Pesos 5 / 25 / 10 / 30 / 30</em></li>
                 <li><span>Acciones</span><em>Hallazgos y compromisos</em></li>
               </ul>

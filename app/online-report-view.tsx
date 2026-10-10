@@ -51,7 +51,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
 
   const shareWhatsApp=()=>{
     if(!report) return;
-    const msg=`*AVGUST CARE 360 · Informe Técnico en Línea*\nFinca: *${report.farm}*\nFecha: ${report.date}\nÍndice MIPE: *${report.score}%* (${report.status==='healthy'?'Saludable':report.status==='acceptable'?'Alerta':'Vulnerable'})\nHallazgos: ${report.findingsCount}\n\nPuedes consultar el informe digital completo y sus evidencias en el siguiente enlace:\n${shareUrl}`;
+    const msg=`*AVGUST CARE 360 · Informe Técnico en Línea*\nFinca: *${report.farm}*\nFecha: ${report.date}\nÍndice de aseguramiento: *${report.score}%* (${report.status==='healthy'?'Saludable':report.status==='acceptable'?'Alerta':'Vulnerable'})\nHallazgos: ${report.findingsCount}\n\nPuedes consultar el informe digital completo y sus evidencias en el siguiente enlace:\n${shareUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,'_blank');
   };
 
@@ -134,7 +134,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
             <div>
               <div className="b2b-kicker flex items-center gap-2 mb-1">
                 <span className="w-2 h-2 rounded-full bg-[#78be20]"></span>
-                <span>Aseguramiento Técnico de Campo · MIPE</span>
+                <span>Aseguramiento técnico de campo · Aptus</span>
               </div>
               <h1 className="text-2xl font-black text-slate-950 tracking-tight m-0">{report.farm}</h1>
               <div className="flex items-center gap-3 mt-2 text-xs text-slate-600 flex-wrap">
@@ -225,7 +225,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-800">{capScore!==null?`${capScore}% MIPE`:'Sin medición'}</span>
+                      <span className="text-xs font-bold text-slate-800">{capScore!==null?`${capScore}% aseguramiento`:'Sin medición'}</span>
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${noCount>0?'bg-rose-100 text-rose-800':'bg-emerald-100 text-emerald-800'}`}>
                         {noCount>0?`${noCount} hallazgo${noCount===1?'':'s'}`:'100% conforme'}
                       </span>
@@ -300,7 +300,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
 
         {/* Footer info */}
         <div className="text-center text-xs text-slate-500 py-4">
-          <p className="m-0 font-medium">AVGUST CARE 360 · Sistema de Acompañamiento MIPE en Campo</p>
+          <p className="m-0 font-medium">AVGUST CARE 360 · Sistema de acompañamiento y aseguramiento en campo</p>
           <p className="m-0 text-[11px] text-slate-400 mt-1">Este informe digital oficial reemplaza el uso de papel y se sincroniza en la nube.</p>
         </div>
       </main>

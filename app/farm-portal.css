@@ -35,25 +35,25 @@
   color: var(--fp-ink);
   font-family: var(--fp-font);
   isolation: isolate;
+  /* Gradient shell only — photos live on hero/laterals to avoid full-page fixed bitmap paint */
   background:
     linear-gradient(
       90deg,
       rgba(36, 92, 28, 0.42) 0%,
-      rgba(242, 247, 243, 0.88) 14%,
-      rgba(245, 249, 246, 0.94) 50%,
-      rgba(242, 247, 243, 0.88) 86%,
+      rgba(242, 247, 243, 0.92) 14%,
+      rgba(245, 249, 246, 0.97) 50%,
+      rgba(242, 247, 243, 0.92) 86%,
       rgba(36, 92, 28, 0.42) 100%
     ),
     linear-gradient(
       180deg,
-      rgba(232, 245, 220, 0.72) 0%,
-      rgba(243, 247, 246, 0.9) 42%,
-      rgba(238, 248, 227, 0.94) 100%
+      rgba(232, 245, 220, 0.88) 0%,
+      rgba(243, 247, 246, 0.96) 42%,
+      rgba(238, 248, 227, 0.98) 100%
     ),
     radial-gradient(900px 360px at 8% -6%, rgba(120, 190, 32, 0.28), transparent 55%),
     radial-gradient(820px 340px at 94% 2%, rgba(92, 153, 20, 0.3), transparent 52%),
     radial-gradient(640px 280px at 50% 100%, rgba(120, 190, 32, 0.14), transparent 60%),
-    var(--fp-photo-ornamental) center top / cover no-repeat fixed,
     #e8f5dc;
 }
 
@@ -447,7 +447,7 @@
   background:
     linear-gradient(90deg, rgba(22, 70, 18, 0.42) 0%, rgba(92, 153, 20, 0.22) 42%, rgba(120, 190, 32, 0.08) 78%, transparent 100%),
     linear-gradient(180deg, rgba(0, 95, 122, 0.12), transparent 38%, rgba(92, 153, 20, 0.28) 100%),
-    var(--fp-photo-field) 18% center / cover no-repeat;
+    #1f5c24;
   border-right: 4px solid rgba(120, 190, 32, 0.72);
   box-shadow:
     inset -18px 0 36px rgba(20, 70, 18, 0.16),
@@ -460,12 +460,29 @@
   background:
     linear-gradient(270deg, rgba(22, 70, 18, 0.42) 0%, rgba(92, 153, 20, 0.22) 42%, rgba(120, 190, 32, 0.08) 78%, transparent 100%),
     linear-gradient(180deg, rgba(0, 95, 122, 0.1), transparent 40%, rgba(120, 190, 32, 0.28) 100%),
-    var(--fp-photo-ornamental) 82% center / cover no-repeat;
+    #245a2a;
   border-left: 4px solid rgba(198, 236, 106, 0.62);
   box-shadow:
     inset 18px 0 36px rgba(20, 70, 18, 0.16),
     -4px 0 18px rgba(92, 153, 20, 0.12);
   filter: saturate(1.28) contrast(1.1) brightness(1.03);
+}
+
+/* Defer lateral bitmap paint to wide viewports (laterals are hidden ≤900px) */
+@media (min-width: 901px) {
+  .fp-lateral-left {
+    background:
+      linear-gradient(90deg, rgba(22, 70, 18, 0.42) 0%, rgba(92, 153, 20, 0.22) 42%, rgba(120, 190, 32, 0.08) 78%, transparent 100%),
+      linear-gradient(180deg, rgba(0, 95, 122, 0.12), transparent 38%, rgba(92, 153, 20, 0.28) 100%),
+      var(--fp-photo-field) 18% center / cover no-repeat;
+  }
+
+  .fp-lateral-right {
+    background:
+      linear-gradient(270deg, rgba(22, 70, 18, 0.42) 0%, rgba(92, 153, 20, 0.22) 42%, rgba(120, 190, 32, 0.08) 78%, transparent 100%),
+      linear-gradient(180deg, rgba(0, 95, 122, 0.1), transparent 40%, rgba(120, 190, 32, 0.28) 100%),
+      var(--fp-photo-ornamental) 82% center / cover no-repeat;
+  }
 }
 
 .fp-lateral-brand {
@@ -1006,9 +1023,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(90deg, rgba(0, 95, 122, 0.88), rgba(20, 120, 70, 0.82), rgba(92, 153, 20, 0.86)),
-    var(--fp-photo-field) center / cover no-repeat;
+  background: linear-gradient(90deg, rgba(0, 95, 122, 0.96), rgba(20, 120, 70, 0.94), rgba(92, 153, 20, 0.96));
   z-index: 0;
 }
 
@@ -1048,13 +1063,12 @@
     background:
       linear-gradient(
         180deg,
-        rgba(232, 245, 220, 0.78) 0%,
-        rgba(243, 247, 246, 0.92) 42%,
-        rgba(238, 248, 227, 0.96) 100%
+        rgba(232, 245, 220, 0.9) 0%,
+        rgba(243, 247, 246, 0.97) 42%,
+        rgba(238, 248, 227, 0.99) 100%
       ),
       radial-gradient(700px 280px at 8% -6%, rgba(120, 190, 32, 0.24), transparent 55%),
       radial-gradient(640px 260px at 94% 2%, rgba(92, 153, 20, 0.22), transparent 52%),
-      var(--fp-photo-ornamental) center top / cover no-repeat fixed,
       #e8f5dc;
   }
 }
