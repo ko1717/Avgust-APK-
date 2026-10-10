@@ -41,6 +41,20 @@ type FarmPortalViewProps = {
   onExitPortal: () => void;
 };
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>(resolve => {
+        timer = setTimeout(() => resolve(fallback), ms);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function StatusBadge({value}: {value: MetricStatus}) {
   const labels: Record<MetricStatus, string> = {
     healthy: 'Saludable (95-100%)',
@@ -66,10 +80,10 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     async function initAuth() {
       setLoading(true);
       setErrorMsg('');
-      await ensurePortalAuth();
+      await withTimeout(ensurePortalAuth(), 8000, null);
 
       if (initialToken) {
-        const found = await verifyFarmInvitation(initialToken);
+        const found = await withTimeout(verifyFarmInvitation(initialToken), 8000, null);
         if (found) {
           setInvitation(found);
           setClientSession(found);
@@ -81,7 +95,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
 
       const stored = getClientSession();
       if (stored) {
-        const recheck = await verifyFarmInvitation(stored.code || stored.token);
+        const recheck = await withTimeout(verifyFarmInvitation(stored.code || stored.token), 8000, null);
         if (recheck) {
           setInvitation(recheck);
           setClientSession(recheck);
@@ -236,8 +250,8 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     setVerifying(true);
     setErrorMsg('');
     try {
-      await ensurePortalAuth();
-      const found = await verifyFarmInvitation(inputCode.trim());
+      await withTimeout(ensurePortalAuth(), 8000, null);
+      const found = await withTimeout(verifyFarmInvitation(inputCode.trim()), 10000, null);
       if (found) {
         setInvitation(found);
         setClientSession(found);

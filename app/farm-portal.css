@@ -4,6 +4,7 @@
   --fp-cyan: #007fa3;
   --fp-cyan-deep: #005f7a;
   --fp-green: #78be20;
+  --fp-gold: #f2a900;
   --fp-slate: #333f48;
   --fp-ink: #1a242b;
   --fp-muted: #5b6b75;
@@ -16,7 +17,11 @@
   flex-direction: column;
   color: var(--fp-ink);
   font-family: var(--fp-font);
-  background: #f5f8fa;
+  background:
+    radial-gradient(1100px 420px at 6% -8%, rgba(0, 181, 226, 0.12), transparent 55%),
+    radial-gradient(900px 380px at 96% 0%, rgba(120, 190, 32, 0.1), transparent 50%),
+    #f5f8fa;
+  background-attachment: fixed;
 }
 
 .farm-portal * {
@@ -50,7 +55,9 @@
   gap: 14px;
   padding: 24px;
   text-align: center;
-  background: #f3f7f9;
+  background:
+    radial-gradient(800px 360px at 50% 18%, rgba(0, 181, 226, 0.16), transparent 60%),
+    #f3f7f9;
   font-family: var(--fp-font);
 }
 
@@ -101,7 +108,14 @@
   inset: 0;
   background:
     radial-gradient(circle at 18% 22%, rgba(120, 190, 32, 0.28), transparent 42%),
-    radial-gradient(circle at 82% 72%, rgba(0, 181, 226, 0.22), transparent 45%);
+    radial-gradient(circle at 82% 72%, rgba(0, 181, 226, 0.22), transparent 45%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 18px,
+      rgba(255, 255, 255, 0.03) 18px,
+      rgba(255, 255, 255, 0.03) 19px
+    );
   pointer-events: none;
 }
 
@@ -417,6 +431,16 @@
 .farm-portal .b2b-metrics-wrapper {
   display: grid;
   gap: 16px;
+  animation: fp-fade-up 0.4s ease both;
+}
+
+.farm-portal .metrics-outcome {
+  animation: fp-fade-up 0.5s ease 0.06s both;
+}
+
+.farm-portal .metrics-kpi-strip,
+.farm-portal .metrics-overview-grid {
+  animation: fp-fade-up 0.55s ease 0.12s both;
 }
 
 .fp-metrics-loading,
