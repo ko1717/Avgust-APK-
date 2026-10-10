@@ -266,25 +266,31 @@
   gap: 12px;
   width: 100%;
   padding: 22px 22px 18px;
-  border: 1px solid rgba(198, 236, 106, 0.28);
+  border: 1px solid rgba(0, 181, 226, 0.35);
   border-radius: var(--fp-radius-lg);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 251, 240, 0.96) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(236, 249, 242, 0.97) 100%);
   color: var(--fp-ink);
   box-shadow:
-    0 22px 56px rgba(0, 0, 0, 0.26),
-    0 0 0 1px rgba(120, 190, 32, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    0 24px 60px rgba(0, 42, 56, 0.32),
+    0 0 0 1px rgba(120, 190, 32, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(14px);
 }
 
 .fp-gate-access::before {
   content: '';
   display: block;
-  height: 3px;
+  height: 4px;
   margin: -22px -22px 8px;
   border-radius: var(--fp-radius-lg) var(--fp-radius-lg) 0 0;
-  background: linear-gradient(90deg, var(--fp-green-deep), var(--fp-green) 55%, var(--fp-lime));
+  background: linear-gradient(
+    90deg,
+    var(--fp-cyan-deep) 0%,
+    var(--fp-cyan-light) 35%,
+    var(--fp-green) 70%,
+    var(--fp-gold) 100%
+  );
 }
 
 .fp-gate-access h2 {
@@ -514,9 +520,12 @@
   justify-content: space-between;
   gap: 12px 18px;
   padding: 12px clamp(16px, 3vw, 28px);
-  border-bottom: 1px solid rgba(208, 221, 212, 0.9);
-  box-shadow: inset 0 -3px 0 rgba(120, 190, 32, 0.34);
-  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(0, 181, 226, 0.22);
+  box-shadow:
+    inset 0 -3px 0 rgba(120, 190, 32, 0.42),
+    0 8px 22px rgba(0, 95, 122, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(238, 248, 243, 0.94) 100%);
   backdrop-filter: blur(12px);
 }
 
@@ -756,6 +765,250 @@
   color: #005f7a;
 }
 
+/* —— Corner assurance disclosure (collapsed by default) —— */
+.fp-assurance-dock {
+  position: fixed;
+  right: max(14px, calc((100vw - min(1120px, 100%)) / 2 + 12px));
+  bottom: 22px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: min(420px, calc(100vw - 28px));
+  pointer-events: none;
+}
+
+.fp-assurance-dock > * {
+  pointer-events: auto;
+}
+
+.fp-assurance-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 10px 16px 10px 14px;
+  border: 1px solid rgba(0, 181, 226, 0.45);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, #007fa3 0%, #00b5e2 55%, #5c9914 140%);
+  color: #fff;
+  font: 800 0.84rem/1.2 var(--fp-font);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 12px 28px rgba(0, 95, 122, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  animation: fp-fade-up 0.45s ease 0.2s both;
+  transition: transform 0.18s ease, filter 0.15s ease, box-shadow 0.18s ease;
+}
+
+.fp-assurance-fab:hover {
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 34px rgba(0, 95, 122, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+}
+
+.fp-assurance-fab svg {
+  flex: 0 0 auto;
+}
+
+.fp-assurance-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: var(--fp-gold);
+  color: #1a242b;
+  font: 850 0.68rem/1 var(--fp-font);
+  font-style: normal;
+}
+
+.fp-assurance-panel {
+  width: min(400px, calc(100vw - 28px));
+  max-height: min(72vh, 640px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(0, 181, 226, 0.35);
+  border-radius: var(--fp-radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(242, 250, 246, 0.98) 100%);
+  box-shadow:
+    0 22px 48px rgba(19, 48, 58, 0.22),
+    0 0 0 1px rgba(120, 190, 32, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: fp-panel-rise 0.28s ease both;
+}
+
+@keyframes fp-panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.fp-assurance-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(0, 127, 163, 0.12);
+  background:
+    linear-gradient(90deg, rgba(0, 127, 163, 0.08) 0%, rgba(120, 190, 32, 0.1) 100%);
+}
+
+.fp-assurance-kicker {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fp-cyan);
+}
+
+.fp-assurance-panel-head h2 {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  color: var(--fp-ink);
+}
+
+.fp-assurance-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(208, 221, 212, 0.95);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--fp-slate);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.fp-assurance-close:hover {
+  border-color: rgba(0, 127, 163, 0.4);
+  color: var(--fp-cyan-deep);
+}
+
+.fp-assurance-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+
+.fp-assurance-tabs button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid rgba(208, 221, 212, 0.95);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--fp-muted);
+  font: 750 0.78rem/1.2 var(--fp-font);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.fp-assurance-tabs button.is-active {
+  border-color: rgba(0, 127, 163, 0.45);
+  background: linear-gradient(180deg, #e8f7fc 0%, #f3fbf1 100%);
+  color: var(--fp-cyan-deep);
+  box-shadow: inset 0 -2px 0 var(--fp-cyan);
+}
+
+.fp-assurance-body {
+  padding: 12px 14px 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.fp-assurance-panel .fp-schedule-form {
+  grid-template-columns: 1fr;
+}
+
+.fp-assurance-panel .fp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: var(--fp-radius-sm);
+  background: linear-gradient(135deg, #007fa3 0%, #00b5e2 70%, #78be20 160%);
+  color: #fff;
+  font: 800 0.9rem/1.2 var(--fp-font);
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 127, 163, 0.28);
+}
+
+.fp-assurance-panel .fp-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.fp-assurance-panel .fp-report-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.fp-assurance-panel .fp-report-row-actions {
+  width: 100%;
+}
+
+.fp-assurance-panel .fp-report-row-actions .b2b-btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.fp-metrics-assurance-hint {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.fp-metrics-assurance-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid rgba(0, 127, 163, 0.28);
+  border-radius: 11px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef8f4 100%);
+  color: var(--fp-cyan-deep);
+  font: 750 0.8rem/1.2 var(--fp-font);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fp-metrics-assurance-link:hover {
+  border-color: rgba(0, 181, 226, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 127, 163, 0.12);
+  transform: translateY(-1px);
+}
+
+.fp-metrics-assurance-chevron {
+  transform: rotate(-90deg);
+  opacity: 0.75;
+}
+
 .fp-main {
   position: relative;
   z-index: 1;
@@ -811,14 +1064,14 @@
 
 .farm-portal .metrics-outcome,
 .farm-portal .metrics-priority-panel,
-.farm-portal .metrics-podium-panel,
-.farm-portal .fp-reports-panel,
-.farm-portal .fp-schedule-panel {
-  background: rgba(255, 255, 255, 0.95);
+.farm-portal .metrics-podium-panel {
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(6px);
-  border-color: rgba(208, 221, 212, 0.95);
+  border-color: rgba(168, 196, 150, 0.65);
   border-radius: var(--fp-radius-lg);
-  box-shadow: 0 8px 22px rgba(19, 48, 58, 0.04);
+  box-shadow:
+    0 10px 26px rgba(19, 48, 58, 0.05),
+    0 0 0 1px rgba(120, 190, 32, 0.06);
 }
 
 .farm-portal .metrics-outcome {
@@ -939,16 +1192,6 @@
   }
 }
 
-.fp-schedule-panel {
-  margin-bottom: 16px;
-  padding: 20px 22px;
-  border: 1px solid rgba(208, 221, 212, 0.95);
-  border-radius: var(--fp-radius-lg);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 22px rgba(19, 48, 58, 0.04);
-  animation: fp-fade-up 0.45s ease both;
-}
-
 .fp-schedule-lead {
   margin: 0 0 14px;
   color: var(--fp-muted);
@@ -995,26 +1238,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-}
-
-.fp-schedule-panel .fp-btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 10px 18px;
-  border: 0;
-  border-radius: var(--fp-radius-sm);
-  background: linear-gradient(180deg, #007fa3 0%, #005f7a 100%);
-  color: #fff;
-  font: 800 0.9rem/1.2 var(--fp-font);
-  cursor: pointer;
-}
-
-.fp-schedule-panel .fp-btn-primary:disabled {
-  opacity: 0.65;
-  cursor: wait;
 }
 
 .fp-schedule-msg {
@@ -1069,14 +1292,6 @@
   .fp-schedule-form {
     grid-template-columns: 1fr;
   }
-}
-
-.fp-reports-panel {
-  padding: 20px 22px;
-  border: 1px solid rgba(208, 221, 212, 0.95);
-  border-radius: var(--fp-radius-lg);
-  background: #fff;
-  box-shadow: 0 8px 22px rgba(19, 48, 58, 0.04);
 }
 
 .fp-reports-list {
@@ -1236,8 +1451,16 @@
     margin: -18px -16px 8px;
   }
 
-  .fp-reports-panel {
-    padding: 16px;
+  .fp-assurance-dock {
+    right: 12px;
+    bottom: 14px;
+  }
+
+  .fp-assurance-fab span {
+    max-width: 11ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .fp-hero {
@@ -1262,6 +1485,8 @@
   .fp-gate-foot,
   .fp-gate-mark,
   .fp-hero-inner,
+  .fp-assurance-fab,
+  .fp-assurance-panel,
   .farm-portal .b2b-metrics-wrapper,
   .farm-portal .metrics-outcome,
   .farm-portal .metrics-kpi-strip,

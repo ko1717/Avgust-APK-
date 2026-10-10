@@ -2,13 +2,15 @@
 import {lazy, Suspense, useState, useEffect, useMemo} from 'react';
 import {
   CalendarDays,
+  ChevronDown,
   Download,
   Globe,
   LogOut,
   Lock,
   KeyRound,
   ExternalLink,
-  FileText
+  FileText,
+  X
 } from 'lucide-react';
 import {
   verifyFarmInvitation,
@@ -92,7 +94,8 @@ export function FarmPortalView({
   const [errorMsg, setErrorMsg] = useState('');
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   const [expandedActions, setExpandedActions] = useState(false);
-  const [expandedReports, setExpandedReports] = useState(false);
+  const [assuranceOpen, setAssuranceOpen] = useState(false);
+  const [assuranceTab, setAssuranceTab] = useState<'schedule' | 'reports'>('schedule');
   const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
   const [cloudSyncedFarm, setCloudSyncedFarm] = useState('');
   const [authWarning, setAuthWarning] = useState('');
@@ -390,14 +393,14 @@ export function FarmPortalView({
             </p>
             <h1 className="fp-gate-headline">Portal de finca</h1>
             <p className="fp-gate-lead">
-              Consulta el aseguramiento de tu cultivo con la misma lectura del programa Aptus.
+              Accede al estado de tu cultivo con la lectura oficial del programa AVGUST CARE 360.
             </p>
           </header>
 
           <section className="fp-gate-panel" aria-labelledby="portal-access-title">
             <form onSubmit={handleVerifyCode} className="fp-gate-access">
-              <h2 id="portal-access-title">Código de aseguramiento</h2>
-              <p>PIN emitido por tu técnico AVGUST para acceder solo a tu finca.</p>
+              <h2 id="portal-access-title">Ingresa tu código</h2>
+              <p>Código ASEG emitido por tu técnico AVGUST — acceso exclusivo a tu finca.</p>
 
               {errorMsg && (
                 <div className="fp-error" role="alert">
@@ -411,7 +414,7 @@ export function FarmPortalView({
               )}
 
               <label htmlFor="portalPinInput">
-                Código de aseguramiento
+                Código de acceso
                 <div className="fp-pin-wrap">
                   <Lock size={16} aria-hidden />
                   <input
@@ -433,7 +436,7 @@ export function FarmPortalView({
               </button>
 
               <div className="fp-gate-help">
-                <p>¿Sin código? Pídelo a tu técnico o responsable de zona AVGUST.</p>
+                <p>¿Sin código? Solicítalo a tu técnico o responsable de zona AVGUST.</p>
                 {!portalOnly && (
                   <button type="button" className="fp-link-btn" onClick={onExitPortal}>
                     Volver a la consola de trabajo
@@ -505,26 +508,22 @@ export function FarmPortalView({
             <h1 id="farm-portal-title">Portal de finca</h1>
             <p className="fp-hero-farm">{invitation.farm}</p>
             <p className="fp-hero-lead">
-              Misma lectura de métricas: resultado ponderado, capítulos y acciones correctivas.
+              Estado del cultivo, capítulos y acciones correctivas — con la lectura oficial del programa.
             </p>
           </div>
           <div className="fp-hero-actions">
-            {current ? (
+            <a className="fp-hero-cta" href="#fp-metrics-anchor">
+              Ver indicadores {latestScore === null ? '' : `· ${latestScore}%`}
+            </a>
+            {current && (
               <>
-                <a className="fp-hero-cta" href="#fp-metrics-anchor">
-                  Ver estado de aseguramiento {latestScore === null ? '' : `· ${latestScore}%`}
-                </a>
-                <a className="fp-hero-cta fp-hero-cta-schedule" href="#fp-schedule-anchor">
-                  <CalendarDays size={16} aria-hidden />
-                  Agendar aseguramiento
-                </a>
                 <button
                   type="button"
                   className="b2b-btn b2b-btn-secondary"
                   onClick={() => setViewingReportId(current.visit.id)}
                 >
                   <ExternalLink size={16} aria-hidden />
-                  Abrir último informe
+                  Último informe
                 </button>
                 <button
                   type="button"
@@ -535,110 +534,216 @@ export function FarmPortalView({
                   Descargar Word
                 </button>
               </>
-            ) : (
-              <>
-                <a className="fp-hero-cta" href="#fp-metrics-anchor">
-                  Ver estado de aseguramiento
-                </a>
-                <a className="fp-hero-cta fp-hero-cta-schedule" href="#fp-schedule-anchor">
-                  <CalendarDays size={16} aria-hidden />
-                  Agendar aseguramiento
-                </a>
-              </>
             )}
           </div>
         </div>
       </section>
 
-      <main className="fp-main" id="fp-metrics-anchor">
-        <section className="fp-schedule-panel" id="fp-schedule-anchor" aria-labelledby="fp-schedule-title">
-          <div className="metrics-section-heading">
-            <div>
-              <div className="metrics-section-kicker">Solicitud al equipo técnico</div>
-              <h3 id="fp-schedule-title">Agendar un aseguramiento</h3>
-            </div>
-            <span className="metrics-note">
-              {pendingRequests.length
-                ? `${pendingRequests.length} pendiente${pendingRequests.length === 1 ? '' : 's'}`
-                : 'Sin calendario completo'}
-            </span>
-          </div>
-          <p className="fp-schedule-lead">
-            Envía una solicitud con tu fecha preferida. El técnico AVGUST la recibe como pendiente y
-            confirma la visita; no reserva un cupo automático.
-          </p>
-          <form className="fp-schedule-form" onSubmit={e => void handleAssuranceRequest(e)}>
-            <label>
-              Fecha preferida
-              <input
-                type="date"
-                value={requestDate}
-                onChange={e => setRequestDate(e.target.value)}
-                min={new Date().toISOString().slice(0, 10)}
-              />
-            </label>
-            <label>
-              Teléfono de contacto
-              <input
-                type="tel"
-                maxLength={40}
-                value={requestPhone}
-                onChange={e => setRequestPhone(e.target.value)}
-                placeholder="Celular o fijo"
-                autoComplete="tel"
-              />
-            </label>
-            <label>
-              Correo (opcional)
-              <input
-                type="email"
-                maxLength={120}
-                value={requestEmail}
-                onChange={e => setRequestEmail(e.target.value)}
-                placeholder="correo@ejemplo.com"
-                autoComplete="email"
-              />
-            </label>
-            <label className="fp-schedule-notes">
-              Comentario para el técnico
-              <textarea
-                maxLength={2000}
-                value={requestNotes}
-                onChange={e => setRequestNotes(e.target.value)}
-                placeholder="Cultivo, urgencia, ventana horaria u observaciones de campo…"
-                rows={3}
-              />
-            </label>
-            <div className="fp-schedule-actions">
-              <button type="submit" className="fp-btn-primary" disabled={requestBusy}>
-                <CalendarDays size={16} aria-hidden />
-                {requestBusy ? 'Enviando…' : 'Solicitar aseguramiento'}
+      <aside className={`fp-assurance-dock ${assuranceOpen ? 'is-open' : ''}`}>
+        {!assuranceOpen ? (
+          <button
+            type="button"
+            className="fp-assurance-fab"
+            aria-expanded={false}
+            aria-controls="fp-assurance-panel"
+            onClick={() => setAssuranceOpen(true)}
+            title="Agendar y consultar aseguramientos"
+          >
+            <CalendarDays size={18} aria-hidden />
+            <span>Aseguramiento</span>
+            {pendingRequests.length > 0 && (
+              <em className="fp-assurance-badge" aria-label={`${pendingRequests.length} pendientes`}>
+                {pendingRequests.length}
+              </em>
+            )}
+          </button>
+        ) : (
+          <div
+            className="fp-assurance-panel"
+            id="fp-assurance-panel"
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="fp-assurance-title"
+          >
+            <header className="fp-assurance-panel-head">
+              <div>
+                <p className="fp-assurance-kicker">Solicitud y historial</p>
+                <h2 id="fp-assurance-title">Aseguramiento</h2>
+              </div>
+              <button
+                type="button"
+                className="fp-assurance-close"
+                aria-label="Cerrar panel de aseguramiento"
+                onClick={() => setAssuranceOpen(false)}
+              >
+                <X size={18} aria-hidden />
+              </button>
+            </header>
+
+            <div className="fp-assurance-tabs" role="tablist" aria-label="Secciones de aseguramiento">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={assuranceTab === 'schedule'}
+                className={assuranceTab === 'schedule' ? 'is-active' : ''}
+                onClick={() => setAssuranceTab('schedule')}
+              >
+                Agendar
+                {pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ''}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={assuranceTab === 'reports'}
+                className={assuranceTab === 'reports' ? 'is-active' : ''}
+                onClick={() => setAssuranceTab('reports')}
+              >
+                Informes ({farmVisits.length})
               </button>
             </div>
-          </form>
-          {requestMsg && (
-            <div className={`fp-schedule-msg ${requestMsg.error ? 'error' : 'ok'}`} role="status">
-              {requestMsg.text}
-            </div>
-          )}
-          {pendingRequests.length > 0 && (
-            <ul className="fp-schedule-list" aria-label="Solicitudes recientes">
-              {pendingRequests.slice(0, 5).map(item => (
-                <li key={item.id}>
-                  <strong>
-                    {item.status === 'scheduled' ? 'Programada' : 'Pendiente'}
-                    {item.preferredDate ? ` · preferida ${item.preferredDate}` : ''}
-                  </strong>
-                  <span>
-                    Enviada {item.createdAt ? new Date(item.createdAt).toLocaleDateString('es-CO') : 'reciente'}
-                    {item.notes ? ` · ${item.notes}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
 
+            {assuranceTab === 'schedule' ? (
+              <div className="fp-assurance-body" role="tabpanel">
+                <p className="fp-schedule-lead">
+                  Indica tu fecha preferida. El técnico AVGUST confirma la visita; no se reserva un cupo automático.
+                </p>
+                <form className="fp-schedule-form" onSubmit={e => void handleAssuranceRequest(e)}>
+                  <label>
+                    Fecha preferida
+                    <input
+                      type="date"
+                      value={requestDate}
+                      onChange={e => setRequestDate(e.target.value)}
+                      min={new Date().toISOString().slice(0, 10)}
+                    />
+                  </label>
+                  <label>
+                    Teléfono de contacto
+                    <input
+                      type="tel"
+                      maxLength={40}
+                      value={requestPhone}
+                      onChange={e => setRequestPhone(e.target.value)}
+                      placeholder="Celular o fijo"
+                      autoComplete="tel"
+                    />
+                  </label>
+                  <label>
+                    Correo (opcional)
+                    <input
+                      type="email"
+                      maxLength={120}
+                      value={requestEmail}
+                      onChange={e => setRequestEmail(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      autoComplete="email"
+                    />
+                  </label>
+                  <label className="fp-schedule-notes">
+                    Comentario para el técnico
+                    <textarea
+                      maxLength={2000}
+                      value={requestNotes}
+                      onChange={e => setRequestNotes(e.target.value)}
+                      placeholder="Cultivo, urgencia, ventana horaria u observaciones de campo…"
+                      rows={3}
+                    />
+                  </label>
+                  <div className="fp-schedule-actions">
+                    <button type="submit" className="fp-btn-primary" disabled={requestBusy}>
+                      <CalendarDays size={16} aria-hidden />
+                      {requestBusy ? 'Enviando…' : 'Solicitar visita'}
+                    </button>
+                  </div>
+                </form>
+                {requestMsg && (
+                  <div className={`fp-schedule-msg ${requestMsg.error ? 'error' : 'ok'}`} role="status">
+                    {requestMsg.text}
+                  </div>
+                )}
+                {pendingRequests.length > 0 && (
+                  <ul className="fp-schedule-list" aria-label="Solicitudes recientes">
+                    {pendingRequests.slice(0, 5).map(item => (
+                      <li key={item.id}>
+                        <strong>
+                          {item.status === 'scheduled' ? 'Programada' : 'Pendiente'}
+                          {item.preferredDate ? ` · preferida ${item.preferredDate}` : ''}
+                        </strong>
+                        <span>
+                          Enviada{' '}
+                          {item.createdAt
+                            ? new Date(item.createdAt).toLocaleDateString('es-CO')
+                            : 'reciente'}
+                          {item.notes ? ` · ${item.notes}` : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <div className="fp-assurance-body" role="tabpanel">
+                {!farmVisits.length ? (
+                  <p className="fp-schedule-lead">
+                    Aún no hay informes revisados. Cuando tu técnico publique uno, aparecerá aquí.
+                  </p>
+                ) : (
+                  <div className="fp-reports-list">
+                    {farmVisits
+                      .slice()
+                      .reverse()
+                      .map((visit, idx) => {
+                        const record = historyAnalysis?.records.find(r => r.visit.id === visit.id);
+                        const score = record?.score ?? null;
+                        const status = record?.status ?? 'pending';
+                        return (
+                          <article key={visit.id} className="fp-report-row">
+                            <div className="fp-report-row-main">
+                              <div className="fp-report-row-title">
+                                <span>#{farmVisits.length - idx}</span>
+                                <strong>{visit.date}</strong>
+                                <StatusBadge value={status} />
+                              </div>
+                              <div className="fp-report-row-meta">
+                                <span>
+                                  Resultado:{' '}
+                                  <strong>{score === null ? '—' : `${score}%`}</strong>
+                                </span>
+                                <span>
+                                  Técnico: <strong>{visit.responsible}</strong>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="fp-report-row-actions">
+                              <button
+                                type="button"
+                                className="b2b-btn b2b-btn-primary"
+                                onClick={() => setViewingReportId(visit.id)}
+                              >
+                                <Globe size={14} aria-hidden />
+                                Ver
+                              </button>
+                              <button
+                                type="button"
+                                className="b2b-btn b2b-btn-secondary"
+                                onClick={() => void exportWord(visit)}
+                              >
+                                <Download size={14} aria-hidden />
+                                Word
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </aside>
+
+      <main className="fp-main" id="fp-metrics-anchor">
         <div className="b2b-metrics-wrapper" aria-label="Indicadores de aseguramiento">
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
@@ -663,6 +768,18 @@ export function FarmPortalView({
               <p className="fp-weights-note">
                 Umbrales oficiales: Saludable 95–100% · Alerta 80–94% · Vulnerable &lt;80%.
               </p>
+              <button
+                type="button"
+                className="fp-metrics-assurance-link"
+                style={{marginTop: 16}}
+                onClick={() => {
+                  setAssuranceTab('schedule');
+                  setAssuranceOpen(true);
+                }}
+              >
+                <CalendarDays size={15} aria-hidden />
+                Solicitar un aseguramiento
+              </button>
             </div>
           ) : (
             <div className="metrics-executive-dashboard">
@@ -860,88 +977,20 @@ export function FarmPortalView({
                 </section>
               )}
 
-              <section className="fp-reports-panel" aria-labelledby="fp-reports-title">
-                <div className="metrics-section-heading">
-                  <div>
-                    <div className="metrics-section-kicker">Historial</div>
-                    <h3 id="fp-reports-title">Informes de aseguramiento</h3>
-                  </div>
-                  <span className="metrics-note">{farmVisits.length} revisados</span>
-                </div>
-                <div className="fp-reports-summary">
-                  <p>
-                    {farmVisits.length === 1
-                      ? '1 aseguramiento revisado disponible.'
-                      : `${farmVisits.length} aseguramientos revisados disponibles.`}
-                  </p>
-                  <button
-                    type="button"
-                    className="metrics-disclosure-button"
-                    aria-expanded={expandedReports}
-                    aria-controls="fp-reports-list"
-                    onClick={() => setExpandedReports(value => !value)}
-                  >
-                    <span>{expandedReports ? 'Ocultar aseguramientos' : 'Ver aseguramientos'}</span>
-                  </button>
-                </div>
-                {expandedReports && (
-                  <div className="fp-reports-list" id="fp-reports-list">
-                    {farmVisits
-                      .slice()
-                      .reverse()
-                      .map((visit, idx) => {
-                        const record = historyAnalysis?.records.find(r => r.visit.id === visit.id);
-                        const score = record?.score ?? null;
-                        const status = record?.status ?? 'pending';
-                        return (
-                          <article key={visit.id} className="fp-report-row">
-                            <div className="fp-report-row-main">
-                              <div className="fp-report-row-title">
-                                <span>Informe #{farmVisits.length - idx}</span>
-                                <strong>Aseguramiento del {visit.date}</strong>
-                                <StatusBadge value={status} />
-                              </div>
-                              <div className="fp-report-row-meta">
-                                <span>
-                                  Resultado:{' '}
-                                  <strong>{score === null ? '—' : `${score}%`}</strong>
-                                </span>
-                                <span>
-                                  Responsable AVGUST: <strong>{visit.responsible}</strong>
-                                </span>
-                                <span>
-                                  Capítulos: <strong>{visit.chapters.length}/5</strong>
-                                </span>
-                                <span>
-                                  Desviaciones:{' '}
-                                  <strong>{record?.findings ?? 0}</strong>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="fp-report-row-actions">
-                              <button
-                                type="button"
-                                className="b2b-btn b2b-btn-primary"
-                                onClick={() => setViewingReportId(visit.id)}
-                              >
-                                <Globe size={14} aria-hidden />
-                                Ver en línea
-                              </button>
-                              <button
-                                type="button"
-                                className="b2b-btn b2b-btn-secondary"
-                                onClick={() => void exportWord(visit)}
-                              >
-                                <Download size={14} aria-hidden />
-                                Word
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      })}
-                  </div>
-                )}
-              </section>
+              <div className="fp-metrics-assurance-hint">
+                <button
+                  type="button"
+                  className="fp-metrics-assurance-link"
+                  onClick={() => {
+                    setAssuranceTab('reports');
+                    setAssuranceOpen(true);
+                  }}
+                >
+                  <FileText size={15} aria-hidden />
+                  Ver historial de informes
+                  <ChevronDown size={14} aria-hidden className="fp-metrics-assurance-chevron" />
+                </button>
+              </div>
             </div>
           )}
         </div>

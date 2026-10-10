@@ -138,17 +138,17 @@ export function InvitationManagerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-900/80">
+        <div className="p-5 border-b border-[#007fa3]/20 flex items-center justify-between bg-gradient-to-r from-[#e8f6fb] via-white to-[#eef8e3] dark:from-slate-900 dark:to-slate-900/80">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#007fa3]/10 text-[#007fa3] flex items-center justify-center font-bold">
-              <KeyRound size={22} />
+            <div className="w-11 h-11 rounded-xl border border-[#007fa3]/35 bg-gradient-to-br from-[#007fa3] to-[#00b5e2] text-white flex items-center justify-center shadow-sm">
+              <KeyRound size={20} />
             </div>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 m-0">
-                Gestión de Invitaciones y Servidor en Línea para Clientes
+                Invitaciones al Portal de Finca
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
-                Genera código ASEG o enlace WhatsApp. El cliente entra en el portal Hosting{' '}
+                Emite código ASEG o enlace WhatsApp. El cliente entra en{' '}
                 <strong className="text-[#007fa3]">{getPortalOrigin()}</strong>
                 {' '}y solo ve los informes publicados de su finca.
               </p>
@@ -174,9 +174,11 @@ export function InvitationManagerModal({
           {/* Creator Form */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/60">
             <div className="flex items-center gap-2 mb-3">
-              <Plus size={18} className="text-[#007fa3]" />
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#007fa3]/35 bg-gradient-to-br from-[#007fa3] to-[#00b5e2] text-white">
+                <Plus size={16} aria-hidden />
+              </span>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 m-0">
-                Emitir Nueva Invitación de Acceso
+                Emitir invitación de acceso
               </h3>
             </div>
             <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-3">
