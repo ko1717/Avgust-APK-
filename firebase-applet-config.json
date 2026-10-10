@@ -1,11 +1,11 @@
 {
   "projectId": "avgustscare360",
-  "appId": "",
+  "appId": "1:164247311817:web:5931c48d2036b253f4c418",
   "apiKey": "AIzaSyDpIDidOasbIkc7xA7w2dDktLfiHDIJYZ8",
   "authDomain": "avgustscare360.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
   "storageBucket": "avgustscare360.firebasestorage.app",
-  "messagingSenderId": "",
+  "messagingSenderId": "164247311817",
   "measurementId": "",
   "oAuthClientId": "",
   "recaptchaSiteKey": ""
