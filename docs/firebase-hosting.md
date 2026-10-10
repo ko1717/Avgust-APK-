@@ -2,6 +2,18 @@
 
 Publica el portal de finca (`/?portal=finca`) en Firebase Hosting (estático) junto con las reglas de Firestore del proyecto **avgustscare360**.
 
+## Verificación local (antes de deploy)
+
+Sin login de Firebase, el repo puede comprobar que la config del portal no se ha desviado:
+
+```bash
+npm run verify:firebase-portal
+```
+
+El script (`scripts/verify-firebase-portal.mjs`) exige `firebase-applet-config.json` completo (apiKey, appId, measurementId, …), `.firebaserc` → **avgustscare360**, reglas con `invitations` / `visits` / `reports` + `portalListOk`, y los scripts de prepare/hosting. Sale con código ≠ 0 si falta algo.
+
+**Plugin / MCP Firebase en Cursor:** instala el plugin Firebase del Marketplace (o deja `.cursor/mcp.json` con el servidor `firebase` → `npx firebase-tools@latest mcp`). Tras `firebase login` en la máquina, el agente puede consultar el proyecto en vivo (apps, hosting, reglas). Hasta entonces, `npm run verify:firebase-portal` atrapa drift de config en local.
+
 ## Camino fácil (Windows)
 
 1. Instala [Node.js 22+](https://nodejs.org) si aún no lo tienes.

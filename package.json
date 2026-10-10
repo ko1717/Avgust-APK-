@@ -13,6 +13,7 @@
     "build:firebase": "node scripts/build-firebase.mjs",
     "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting,firestore",
     "deploy:portal": "firebase use avgustscare360 && npm run deploy:firebase",
+    "verify:firebase-portal": "node scripts/verify-firebase-portal.mjs",
     "firebase:deploy": "npm run deploy:firebase",
     "firebase:deploy:hosting": "npm run build:firebase && firebase deploy --only hosting",
     "firebase:deploy:rules": "firebase deploy --only firestore",
