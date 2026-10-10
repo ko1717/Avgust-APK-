@@ -1,4 +1,4 @@
-import {doc, setDoc, collection, getDocs, query, where, updateDoc} from 'firebase/firestore';
+import {doc, setDoc, collection, getDocs, query, where, limit, updateDoc} from 'firebase/firestore';
 import {db, auth} from './firebase';
 
 export type FarmInvitation = {
@@ -120,7 +120,7 @@ export async function verifyFarmInvitation(tokenOrCode: string): Promise<FarmInv
   try {
     const colRef = collection(db, 'invitations');
     // Try by code
-    const qCode = query(colRef, where('code', '==', cleaned));
+    const qCode = query(colRef, where('code', '==', cleaned), limit(5));
     const snapCode = await getDocs(qCode);
     if (!snapCode.empty) {
       const inv = snapCode.docs[0].data() as FarmInvitation;
@@ -131,7 +131,7 @@ export async function verifyFarmInvitation(tokenOrCode: string): Promise<FarmInv
     }
 
     // Try by token
-    const qToken = query(colRef, where('token', '==', tokenOrCode.trim()));
+    const qToken = query(colRef, where('token', '==', tokenOrCode.trim()), limit(5));
     const snapToken = await getDocs(qToken);
     if (!snapToken.empty) {
       const inv = snapToken.docs[0].data() as FarmInvitation;
@@ -154,7 +154,7 @@ export async function listFarmInvitations(): Promise<FarmInvitation[]> {
   const localList = getLocalInvitations();
   try {
     const colRef = collection(db, 'invitations');
-    const snapshot = await getDocs(colRef);
+    const snapshot = await getDocs(query(colRef, limit(100)));
     const cloudList: FarmInvitation[] = [];
     snapshot.forEach(d => {
       cloudList.push(d.data() as FarmInvitation);

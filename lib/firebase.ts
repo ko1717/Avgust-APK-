@@ -8,6 +8,7 @@ import {
   collection,
   query,
   where,
+  limit,
   getDocs,
   onSnapshot
 } from 'firebase/firestore';
@@ -161,6 +162,13 @@ export async function publishOnlineReport(visit: Visit, authorEmail?: string): P
 
   try {
     await setDoc(reportDoc, data, {merge: true});
+    // Mirror the reviewed visit so the farm portal can list status in real time
+    await setDoc(doc(db, 'visits', visit.id), {
+      ...visit,
+      syncTimestamp: new Date().toISOString(),
+      updatedBy: authorEmail || auth.currentUser?.email || 'offline',
+      publishedOnline: true
+    }, {merge: true});
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -191,11 +199,12 @@ export async function saveVisitRealtime(visit: Visit): Promise<void> {
 }
 
 /**
- * Subscribes to real-time visit changes in Firestore
+ * Subscribes to real-time visit changes in Firestore.
+ * Uses limit(100) so Firestore rules allow anonymous/client portal reads.
  */
 export function subscribeToVisits(callback: (visits: Visit[]) => void): () => void {
-  const colRef = collection(db, 'visits');
-  return onSnapshot(colRef, (snapshot) => {
+  const q = query(collection(db, 'visits'), limit(100));
+  return onSnapshot(q, (snapshot) => {
     const list: Visit[] = [];
     snapshot.forEach(docSnap => {
       const data = docSnap.data() as Visit;
@@ -207,6 +216,41 @@ export function subscribeToVisits(callback: (visits: Visit[]) => void): () => vo
   }, (error) => {
     console.error('Error in real-time visits subscription:', error);
   });
+}
+
+/**
+ * Subscribes to visits for one farm (client portal / servidor en línea).
+ */
+export function subscribeToFarmVisits(farmName: string, callback: (visits: Visit[]) => void): () => void {
+  const q = query(collection(db, 'visits'), where('farm', '==', farmName), limit(100));
+  return onSnapshot(q, (snapshot) => {
+    const list: Visit[] = [];
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data() as Visit;
+      if (data && data.id && data.farm) {
+        list.push(data);
+      }
+    });
+    callback(list);
+  }, (error) => {
+    console.error('Error in farm visits subscription:', error);
+    callback([]);
+  });
+}
+
+/**
+ * Ensures a lightweight Firebase Auth session for portal clients.
+ * Falls back silently if Anonymous Auth is disabled in the project.
+ */
+export async function ensurePortalAuth(): Promise<User | null> {
+  if (auth.currentUser) return auth.currentUser;
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (error) {
+    console.warn('Anonymous Firebase Auth unavailable for portal; continuing with public rules:', error);
+    return null;
+  }
 }
 
 /**
@@ -230,12 +274,43 @@ export async function getOnlineReport(id: string): Promise<OnlineReportData | nu
 export async function listFarmOnlineReports(farmName: string): Promise<OnlineReportData[]> {
   const path = 'reports';
   try {
-    const q = query(collection(db, 'reports'), where('farm', '==', farmName));
+    const q = query(collection(db, 'reports'), where('farm', '==', farmName), limit(100));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as OnlineReportData);
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);
   }
+}
+
+/**
+ * Loads reviewed visits for a farm from Firestore (visits + published reports).
+ */
+export async function listFarmCloudVisits(farmName: string): Promise<Visit[]> {
+  const byId = new Map<string, Visit>();
+  try {
+    const visitsQuery = query(collection(db, 'visits'), where('farm', '==', farmName), limit(100));
+    const visitSnap = await getDocs(visitsQuery);
+    visitSnap.forEach(docSnap => {
+      const data = docSnap.data() as Visit;
+      if (data?.id && data.farm) byId.set(data.id, data);
+    });
+  } catch (error) {
+    console.warn('Could not list farm visits from Firestore:', error);
+  }
+
+  try {
+    const reports = await listFarmOnlineReports(farmName);
+    for (const report of reports) {
+      const payload = report.payload;
+      if (payload?.id && payload.farm) {
+        byId.set(payload.id, {...byId.get(payload.id), ...payload, reviewed: payload.reviewed ?? report.reviewed});
+      }
+    }
+  } catch (error) {
+    console.warn('Could not list farm reports from Firestore:', error);
+  }
+
+  return Array.from(byId.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**

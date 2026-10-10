@@ -33,6 +33,7 @@ import {
 import {exportWord} from '@/lib/export-word';
 import {farmKey, metrics, type Visit} from '@/lib/model';
 import {farmMetricHistory, type FarmMetricAnalysis} from '@/lib/metric-analysis';
+import {ensurePortalAuth, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
 import {StandaloneOnlineReport} from './online-report-view';
 
 type FarmPortalViewProps = {
@@ -49,12 +50,14 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
   const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'processes' | 'commitments'>('overview');
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
+  const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
 
   // Attempt automatic login from URL token or existing session
   useEffect(() => {
     async function initAuth() {
       setLoading(true);
       setErrorMsg('');
+      await ensurePortalAuth();
 
       // 1. Try URL token if provided
       if (initialToken) {
@@ -86,14 +89,47 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     void initAuth();
   }, [initialToken]);
 
-  // Filter visits belonging STRICTLY to the invited farm
+  // Load and subscribe to the invited farm from Firebase (servidor en línea)
+  useEffect(() => {
+    if (!invitation?.farm) {
+      setCloudVisits([]);
+      return;
+    }
+
+    let active = true;
+    void listFarmCloudVisits(invitation.farm).then(list => {
+      if (active && list.length) setCloudVisits(list);
+    });
+
+    const unsubscribe = subscribeToFarmVisits(invitation.farm, list => {
+      if (!active) return;
+      setCloudVisits(current => {
+        const map = new Map(current.map(item => [item.id, item]));
+        for (const visit of list) {
+          if (visit.id && visit.farm) map.set(visit.id, {...map.get(visit.id), ...visit});
+        }
+        return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+      });
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [invitation?.farm]);
+
+  // Filter visits belonging STRICTLY to the invited farm (local props + Firebase cloud)
   const farmVisits = useMemo(() => {
     if (!invitation) return [];
     const targetKey = farmKey(invitation.farm);
-    return visits
-      .filter(v => farmKey(v.farm) === targetKey && v.reviewed)
-      .sort((a, b) => a.date.localeCompare(b.date)); // chronological
-  }, [invitation, visits]);
+    const map = new Map<string, Visit>();
+    for (const visit of [...visits, ...cloudVisits]) {
+      if (farmKey(visit.farm) === targetKey && visit.reviewed && visit.id) {
+        map.set(visit.id, visit);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [invitation, visits, cloudVisits]);
 
   // Farm metric history analysis
   const historyAnalysis: FarmMetricAnalysis | null = useMemo(() => {
@@ -114,6 +150,7 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     setVerifying(true);
     setErrorMsg('');
     try {
+      await ensurePortalAuth();
       const found = await verifyFarmInvitation(inputCode.trim());
       if (found) {
         setInvitation(found);
