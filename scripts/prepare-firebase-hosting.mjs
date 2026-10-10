@@ -47,7 +47,14 @@ function run(command, args, options = {}) {
 async function ensureVinextBuild() {
   if (exists(path.join(clientDir, '_next'))) return;
   console.log('dist/client missing — running vinext build…');
-  await run('npx', ['vinext', 'build']);
+  await run('npx', ['vinext', 'build'], {
+    env: {
+      NEXT_PUBLIC_PORTAL_ORIGIN:
+        process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
+        process.env.PUBLIC_PORTAL_ORIGIN ||
+        'https://gen-lang-client-0175464290.web.app'
+    }
+  });
   if (!exists(path.join(clientDir, '_next'))) {
     throw new Error('vinext build finished but dist/client/_next was not produced');
   }
@@ -108,7 +115,14 @@ async function prerenderIndexHtml() {
   const child = spawn('npx', ['vinext', 'start', '--port', String(port), '--hostname', host], {
     cwd: rootDir,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: {...process.env, PORT: String(port)},
+    env: {
+      ...process.env,
+      PORT: String(port),
+      NEXT_PUBLIC_PORTAL_ORIGIN:
+        process.env.NEXT_PUBLIC_PORTAL_ORIGIN ||
+        process.env.PUBLIC_PORTAL_ORIGIN ||
+        'https://gen-lang-client-0175464290.web.app'
+    },
     shell: process.platform === 'win32',
     detached: process.platform !== 'win32'
   });
@@ -210,7 +224,12 @@ async function main() {
   console.log('   Deploy: npm run deploy:firebase   # requires firebase login / CI token');
 }
 
-main().catch(error => {
-  console.error('prepare-firebase-hosting failed:', error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Force-exit in case vinext left open handles after SIGTERM.
+    setTimeout(() => process.exit(0), 300).unref?.();
+  })
+  .catch(error => {
+    console.error('prepare-firebase-hosting failed:', error instanceof Error ? error.message : error);
+    setTimeout(() => process.exit(1), 300).unref?.();
+  });
