@@ -29,7 +29,7 @@ import {
   type Visit
 } from '@/lib/model';
 import {farmMetricHistory} from '@/lib/metric-analysis';
-import {ensurePortalAuth, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
+import {ensurePortalAuth, getLastPortalAuthWarning, listFarmCloudVisits, subscribeToFarmVisits} from '@/lib/firebase';
 import MetricsKpiStrip from './metrics-kpi-strip';
 import './b2b-metrics.css';
 import './farm-portal.css';
@@ -79,12 +79,16 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
   const [expandedReports, setExpandedReports] = useState(false);
   const [cloudVisits, setCloudVisits] = useState<Visit[]>([]);
   const [cloudSyncedFarm, setCloudSyncedFarm] = useState('');
+  const [authWarning, setAuthWarning] = useState('');
 
   useEffect(() => {
     async function initAuth() {
       setLoading(true);
       setErrorMsg('');
+      setAuthWarning('');
       await withTimeout(ensurePortalAuth(), 8000, null);
+      const warning = getLastPortalAuthWarning();
+      if (warning) setAuthWarning(warning);
 
       if (initialToken) {
         const found = await withTimeout(verifyFarmInvitation(initialToken), 8000, null);
@@ -255,6 +259,8 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
     setErrorMsg('');
     try {
       await withTimeout(ensurePortalAuth(), 8000, null);
+      const warning = getLastPortalAuthWarning();
+      if (warning) setAuthWarning(warning);
       const found = await withTimeout(verifyFarmInvitation(inputCode.trim()), 10000, null);
       if (found) {
         setInvitation(found);
@@ -323,6 +329,11 @@ export function FarmPortalView({initialToken, visits, onExitPortal}: FarmPortalV
               {errorMsg && (
                 <div className="fp-error" role="alert">
                   {errorMsg}
+                </div>
+              )}
+              {authWarning && !errorMsg && (
+                <div className="fp-error" role="status">
+                  {authWarning}
                 </div>
               )}
 

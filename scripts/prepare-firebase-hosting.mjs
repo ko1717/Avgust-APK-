@@ -1,0 +1,216 @@
+#!/usr/bin/env node
+/**
+ * Stages a static Firebase Hosting bundle from a vinext production build.
+ *
+ * Flow:
+ *   1. Requires `dist/client` from `vinext build` (or runs it).
+ *   2. Boots `vinext start` briefly to prerender `/` (SSR HTML shell).
+ *   3. Copies client assets + index.html into dist/firebase-hosting.
+ *
+ * Firebase Hosting serves this statically. Portal clients use Firestore/Auth
+ * in the browser (`/?portal=finca`). D1/R2 API routes are not available on
+ * Hosting — keep Cloudflare Sites / wrangler for the full authenticated app.
+ */
+import {spawn} from 'node:child_process';
+import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+const clientDir = path.join(rootDir, 'dist', 'client');
+const outDir = path.join(rootDir, 'dist', 'firebase-hosting');
+const port = Number(process.env.FIREBASE_HOSTING_PRERENDER_PORT || 4179);
+const host = '127.0.0.1';
+
+function exists(filePath) {
+  return fs.existsSync(filePath);
+}
+
+function run(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: rootDir,
+      stdio: options.stdio ?? 'inherit',
+      env: {...process.env, ...options.env},
+      shell: process.platform === 'win32'
+    });
+    child.on('error', reject);
+    child.on('exit', code => {
+      if (code === 0) resolve();
+      else reject(new Error(`${command} ${args.join(' ')} exited with ${code}`));
+    });
+  });
+}
+
+async function ensureVinextBuild() {
+  if (exists(path.join(clientDir, '_next'))) return;
+  console.log('dist/client missing — running vinext build…');
+  await run('npx', ['vinext', 'build']);
+  if (!exists(path.join(clientDir, '_next'))) {
+    throw new Error('vinext build finished but dist/client/_next was not produced');
+  }
+}
+
+function waitForHttp(url, timeoutMs = 60000) {
+  const started = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const req = http.get(url, res => {
+        res.resume();
+        if ((res.statusCode || 500) < 500) {
+          resolve();
+          return;
+        }
+        retry(new Error(`HTTP ${res.statusCode}`));
+      });
+      req.on('error', retry);
+      req.setTimeout(2000, () => {
+        req.destroy();
+        retry(new Error('timeout'));
+      });
+    };
+    const retry = err => {
+      if (Date.now() - started > timeoutMs) {
+        reject(err instanceof Error ? err : new Error(String(err)));
+        return;
+      }
+      setTimeout(attempt, 400);
+    };
+    attempt();
+  });
+}
+
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    http
+      .get(url, res => {
+        const chunks = [];
+        res.on('data', chunk => chunks.push(chunk));
+        res.on('end', () => {
+          const body = Buffer.concat(chunks).toString('utf8');
+          if ((res.statusCode || 500) >= 400) {
+            reject(new Error(`GET ${url} → ${res.statusCode}`));
+            return;
+          }
+          resolve(body);
+        });
+      })
+      .on('error', reject);
+  });
+}
+
+async function prerenderIndexHtml() {
+  const url = `http://${host}:${port}/`;
+  console.log(`Starting vinext start on ${url} to capture SSR shell…`);
+  // Detached process group so we can SIGKILL workerd grandchildren on cleanup.
+  const child = spawn('npx', ['vinext', 'start', '--port', String(port), '--hostname', host], {
+    cwd: rootDir,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {...process.env, PORT: String(port)},
+    shell: process.platform === 'win32',
+    detached: process.platform !== 'win32'
+  });
+
+  let logs = '';
+  child.stdout?.on('data', chunk => {
+    logs += chunk.toString();
+  });
+  child.stderr?.on('data', chunk => {
+    logs += chunk.toString();
+  });
+
+  const stop = () => {
+    const pid = child.pid;
+    if (!pid) return;
+    try {
+      if (process.platform !== 'win32') {
+        process.kill(-pid, 'SIGKILL');
+      } else {
+        child.kill('SIGKILL');
+      }
+    } catch {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* already gone */
+      }
+    }
+  };
+
+  try {
+    await waitForHttp(url);
+    const html = await fetchText(url);
+    if (!html.includes('<!DOCTYPE html') && !html.includes('<html')) {
+      throw new Error('Prerender response did not look like HTML');
+    }
+    if (!html.includes('/_next/static/')) {
+      throw new Error('Prerendered HTML is missing /_next/static asset references');
+    }
+    return html;
+  } catch (error) {
+    console.error(logs.slice(-4000));
+    throw error;
+  } finally {
+    stop();
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+}
+
+function copyClientAssets() {
+  if (exists(outDir)) {
+    fs.rmSync(outDir, {recursive: true, force: true});
+  }
+  fs.mkdirSync(outDir, {recursive: true});
+  fs.cpSync(clientDir, outDir, {recursive: true});
+
+  // Drop Cloudflare / Vite bookkeeping that Hosting should not publish.
+  for (const name of ['.assetsignore', '.vite', 'vinext-client-entry-manifest.json', '_headers']) {
+    const target = path.join(outDir, name);
+    if (exists(target)) fs.rmSync(target, {recursive: true, force: true});
+  }
+}
+
+function writeHtml(html) {
+  const indexPath = path.join(outDir, 'index.html');
+  fs.writeFileSync(indexPath, html, 'utf8');
+  // Firebase uses 404.html as SPA fallback when a path is missing.
+  fs.writeFileSync(path.join(outDir, '404.html'), html, 'utf8');
+  return indexPath;
+}
+
+function assertPortalAssets() {
+  const required = [
+    'index.html',
+    'favicon.svg',
+    'avgust-logo.svg',
+    'portal/field.jpg',
+    'portal/greenhouse.jpg',
+    'portal/ornamental.jpg',
+    'manrope.woff2'
+  ];
+  const missing = required.filter(rel => !exists(path.join(outDir, rel)));
+  if (missing.length) {
+    throw new Error(`Firebase Hosting bundle missing required assets: ${missing.join(', ')}`);
+  }
+}
+
+async function main() {
+  console.log('--- Preparing Firebase Hosting bundle (portal / CARE 360 static shell) ---');
+  await ensureVinextBuild();
+  const html = await prerenderIndexHtml();
+  copyClientAssets();
+  const indexPath = writeHtml(html);
+  assertPortalAssets();
+
+  const sizeKb = Math.round(fs.statSync(indexPath).size / 1024);
+  console.log(`✅ Firebase Hosting public dir ready: dist/firebase-hosting/ (index.html ${sizeKb} KB)`);
+  console.log('   Portal URL after deploy: https://<project>.web.app/?portal=finca');
+  console.log('   Deploy: npm run deploy:firebase   # requires firebase login / CI token');
+}
+
+main().catch(error => {
+  console.error('prepare-firebase-hosting failed:', error instanceof Error ? error.message : error);
+  process.exit(1);
+});

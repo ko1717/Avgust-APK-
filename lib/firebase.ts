@@ -24,6 +24,7 @@ import {
 import {useState, useEffect} from 'react';
 import firebaseConfig from '../firebase-applet-config.json';
 import {metrics,type Visit} from './model';
+import {getPortalOrigin} from './portal-origin';
 
 // Initialize Firebase App instance
 const app = getApps().length ? getApp() : initializeApp({
@@ -173,7 +174,7 @@ export async function publishOnlineReport(visit: Visit, authorEmail?: string): P
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const origin = getPortalOrigin();
   const url = `${origin}?view=online-report&id=${encodeURIComponent(visit.id)}`;
 
   return {url, id: visit.id};
@@ -238,17 +239,51 @@ export function subscribeToFarmVisits(farmName: string, callback: (visits: Visit
   });
 }
 
+let lastPortalAuthWarning: string | null = null;
+
+/** Last Anonymous Auth warning for portal UI (null when sign-in succeeded). */
+export function getLastPortalAuthWarning(): string | null {
+  return lastPortalAuthWarning;
+}
+
 /**
  * Ensures a lightweight Firebase Auth session for portal clients.
- * Falls back silently if Anonymous Auth is disabled in the project.
+ * Prefer Anonymous Auth in production (Firebase Console → Authentication).
+ * Falls back to public Firestore list/get rules if Anonymous Auth is disabled.
  */
 export async function ensurePortalAuth(): Promise<User | null> {
-  if (auth.currentUser) return auth.currentUser;
+  if (auth.currentUser) {
+    lastPortalAuthWarning = null;
+    return auth.currentUser;
+  }
   try {
     const result = await signInAnonymously(auth);
+    lastPortalAuthWarning = null;
     return result.user;
   } catch (error) {
-    console.warn('Anonymous Firebase Auth unavailable for portal; continuing with public rules:', error);
+    const code = typeof error === 'object' && error && 'code' in error
+      ? String((error as {code?: string}).code || '')
+      : '';
+    if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+      lastPortalAuthWarning =
+        'Auth anónimo desactivado en Firebase. Un administrador debe habilitar Authentication → Sign-in method → Anonymous. El portal puede seguir con reglas públicas de invitación.';
+      console.error(
+        '[CARE360 portal] Firebase Anonymous Auth is disabled. Enable Authentication → Sign-in method → Anonymous in project gen-lang-client-0175464290.'
+      );
+    } else if (code === 'auth/unauthorized-domain') {
+      lastPortalAuthWarning =
+        'Este dominio no está autorizado en Firebase Auth. Agrégalo en Authentication → Settings → Authorized domains (Hosting).';
+      console.error(
+        '[CARE360 portal] This Hosting domain is not authorized for Firebase Auth. Add it under Authentication → Settings → Authorized domains.'
+      );
+    } else {
+      lastPortalAuthWarning =
+        'No se pudo iniciar sesión anónima; se continúa con el flujo de código de invitación.';
+      console.warn(
+        '[CARE360 portal] Anonymous Auth unavailable; continuing with public Firestore rules (invitation-code flow):',
+        error
+      );
+    }
     return null;
   }
 }
