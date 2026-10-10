@@ -1,5 +1,7 @@
 /* Portal de Finca — shell + invitation gate; dashboard reuses b2b-metrics.css */
 
+.fp-gate,
+.fp-loading,
 .farm-portal {
   --fp-cyan: #007fa3;
   --fp-cyan-deep: #005f7a;
@@ -12,6 +14,9 @@
   --fp-soft: #f3f7f9;
   --fp-paper: #ffffff;
   --fp-font: Manrope, Arial, sans-serif;
+}
+
+.farm-portal {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
