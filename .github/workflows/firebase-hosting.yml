@@ -3,7 +3,7 @@ name: Firebase Hosting deploy
 on:
   push:
     branches:
-      - codex/nuevas-metricas-mipe
+      - main
   workflow_dispatch:
 
 jobs:

@@ -59,7 +59,7 @@ npx firebase deploy --only hosting
 
 ## Avanzado — GitHub Actions + `login:ci`
 
-El workflow [`.github/workflows/firebase-hosting.yml`](../.github/workflows/firebase-hosting.yml) puede publicar a **avgustscare360** en push a `codex/nuevas-metricas-mipe` o con `workflow_dispatch`. Es **opcional**; el camino fácil es el `.bat` de arriba.
+El workflow [`.github/workflows/firebase-hosting.yml`](../.github/workflows/firebase-hosting.yml) puede publicar a **avgustscare360** en push a `main` o con `workflow_dispatch`. Es **opcional**; el camino fácil es el `.bat` de arriba.
 
 **Una sola vez — secret en el repo:**
 

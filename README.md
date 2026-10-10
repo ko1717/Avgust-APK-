@@ -2,6 +2,19 @@
 
 Aplicación para registrar visitas y preparar informes técnicos por finca. Permite completar los 37 criterios de los cinco capítulos, adjuntar fotos, consultar métricas históricas por finca y descargar Word editable o imprimir a PDF.
 
+## Portal de finca (Firebase)
+
+El portal en línea vive en el proyecto Firebase **avgustscare360**:
+
+- URL: https://avgustscare360.web.app/?portal=finca
+- Windows: doble clic en `deploy-portal.bat` (login Google → build → deploy)
+- Detalle: `docs/firebase-hosting.md`
+- Comprobar config sin deploy: `npm run verify:firebase-portal`
+
+Trabaja siempre sobre la rama `main` (`git checkout main && git pull`).
+
+## App
+
 Los objetivos y la metodología provienen del protocolo Word suministrado. Las preguntas se extrajeron de las listas de chequeo sin cambiar sus criterios técnicos. El indicador usa respuestas “Sí” sobre criterios aplicables (“Sí” + “No”), excluye “No aplica” y pondera los capítulos así: 1 (5%), 2 (25%), 3 (10%), 4 (30%) y 5 (30%). Clasifica cada visita como Saludable (95–100%), Alerta (80–94%) o Vulnerable (menos de 80%). El diseño del Word es nuevo, conserva la estructura y el contenido institucional pero no reproduce exactamente la diagramación del original.
 
 Este repositorio incluye el proyecto fuente (versión 1.5.35) para web, Windows y Android. El motor de métricas anterior basado en `enhance` ya no se carga: la puntuación, el estado y la evolución usan `lib/model.ts` y `lib/metric-analysis.ts`, y las vistas actuales viven en `app/metrics-panel.tsx` y `app/consolidated-metrics.tsx`. El resto de la capa `enhance/src` permanece para otras funciones de interfaz. La APK 1.5.32 se conserva como referencia; no se debe generar un release de producción con el flujo de APK semilla.
@@ -18,7 +31,7 @@ El respaldo JSON conserva campos y referencias a fotos, no los bytes de las foto
 
 Node 22.16 o posterior. Se requiere esta versión para la API de respaldo de SQLite que usa la edición Windows. `npm ci`, `npm run dev`, `npm run build`. `npm run db:generate` genera migraciones de Drizzle; no se crean tablas desde rutas de aplicación. El entorno local simula el inicio de sesión mediante `/signin-with-chatgpt`.
 
-Portal de finca / servidor en línea (Firebase Hosting): `npm run dev:portal` en local; en Windows, doble clic en `deploy-portal.bat` (ver `docs/firebase-hosting.md`). El deploy de Sites/Vinext (Cloudflare) no se reemplaza.
+Portal local: `npm run dev:portal`. Publicar: `deploy-portal.bat` / `npm run deploy:portal` (proyecto **avgustscare360**; ver sección Portal arriba). El deploy de Sites/Vinext (Cloudflare) no se reemplaza.
 
 Para preparar una base local nueva tras generar y construir, ejecutar las migraciones de `drizzle/` en orden numérico. Si la base local ya existía, aplicar solamente cada migración pendiente antes de iniciar `npm run dev`; por ejemplo: `npx wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_farm_dossier_indexes.sql`. Utilizar una ruta absoluta para `persist-to` si Wrangler resuelve la ruta desde `dist/server`. Nunca añadir `--remote` a este procedimiento sin una autorización y un entorno de prueba explícitos.
 
