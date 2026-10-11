@@ -1391,12 +1391,15 @@
 }
 
 .farm-portal .fp-chapter-tile header span {
+  display: -webkit-box;
   overflow: hidden;
+  min-height: 2.5em;
   color: var(--fp-muted);
   font-size: 0.68rem;
-  line-height: 1.3;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .farm-portal .fp-chapter-tile > b {
