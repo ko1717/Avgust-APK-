@@ -15,8 +15,13 @@ const bundled = await build({
   write: false
 });
 const source = Buffer.from(bundled.outputFiles[0].contents).toString('base64');
-const {getPortalOrigin, clientPortalEntryUrl, publishClientBlockReason, DEFAULT_FIREBASE_HOSTING_ORIGIN} =
-  await import(`data:text/javascript;base64,${source}`);
+const {
+  getPortalOrigin,
+  clientPortalEntryUrl,
+  buildHostingPortalUrl,
+  publishClientBlockReason,
+  DEFAULT_FIREBASE_HOSTING_ORIGIN
+} = await import(`data:text/javascript;base64,${source}`);
 
 test('portal origin stays on Firebase Hosting even if env or window point elsewhere', () => {
   const previousPublic = process.env.PUBLIC_PORTAL_ORIGIN;
@@ -28,8 +33,16 @@ test('portal origin stays on Firebase Hosting even if env or window point elsewh
   try {
     assert.equal(DEFAULT_FIREBASE_HOSTING_ORIGIN, HOSTING);
     assert.equal(getPortalOrigin(), HOSTING);
-    assert.equal(clientPortalEntryUrl(), `${HOSTING}?portal=finca`);
-    assert.equal(clientPortalEntryUrl(`${HOSTING}/`), `${HOSTING}?portal=finca`);
+    assert.equal(clientPortalEntryUrl(), `${HOSTING}/`);
+    assert.equal(clientPortalEntryUrl(`${HOSTING}/`), `${HOSTING}/`);
+    assert.equal(
+      buildHostingPortalUrl({invitation: 'abc123'}),
+      `${HOSTING}/?invitation=abc123`
+    );
+    assert.equal(
+      buildHostingPortalUrl({view: 'online-report', id: 'vis_01'}),
+      `${HOSTING}/?view=online-report&id=vis_01`
+    );
   } finally {
     if (previousPublic === undefined) delete process.env.PUBLIC_PORTAL_ORIGIN;
     else process.env.PUBLIC_PORTAL_ORIGIN = previousPublic;

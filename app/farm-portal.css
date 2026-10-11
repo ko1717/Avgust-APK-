@@ -1021,7 +1021,14 @@
   width: min(1120px, 100%);
   margin: 0 auto;
   padding: clamp(40px, 6vw, 72px) clamp(16px, 3vw, 24px) 64px;
-  scroll-margin-top: 40px;
+  scroll-margin-top: clamp(72px, 12vh, 112px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.farm-portal),
+  html:has(.fp-gate) {
+    scroll-behavior: smooth;
+  }
 }
 
 .fp-section-mark {

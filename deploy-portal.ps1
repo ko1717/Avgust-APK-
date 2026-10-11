@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
-$PortalUrl = 'https://gen-lang-client-0175464290.web.app/?portal=finca'
+$PortalUrl = 'https://gen-lang-client-0175464290.web.app/'
 $ProjectId = 'gen-lang-client-0175464290'
 
 Write-Host ''

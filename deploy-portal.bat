@@ -12,7 +12,7 @@ echo   CARE 360 — Publicar portal Firebase
 echo ========================================
 echo.
 echo Proyecto: gen-lang-client-0175464290
-echo URL:      https://gen-lang-client-0175464290.web.app/?portal=finca
+echo URL:      https://gen-lang-client-0175464290.web.app/
 echo.
 
 where node >nul 2>&1
@@ -77,7 +77,7 @@ echo   LISTO — portal publicado
 echo ========================================
 echo.
 echo Abre en el navegador:
-echo   https://gen-lang-client-0175464290.web.app/?portal=finca
+echo   https://gen-lang-client-0175464290.web.app/
 echo.
 
 :end

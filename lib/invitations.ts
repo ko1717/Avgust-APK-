@@ -1,6 +1,6 @@
 import {doc, setDoc, collection, getDocs, query, where, limit, updateDoc} from 'firebase/firestore';
 import {db, auth} from './firebase';
-import {getPortalOrigin} from './portal-origin';
+import {buildHostingPortalUrl, getPortalOrigin} from './portal-origin';
 import {
   canonicalFarmName,
   farmKey,
@@ -246,8 +246,7 @@ export function clearClientSession(): void {
  * Builds the URL to access the farm portal with the invitation token
  */
 export function buildInvitationPortalUrl(token: string): string {
-  const origin = getPortalOrigin();
-  return `${origin}?portal=finca&invitation=${encodeURIComponent(token)}`;
+  return buildHostingPortalUrl({invitation: token});
 }
 
 /**

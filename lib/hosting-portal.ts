@@ -28,13 +28,19 @@ export function isHostingPortalOnly(): boolean {
 }
 
 /**
- * Ensure the public URL advertises the farm portal (keeps invitation / report query params).
+ * On portal-only Hosting, strip legacy `?portal=finca` so the bar stays clean.
+ * Invitation / online-report query params are preserved.
  */
 export function ensurePortalQueryOnHosting(): void {
   if (typeof window === 'undefined') return;
   if (!isHostingPortalOnly()) return;
   const url = new URL(window.location.href);
-  if (url.searchParams.get('portal') === 'finca') return;
-  url.searchParams.set('portal', 'finca');
-  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  if (url.searchParams.get('portal') !== 'finca') return;
+  url.searchParams.delete('portal');
+  const qs = url.searchParams.toString();
+  window.history.replaceState(
+    {},
+    '',
+    `${url.pathname}${qs ? `?${qs}` : ''}${url.hash}`
+  );
 }

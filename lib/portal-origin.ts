@@ -12,12 +12,42 @@ export function getPortalOrigin(): string {
   return resolvePortalOrigin() || DEFAULT_FIREBASE_HOSTING_ORIGIN || PORTAL_ORIGIN;
 }
 
+function normalizeOrigin(baseUrl: string): string {
+  return baseUrl.replace(/\/$/, '');
+}
+
 /**
- * Gate the farm client opens on Firebase Hosting.
- * Invitation links keep this prefix and add `&invitation=`.
+ * Public farm portal on Firebase Hosting (portal-only build).
+ * Legacy `/?portal=finca` still opens the same shell; new links omit it.
  */
 export function clientPortalEntryUrl(origin = getPortalOrigin()): string {
-  return `${origin.replace(/\/$/, '')}?portal=finca`;
+  return `${normalizeOrigin(origin)}/`;
+}
+
+/**
+ * Query-string links on the Hosting origin (`/`, `/finca`, or custom domain).
+ * Omits `portal=finca` — Hosting is portal-only at build time.
+ */
+export function buildHostingPortalUrl(
+  params?: Record<string, string | undefined | null>
+): string {
+  const base = `${normalizeOrigin(getPortalOrigin())}/`;
+  if (!params) return base;
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+/**
+ * Technician preview in the full app still uses `?portal=finca` on localhost / Sites.
+ */
+export function technicianPortalPreviewUrl(origin?: string): string {
+  const base = normalizeOrigin(origin ?? (typeof window !== 'undefined' ? window.location.origin : getPortalOrigin()));
+  return `${base}/?portal=finca`;
 }
 
 /**

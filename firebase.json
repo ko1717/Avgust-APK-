@@ -13,6 +13,14 @@
     ],
     "rewrites": [
       {
+        "source": "/finca",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/finca/**",
+        "destination": "/index.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

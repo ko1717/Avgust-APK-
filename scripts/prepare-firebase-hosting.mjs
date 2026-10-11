@@ -112,7 +112,7 @@ function fetchText(url) {
 }
 
 async function prerenderIndexHtml() {
-  const url = `http://${host}:${port}/?portal=finca`;
+  const url = `http://${host}:${port}/`;
   console.log(`Starting vinext start on ${url} to capture portal SSR shell…`);
   // Detached process group so we can SIGKILL workerd grandchildren on cleanup.
   const child = spawn('npx', ['vinext', 'start', '--port', String(port), '--hostname', host], {
@@ -190,18 +190,21 @@ function copyClientAssets() {
   }
 }
 
-/** Inject early redirect so `/` and deep links always advertise portal=finca. */
-function injectPortalLock(html) {
-  const lockScript = `<script>(function(){try{var h=location.hostname.toLowerCase();if(h!=='gen-lang-client-0175464290.web.app'&&h!=='gen-lang-client-0175464290.firebaseapp.com')return;var u=new URL(location.href);if(u.searchParams.get('portal')==='finca')return;u.searchParams.set('portal','finca');location.replace(u.pathname+u.search+u.hash);}catch(e){}})();</script>`;
-  if (html.includes('<!-- firebase-portal-lock -->')) return html;
+/** Strip legacy `?portal=finca` on Hosting hostnames (portal-only; keeps other query params). */
+function injectPortalLegacyCleanup(html) {
+  const cleanupScript = `<script>(function(){try{var h=location.hostname.toLowerCase();if(h!=='gen-lang-client-0175464290.web.app'&&h!=='gen-lang-client-0175464290.firebaseapp.com')return;var u=new URL(location.href);if(u.searchParams.get('portal')!=='finca')return;u.searchParams.delete('portal');var q=u.searchParams.toString();location.replace(u.pathname+(q?'?'+q:'')+u.hash);}catch(e){}})();</script>`;
+  if (html.includes('<!-- firebase-portal-legacy-cleanup -->')) return html;
   if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head([^>]*)>/i, `<head$1><!-- firebase-portal-lock -->${lockScript}`);
+    return html.replace(
+      /<head([^>]*)>/i,
+      `<head$1><!-- firebase-portal-legacy-cleanup -->${cleanupScript}`
+    );
   }
-  return `<!-- firebase-portal-lock -->${lockScript}${html}`;
+  return `<!-- firebase-portal-legacy-cleanup -->${cleanupScript}${html}`;
 }
 
 function writeHtml(html) {
-  const locked = injectPortalLock(html);
+  const locked = injectPortalLegacyCleanup(html);
   const indexPath = path.join(outDir, 'index.html');
   fs.writeFileSync(indexPath, locked, 'utf8');
   // Firebase uses 404.html as SPA fallback when a path is missing.
@@ -237,6 +240,8 @@ async function main() {
   const sizeKb = Math.round(fs.statSync(indexPath).size / 1024);
   console.log(`✅ Firebase Hosting public dir ready: dist/firebase-hosting/ (index.html ${sizeKb} KB)`);
   console.log('   Portal-only URL: https://gen-lang-client-0175464290.web.app/');
+  console.log('   Optional path alias: /finca');
+  console.log('   Invitation example: https://gen-lang-client-0175464290.web.app/?invitation=TOKEN');
   console.log('   Deploy: npm run deploy:firebase   # requires firebase login / CI token');
 }
 

@@ -6,7 +6,7 @@ Aplicación para registrar visitas y preparar informes técnicos por finca. Perm
 
 Firebase Hosting (**gen-lang-client-0175464290**, cuenta `vixnine777@gmail.com`) publica **únicamente el portal de finca** para responsables/clientes: informes, métricas y solicitud de aseguramiento. **No** incluye la consola técnica completa de AVGUST CARE 360 (esa sigue en Vinext / Sites / escritorio).
 
-- URL del portal: https://gen-lang-client-0175464290.web.app/ (también `/?portal=finca`)
+- URL del portal: https://gen-lang-client-0175464290.web.app/ (alias `/finca`; invitaciones `/?invitation=TOKEN`)
 - Windows: doble clic en `deploy-portal.bat` (login Google → build → deploy)
 - Detalle: `docs/firebase-hosting.md`
 - Comprobar config sin deploy: `npm run verify:firebase-portal`

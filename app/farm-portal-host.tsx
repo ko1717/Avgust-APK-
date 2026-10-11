@@ -60,9 +60,9 @@ export default function FarmPortalHost() {
             const params = new URLSearchParams(window.location.search);
             params.delete('view');
             params.delete('id');
-            params.set('portal', 'finca');
+            params.delete('portal');
             const q = params.toString();
-            window.history.replaceState({}, '', `/${q ? `?${q}` : '?portal=finca'}`);
+            window.history.replaceState({}, '', `/${q ? `?${q}` : ''}`);
             setOnlineReportId(null);
           }}
         />
