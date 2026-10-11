@@ -668,6 +668,14 @@ export function FarmPortalView({
       </section>
 
       <aside className={`fp-assurance-dock ${assuranceOpen ? 'is-open' : ''}`}>
+        {assuranceOpen && (
+          <button
+            type="button"
+            className="fp-assurance-scrim"
+            aria-label="Cerrar panel de aseguramiento"
+            onClick={() => setAssuranceOpen(false)}
+          />
+        )}
         {!assuranceOpen ? (
           <button
             type="button"

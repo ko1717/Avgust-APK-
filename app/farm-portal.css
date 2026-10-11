@@ -1567,7 +1567,27 @@
   font-style: normal;
 }
 
+.fp-assurance-scrim {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(6, 24, 31, 0.46);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+  animation: fp-scrim-in 0.2s ease both;
+}
+
+@keyframes fp-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .fp-assurance-panel {
+  position: relative;
   width: min(400px, calc(100vw - 32px));
   max-height: min(74vh, 660px);
   display: flex;
@@ -2145,7 +2165,7 @@
 
   .fp-hero-credits {
     gap: 12px 20px;
-    padding-bottom: 22px;
+    padding-bottom: 76px;
   }
 
   .fp-section-mark span {
@@ -2186,6 +2206,7 @@
   .fp-gate-stage,
   .fp-hero-stage-photo,
   .fp-loading::before,
+  .fp-assurance-scrim,
   .fp-assurance-panel {
     animation: none !important;
   }
