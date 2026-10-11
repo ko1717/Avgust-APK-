@@ -1,10 +1,10 @@
 'use client';
 import {useId,useState} from 'react';
-import {ChevronDown,ClipboardCheck,TrendingDown,TrendingUp} from 'lucide-react';
+import {ChevronDown,ClipboardCheck,Minus,TrendingDown,TrendingUp} from 'lucide-react';
 import './b2b-metrics.css';
 import './metrics-disclosure.css';
 
-export type ChapterTrendKpi={id:number;title:string;weightPct:number;score:number|null;delta:number|null;comparisons:number};
+export type ChapterTrendKpi={id:number;title:string;weightPct:number;score:number|null;delta:number|null;comparisons:number;baselineDate?:string};
 
 function formatPoints(value:number){return Number.isInteger(value)?String(value):value.toFixed(1);}
 
@@ -15,6 +15,40 @@ function chapterTone(score:number|null){
   return 'critical';
 }
 
+function chapterDeltaCopy(chapter:ChapterTrendKpi){
+  if(chapter.score===null)return 'No evaluado';
+  if(chapter.delta===null)return 'Sin visita previa';
+  if(chapter.delta===0)return 'Se mantuvo';
+  return `${chapter.delta>0?'+':''}${formatPoints(chapter.delta)} pts`;
+}
+
+function ChapterPercentTiles({chapters,note}:{chapters:ChapterTrendKpi[];note?:string}){
+  return <>
+    <ol className="fp-chapter-tiles">
+      {chapters.map(chapter=>{
+        const direction=chapter.score===null||chapter.delta===null?'none':chapter.delta>0?'up':chapter.delta<0?'down':'flat';
+        const scoreLabel=chapter.score===null?'sin medición':`${formatPoints(chapter.score)} por ciento`;
+        return <li key={chapter.id} className={`fp-chapter-tile is-${chapterTone(chapter.score)} is-${direction}`}>
+          <header>
+            <strong>Cap. {chapter.id}</strong>
+            <span title={chapter.title}>{chapter.title}</span>
+          </header>
+          <b aria-label={`Capítulo ${chapter.id}, ${scoreLabel}. ${chapterDeltaCopy(chapter)}`}>
+            {chapter.score===null?'—':<>{formatPoints(chapter.score)}<small>%</small></>}
+          </b>
+          <i aria-hidden><span style={{width:`${Math.min(100,Math.max(0,chapter.score??0))}%`}}/></i>
+          <em>
+            {direction==='up'?<TrendingUp size={13} aria-hidden/>:direction==='down'?<TrendingDown size={13} aria-hidden/>:direction==='flat'?<Minus size={13} aria-hidden/>:null}
+            {chapterDeltaCopy(chapter)}
+          </em>
+          <small>{chapter.baselineDate?`vs. ${chapter.baselineDate}`:`Peso ${chapter.weightPct}`}</small>
+        </li>;
+      })}
+    </ol>
+    <p className="metrics-chapter-trend-note">{note||'Porcentaje de cada capítulo en el aseguramiento consultado.'}</p>
+  </>;
+}
+
 export default function MetricsKpiStrip({
   count,
   scope,
@@ -23,7 +57,9 @@ export default function MetricsKpiStrip({
   collapsible=false,
   defaultExpanded=false,
   /** When false, hide empty “Sin comparación…” chrome (farm portal with &lt;2 comparable visits). */
-  showComparison=true
+  showComparison=true,
+  note,
+  chapterTiles=false
 }:{
   count:number;
   scope:string;
@@ -32,6 +68,8 @@ export default function MetricsKpiStrip({
   collapsible?:boolean;
   defaultExpanded?:boolean;
   showComparison?:boolean;
+  note?:string;
+  chapterTiles?:boolean;
 }){
   const listId=useId();
   const [expanded,setExpanded]=useState(Boolean(defaultExpanded));
@@ -56,13 +94,14 @@ export default function MetricsKpiStrip({
       <span className="metrics-kpi-icon" aria-hidden="true"><ClipboardCheck size={23}/></span>
     </article>
 
-    <section className={`metrics-kpi-card metrics-chapter-trends${collapsible?' is-collapsible':''}${showList?' is-expanded':' is-collapsed'}${showComparison?'':' no-comparison'}`} aria-labelledby="chapter-trends-title">
+    <section className={`metrics-kpi-card metrics-chapter-trends${chapterTiles?' is-tiles':''}${collapsible?' is-collapsible':''}${showList?' is-expanded':' is-collapsed'}${showComparison?'':' no-comparison'}`} aria-labelledby="chapter-trends-title">
       <div className="metrics-kpi-heading">
-        <div><span className="metrics-section-kicker">CAPÍTULOS</span><h3 id="chapter-trends-title">Tendencia por capítulo</h3></div>
+        <div><span className="metrics-section-kicker">CAPÍTULOS</span><h3 id="chapter-trends-title">{chapterTiles?'Porcentaje por capítulo':'Tendencia por capítulo'}</h3></div>
         {contextLabel?<span className="metrics-kpi-context">{contextLabel}</span>:null}
       </div>
+      {chapterTiles&&<ChapterPercentTiles chapters={chapterTrends} note={note}/>}
 
-      {collapsible&&(
+      {!chapterTiles&&collapsible&&(
         <div className="metrics-chapter-summary">
           <div className="metrics-chapter-summary-facts">
             <div>
@@ -93,7 +132,7 @@ export default function MetricsKpiStrip({
         </div>
       )}
 
-      {showList&&(
+      {!chapterTiles&&showList&&(
         <>
           <div className="metrics-chapter-trend-list" id={listId}>
             {chapterTrends.map(chapter=><div className={`metrics-chapter-trend${showComparison?'':' no-delta'}`} key={chapter.id}>

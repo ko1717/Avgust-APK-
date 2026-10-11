@@ -10,6 +10,9 @@ import {
   KeyRound,
   ExternalLink,
   FileText,
+  Minus,
+  TrendingDown,
+  TrendingUp,
   X
 } from 'lucide-react';
 import {
@@ -41,7 +44,7 @@ import {
   type AssuranceRequest
 } from '@/lib/firebase';
 import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
-import MetricsKpiStrip from './metrics-kpi-strip';
+import MetricsKpiStrip, {type ChapterTrendKpi} from './metrics-kpi-strip';
 import './b2b-metrics.css';
 import './farm-portal.css';
 
@@ -79,6 +82,33 @@ function StatusBadge({value}: {value: MetricStatus}) {
     pending: 'Sin medición'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
+}
+
+type TrendDirection = 'up' | 'down' | 'flat' | 'none';
+
+function trendDirection(delta: number | null): TrendDirection {
+  if (delta === null) return 'none';
+  if (delta > 0) return 'up';
+  if (delta < 0) return 'down';
+  return 'flat';
+}
+
+function formatDelta(delta: number) {
+  const value = Number.isInteger(delta) ? String(delta) : delta.toFixed(1);
+  return `${delta > 0 ? '+' : ''}${value} pts`;
+}
+
+function TrendIcon({direction, size = 14}: {direction: TrendDirection; size?: number}) {
+  if (direction === 'up') return <TrendingUp size={size} aria-hidden />;
+  if (direction === 'down') return <TrendingDown size={size} aria-hidden />;
+  return <Minus size={size} aria-hidden />;
+}
+
+function trendLabel(direction: TrendDirection) {
+  if (direction === 'up') return 'Subió';
+  if (direction === 'down') return 'Bajó';
+  if (direction === 'flat') return 'Se mantuvo';
+  return 'Primera lectura';
 }
 
 function SectionMark({index, label}: {index: string; label: string}) {
@@ -252,33 +282,41 @@ export function FarmPortalView({
   }, [invitation, farmVisits]);
 
   const current = historyAnalysis?.latest;
-  const previous = historyAnalysis && historyAnalysis.records.length > 1
-    ? historyAnalysis.records[historyAnalysis.records.length - 2]
-    : undefined;
-  const comparableChapterPair = Boolean(
-    current && previous && sameChapterScope(previous.visit, current.visit)
-  );
-  const selectedDelta = comparableChapterPair && current && previous
-    ? current.score - previous.score
+  const baseline = useMemo(() => {
+    if (!historyAnalysis || !current) return undefined;
+    const earlier = historyAnalysis.records.slice(0, -1);
+    for (let index = earlier.length - 1; index >= 0; index -= 1) {
+      if (sameChapterScope(earlier[index].visit, current.visit)) return earlier[index];
+    }
+    return undefined;
+  }, [historyAnalysis, current]);
+  const indexDelta = current && baseline
+    ? Math.round((current.score - baseline.score) * 10) / 10
     : null;
+  const indexTrend = trendDirection(indexDelta);
 
-  const chapterTrends = useMemo(() => {
+  const chapterTrends = useMemo<ChapterTrendKpi[]>(() => {
     if (!historyAnalysis || !current) {
       return [1, 2, 3, 4, 5].map(id => ({
         id,
         title: historyAnalysis?.chapters.find(c => c.id === id)?.title || `Capítulo ${id}`,
         weightPct: Math.round((CHAPTER_WEIGHTS[id] || 0) * 100),
-        score: null as number | null,
-        delta: null as number | null,
+        score: null,
+        delta: null,
         comparisons: 0
       }));
     }
 
     return historyAnalysis.chapters.map(chapter => {
-      const currentPoint = chapter.visitEvolution.find(point => point.visitId === current.visit.id);
-      const previousPoint = chapter.visitEvolution.find(point => point.visitId === previous?.visit.id);
+      const currentIndex = chapter.visitEvolution.findIndex(point => point.visitId === current.visit.id);
+      const currentPoint = currentIndex >= 0 ? chapter.visitEvolution[currentIndex] : undefined;
+      const previousPoint = currentIndex > 0
+        ? chapter.visitEvolution
+            .slice(0, currentIndex)
+            .reverse()
+            .find(point => point.score !== null && point.score !== undefined)
+        : undefined;
       const delta =
-        comparableChapterPair &&
         currentPoint?.score !== null &&
         currentPoint?.score !== undefined &&
         previousPoint?.score !== null &&
@@ -291,10 +329,12 @@ export function FarmPortalView({
         weightPct: chapter.weightPct,
         score: currentPoint?.score ?? null,
         delta,
-        comparisons: delta === null ? 0 : 1
+        comparisons: delta === null ? 0 : 1,
+        baselineDate: delta === null ? undefined : previousPoint?.date
       };
     });
-  }, [historyAnalysis, current, previous, comparableChapterPair]);
+  }, [historyAnalysis, current]);
+  const hasChapterDeltas = chapterTrends.some(chapter => chapter.delta !== null);
 
   const selectedProblems = useMemo(() => {
     if (!current) return [];
@@ -313,8 +353,6 @@ export function FarmPortalView({
       };
     });
   }, [current]);
-
-  const showVisitComparison = comparableChapterPair;
 
   const podium = useMemo(() => {
     if (!historyAnalysis) return [];
@@ -440,7 +478,7 @@ export function FarmPortalView({
 
         <div className="fp-gate-frame">
           <section className="fp-gate-brand" aria-label="Identidad AVGUST CARE 360">
-            <p className="fp-kicker">Aseguramiento MIPE · Fincas de flores</p>
+            <p className="fp-kicker">Aseguramiento Aptus · Fincas de flores</p>
             <h1 className="fp-wordmark">
               <span className="fp-wordmark-pre">AVGUST</span>
               <span className="fp-wordmark-main">
@@ -542,6 +580,12 @@ export function FarmPortalView({
               <strong>
                 {latestScore === null ? '—' : `${latestScore}%`}
               </strong>
+              {indexDelta !== null && (
+                <em className={`fp-trend-pill is-${indexTrend}`} aria-label={`${trendLabel(indexTrend)} ${formatDelta(indexDelta)} frente a la visita anterior`}>
+                  <TrendIcon direction={indexTrend} size={12} />
+                  {indexDelta === 0 ? '0' : formatDelta(indexDelta).replace(' pts', '')}
+                </em>
+              )}
               <StatusBadge value={latestStatus} />
             </div>
           )}
@@ -586,7 +630,7 @@ export function FarmPortalView({
         <div className="fp-hero-veil" aria-hidden />
         <div className="fp-hero-inner">
           <div className="fp-hero-copy">
-            <p className="fp-kicker">Portal de finca · Aseguramiento MIPE</p>
+            <p className="fp-kicker">Portal de finca · Aseguramiento Aptus</p>
             <h1 id="farm-portal-title" className="fp-wordmark">
               <span className="fp-wordmark-pre">AVGUST</span>
               <span className="fp-wordmark-main">
@@ -643,6 +687,17 @@ export function FarmPortalView({
                 <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
               </span>
               <StatusBadge value={latestStatus} />
+              <span className={`fp-hero-index-trend is-${indexTrend}`}>
+                <TrendIcon direction={indexTrend} size={14} />
+                {indexDelta === null ? (
+                  <span>Primera lectura de referencia</span>
+                ) : (
+                  <span>
+                    <b>{indexDelta === 0 ? 'Sin cambio' : formatDelta(indexDelta)}</b>
+                    {' '}vs. visita {baseline?.date}
+                  </span>
+                )}
+              </span>
             </aside>
           )}
         </div>
@@ -919,6 +974,8 @@ export function FarmPortalView({
             </div>
           ) : (
             <div className="metrics-executive-dashboard">
+              <div className="fp-band is-field">
+              <div className="fp-band-inner">
               <SectionMark index="01" label="Estado de la finca" />
               <section className={`metrics-outcome ${latestStatus}`} aria-label="Conclusión de la finca">
                 <div className="metrics-outcome-main">
@@ -956,7 +1013,7 @@ export function FarmPortalView({
                     <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
                   </div>
                 </div>
-                <div className={`metrics-outcome-facts${showVisitComparison ? '' : ' fp-facts-no-delta'}`}>
+                <div className="metrics-outcome-facts fp-facts-with-trend">
                   <div>
                     <span>Desviaciones</span>
                     <strong>{current.findings}</strong>
@@ -965,18 +1022,22 @@ export function FarmPortalView({
                     <span>Cobertura</span>
                     <strong>{current.evaluatedChapters}/5 capítulos</strong>
                   </div>
-                  {showVisitComparison && selectedDelta !== null && (
-                    <div>
-                      <span>Variación vs. anterior</span>
-                      <strong
-                        className={
-                          selectedDelta > 0 ? 'positive' : selectedDelta < 0 ? 'negative' : ''
-                        }
-                      >
-                        {`${selectedDelta > 0 ? '+' : ''}${selectedDelta} pts`}
-                      </strong>
-                    </div>
-                  )}
+                  <div className={`fp-index-trend is-${indexTrend}`}>
+                    <span>Tendencia del índice</span>
+                    <strong>
+                      <i aria-hidden>
+                        <TrendIcon direction={indexTrend} size={16} />
+                      </i>
+                      {indexDelta === null
+                        ? 'Primera lectura'
+                        : `${trendLabel(indexTrend)} ${indexDelta === 0 ? '' : formatDelta(indexDelta)}`.trim()}
+                    </strong>
+                    <small>
+                      {baseline
+                        ? `Vs. visita ${baseline.date} · ${baseline.score}% → ${current.score}%`
+                        : 'Aún no hay una visita anterior con el mismo alcance para comparar.'}
+                    </small>
+                  </div>
                 </div>
               </section>
 
@@ -985,13 +1046,20 @@ export function FarmPortalView({
                 count={historyAnalysis?.records.length || 0}
                 scope={`${historyAnalysis?.farm || invitation.farm} · aseguramientos revisados`}
                 chapterTrends={chapterTrends}
-                comparisonLabel={
-                  showVisitComparison ? 'Vs. aseguramiento anterior' : ''
+                comparisonLabel={hasChapterDeltas ? 'Vs. visita anterior' : 'Lectura actual'}
+                showComparison
+                note={
+                  hasChapterDeltas
+                    ? 'Porcentaje de cada capítulo en el aseguramiento consultado. La flecha compara con la última visita que evaluó ese mismo capítulo.'
+                    : 'Porcentaje de cada capítulo en el aseguramiento consultado. Las flechas de tendencia aparecerán desde la próxima visita revisada.'
                 }
-                showComparison={showVisitComparison}
-                collapsible
+                chapterTiles
               />
+              </div>
+              </div>
 
+              <div className="fp-band is-greenhouse">
+              <div className="fp-band-inner">
               <SectionMark index="03" label="Acciones correctivas" />
               <div className="metrics-overview-grid">
                 <section className="metrics-priority-panel">
@@ -1052,6 +1120,8 @@ export function FarmPortalView({
                   )}
                 </section>
               </div>
+              </div>
+              </div>
 
               <section className="fp-interlude" aria-label="Cómo se lee el índice oficial">
                 <div className="fp-interlude-inner">
@@ -1083,6 +1153,8 @@ export function FarmPortalView({
                 </div>
               </section>
 
+              <div className="fp-band is-ornamental">
+              <div className="fp-band-inner">
               {podium.length > 1 && <SectionMark index="04" label="Trayectoria" />}
               {podium.length > 1 && (
                 <section className="metrics-podium-panel">
@@ -1091,8 +1163,8 @@ export function FarmPortalView({
                       <div className="metrics-section-kicker">Historial reciente</div>
                       <h3>Últimos aseguramientos</h3>
                     </div>
-                    {showVisitComparison ? (
-                      <span className="metrics-note">Comparamos solo con el mismo alcance</span>
+                    {indexDelta !== null ? (
+                      <span className="metrics-note">Vs. visita con el mismo alcance</span>
                     ) : null}
                   </div>
                   <div className="metrics-podium-list">
@@ -1145,6 +1217,8 @@ export function FarmPortalView({
                   Ver historial de informes
                   <ChevronDown size={14} aria-hidden className="fp-metrics-assurance-chevron" />
                 </button>
+              </div>
+              </div>
               </div>
             </div>
           )}
