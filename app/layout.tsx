@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
   title: 'AVGUST CARE 360',
-  description: 'Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en fincas de flores con registro de visitas técnicas, auditoría, mediciones y generación de informes.',
+  description: 'Portal AVGUST CARE 360 para fincas de flores: aseguramiento en campo, capítulos, acciones e informes revisados por el técnico.',
   openGraph: {
     title: 'AVGUST CARE 360',
-    description: 'Programa de acompañamiento en campo para el aseguramiento del proceso MIPE en fincas de flores con registro de visitas técnicas, auditoría, mediciones y generación de informes.',
+    description: 'Portal AVGUST CARE 360 para fincas de flores: aseguramiento en campo, capítulos, acciones e informes revisados por el técnico.',
   },
   icons: { icon: '/favicon.svg' },
   manifest: '/manifest.webmanifest'
