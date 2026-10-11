@@ -507,28 +507,45 @@ export function FarmPortalView({
         <div className="fp-topbar-brand">
           <img src="/avgust-logo.svg" alt="AVGUST" />
           <div className="fp-topbar-meta">
-            <small>Portal de Finca · CARE 360</small>
+            <small>CARE 360 · Portal cliente</small>
             <strong title={invitation.farm}>{invitation.farm}</strong>
           </div>
         </div>
 
+        <nav className="fp-topbar-nav" aria-label="Navegación del portal">
+          <a href="#fp-metrics-anchor" aria-current="page">Resumen</a>
+          <button
+            type="button"
+            onClick={() => {
+              setAssuranceTab('reports');
+              setAssuranceOpen(true);
+            }}
+          >
+            Informes
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAssuranceTab('schedule');
+              setAssuranceOpen(true);
+            }}
+          >
+            Agendar
+          </button>
+        </nav>
+
         <div className="fp-topbar-actions">
-          {current && (
-            <div
-              className={`fp-status-chip ${latestStatus}`}
-              title={`Índice oficial del aseguramiento: ${latestScore === null ? '—' : `${latestScore}%`}. ${metricStatusDescriptions[latestStatus]}`}
-            >
-              <span>Índice oficial</span>
-              <strong>
-                {latestScore === null ? '—' : `${latestScore}%`}
-              </strong>
-              <StatusBadge value={latestStatus} />
-            </div>
-          )}
+          <a
+            className={`fp-status-chip ${latestStatus}`}
+            href="#fp-metrics-anchor"
+            title={`Índice oficial del aseguramiento: ${latestScore === null ? '—' : `${latestScore}%`}. ${metricStatusDescriptions[latestStatus]}`}
+          >
+            <span className="fp-status-dot" aria-hidden />
+            <span>Índice</span>
+            <strong>{latestScore === null ? '—' : `${latestScore}%`}</strong>
+            <span className="fp-status-label">{metricStatusLabels[latestStatus]}</span>
+          </a>
           <div className="fp-topbar-scroll-ctas" aria-hidden={!scrollCompact}>
-            <a className="fp-topbar-cta" href="#fp-metrics-anchor">
-              Ver el indicador
-            </a>
             {current && (
               <button
                 type="button"
@@ -536,20 +553,13 @@ export function FarmPortalView({
                 onClick={() => setViewingReportId(current.visit.id)}
               >
                 <ExternalLink size={14} aria-hidden />
-                Último informe
+                Informe
               </button>
             )}
           </div>
-          <div className="fp-chip is-desktop fp-topbar-guest">
-            <span>
-              Invitado: <strong>{invitation.clientName}</strong>
-            </span>
-            <span aria-hidden>·</span>
-            <span>Código de aseguramiento {invitation.code}</span>
-          </div>
-          <button type="button" className="b2b-btn b2b-btn-secondary" onClick={handleLogout} title="Cerrar sesión">
+          <button type="button" className="fp-logout" onClick={handleLogout} title="Cerrar sesión">
             <LogOut size={14} aria-hidden />
-            Salir
+            <span>Salir</span>
           </button>
         </div>
       </header>
@@ -566,39 +576,49 @@ export function FarmPortalView({
         <div className="fp-hero-veil" aria-hidden />
         <div className="fp-hero-inner">
           <div className="fp-hero-copy">
-            <p className="fp-hero-product">
-              AVGUST <span>CARE 360</span>
-            </p>
-            <h1 id="farm-portal-title">Portal de finca</h1>
-            <p className="fp-hero-farm">{invitation.farm}</p>
+            <p className="fp-hero-product">Panel de finca <span>· CARE 360</span></p>
+            <h1 id="farm-portal-title">{invitation.farm}</h1>
             <p className="fp-hero-lead">
-              Estado del cultivo, capítulos y acciones correctivas — con la lectura oficial del programa.
+              Tu aseguramiento, prioridades de campo e informes en un solo lugar.
             </p>
+            <div className="fp-hero-meta" aria-label="Datos de acceso">
+              <span>Cliente <strong>{invitation.clientName}</strong></span>
+              <span>Acceso <strong>{invitation.code}</strong></span>
+              <span>Actualizado <strong>{current?.date || 'Sin visita publicada'}</strong></span>
+            </div>
           </div>
           <div className="fp-hero-actions">
-            <a className="fp-hero-cta" href="#fp-metrics-anchor">
-              Ver el indicador {latestScore === null ? '' : `· ${latestScore}%`}
-            </a>
             {current && (
               <>
                 <button
                   type="button"
-                  className="b2b-btn b2b-btn-secondary"
+                  className="fp-hero-cta fp-hero-cta-secondary"
                   onClick={() => setViewingReportId(current.visit.id)}
                 >
                   <ExternalLink size={16} aria-hidden />
-                  Último informe
+                  Abrir informe
                 </button>
                 <button
                   type="button"
-                  className="b2b-btn b2b-btn-primary"
+                  className="fp-hero-cta fp-hero-cta-primary"
                   onClick={() => void exportWord(current.visit)}
                 >
                   <FileText size={16} aria-hidden />
-                  Descargar Word
+                  Descargar
                 </button>
               </>
             )}
+            <button
+              type="button"
+              className="fp-hero-cta fp-hero-cta-accent"
+              onClick={() => {
+                setAssuranceTab('schedule');
+                setAssuranceOpen(true);
+              }}
+            >
+              <CalendarDays size={16} aria-hidden />
+              Solicitar visita
+            </button>
           </div>
         </div>
       </section>
@@ -847,12 +867,17 @@ export function FarmPortalView({
             </div>
           ) : (
             <div className="metrics-executive-dashboard">
+              <header className="fp-dashboard-heading">
+                <div>
+                  <span>Lectura actual</span>
+                  <h2>Estado del aseguramiento</h2>
+                </div>
+                <p>Visita revisada · {current.date}</p>
+              </header>
               <section className={`metrics-outcome ${latestStatus}`} aria-label="Conclusión de la finca">
                 <div className="metrics-outcome-main">
-                  <div className="metrics-section-kicker">
-                    Aseguramiento consultado · {current.date}
-                  </div>
-                  <h3>{historyAnalysis?.farm || invitation.farm}</h3>
+                  <div className="metrics-section-kicker">Conclusión técnica</div>
+                  <h3>Resultado de la visita</h3>
                   <StatusBadge value={latestStatus} />
                   <p className="metrics-outcome-copy">{metricStatusDescriptions[latestStatus]}</p>
                   <div className="metrics-outcome-actions">
@@ -874,10 +899,9 @@ export function FarmPortalView({
                     {latestScore}
                     <span>%</span>
                   </strong>
-                  <small>Índice oficial</small>
+                  <small>Índice oficial CARE 360</small>
                   <p className="fp-score-explain">
-                    Resultado ponderado de los capítulos evaluados en esta visita. Es el único
-                    indicador de referencia del portal.
+                    Resultado ponderado de los capítulos evaluados.
                   </p>
                   <div className="metrics-score-track">
                     <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
@@ -1044,6 +1068,29 @@ export function FarmPortalView({
           )}
         </div>
       </main>
+
+      <nav className="fp-mobile-utility" aria-label="Acciones rápidas">
+        <a className={`fp-mobile-score ${latestStatus}`} href="#fp-metrics-anchor">
+          <span>Índice</span>
+          <strong>{latestScore === null ? '—' : `${latestScore}%`}</strong>
+        </a>
+        {current && (
+          <button type="button" onClick={() => setViewingReportId(current.visit.id)}>
+            <ExternalLink size={17} aria-hidden />
+            <span>Informe</span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setAssuranceTab('schedule');
+            setAssuranceOpen(true);
+          }}
+        >
+          <CalendarDays size={17} aria-hidden />
+          <span>Agendar</span>
+        </button>
+      </nav>
 
       <footer className="fp-footer">
         <span>AVGUST CARE 360 · Portal de Finca · Juntos Crecemos Bien</span>
