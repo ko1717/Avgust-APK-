@@ -1,6 +1,7 @@
 'use client';
 
 import {lazy, Suspense, useEffect, useState} from 'react';
+import {consultaAvgustClientEnabled} from '@/lib/consulta-avgust';
 import {ensurePortalQueryOnHosting} from '@/lib/hosting-portal';
 
 const FarmPortalView = lazy(() =>
@@ -84,9 +85,11 @@ export default function FarmPortalHost() {
           }}
         />
       </Suspense>
-      <Suspense fallback={null}>
-        <FarmPortalAi />
-      </Suspense>
+      {consultaAvgustClientEnabled() && (
+        <Suspense fallback={null}>
+          <FarmPortalAi />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -566,6 +566,7 @@ export function FarmPortalView({
   return (
     <div className={`farm-portal${scrollCompact ? ' is-compact' : ''}`}>
       <header className={`fp-topbar${scrollCompact ? ' is-compact' : ''}`}>
+        <div className="fp-page-width fp-topbar-row">
         <div className="fp-topbar-brand">
           <img src="/portal/avgust-logo-light.svg" alt="AVGUST" />
           <div className="fp-topbar-meta">
@@ -620,6 +621,7 @@ export function FarmPortalView({
             <span>Salir</span>
           </button>
         </div>
+        </div>
       </header>
 
       <section
@@ -632,7 +634,7 @@ export function FarmPortalView({
           <div className="fp-hero-stage-photo" />
         </div>
         <div className="fp-hero-veil" aria-hidden />
-        <div className="fp-hero-inner">
+        <div className="fp-page-width fp-hero-inner">
           <div className="fp-hero-copy">
             <p className="fp-kicker">Portal de finca · Aseguramiento AVGUST</p>
             <h1 id="farm-portal-title" className="fp-wordmark">
@@ -706,7 +708,7 @@ export function FarmPortalView({
           )}
         </div>
 
-        <dl className="fp-hero-credits">
+        <dl className="fp-page-width fp-hero-credits">
           <div>
             <dt>Cliente</dt>
             <dd>{invitation.clientName}</dd>

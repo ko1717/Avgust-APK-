@@ -3,7 +3,11 @@
 import {useEffect, useId, useRef, useState, type SubmitEvent} from 'react';
 import {Leaf, Send, X} from 'lucide-react';
 import {getClientSession} from '@/lib/invitations';
-import {consultaAvgustEndpoint, type ConsultaAvgustMessage} from '@/lib/consulta-avgust';
+import {
+  consultaAvgustClientEnabled,
+  consultaAvgustEndpoint,
+  type ConsultaAvgustMessage
+} from '@/lib/consulta-avgust';
 import './farm-portal-ai.css';
 
 type ChatLine = ConsultaAvgustMessage & {id: string};
@@ -43,7 +47,7 @@ export default function FarmPortalAi() {
     };
   }, []);
 
-  if (!ready || !farm) return null;
+  if (!ready || !farm || !consultaAvgustClientEnabled()) return null;
   return <ConsultaDock farm={farm} clientName={clientName} />;
 }
 

@@ -500,6 +500,7 @@
 
 /* —— Authenticated shell —— */
 .farm-portal {
+  --fp-content-max: 1120px;
   --fp-dock: calc(68px + env(safe-area-inset-bottom, 0px));
   position: relative;
   display: flex;
@@ -541,6 +542,13 @@ body:has(.farm-portal) {
 }
 
 /* Topbar floats over the hero, then condenses into dark glass on scroll */
+.fp-page-width {
+  width: 100%;
+  max-width: var(--fp-content-max);
+  margin-inline: auto;
+  padding-inline: clamp(16px, 3vw, 28px);
+}
+
 .fp-topbar {
   position: fixed;
   top: 0;
@@ -548,10 +556,8 @@ body:has(.farm-portal) {
   right: 0;
   z-index: 40;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 18px;
-  padding: 20px clamp(16px, 4.4vw, 64px);
+  justify-content: center;
+  padding: 20px clamp(12px, 2.5vw, 24px);
   color: #fff;
   background: linear-gradient(180deg, rgba(4, 20, 26, 0.6) 0%, rgba(4, 20, 26, 0) 100%);
   transition:
@@ -571,6 +577,14 @@ body:has(.farm-portal) {
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 0.6s var(--fp-ease);
+}
+
+.fp-topbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  padding-inline: 0;
 }
 
 .fp-topbar.is-compact {
@@ -844,12 +858,12 @@ body:has(.farm-portal) {
 
 .fp-hero-inner {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  grid-template-columns: minmax(0, 38rem) minmax(240px, 280px);
+  justify-content: start;
   align-items: center;
-  gap: clamp(28px, 4vw, 56px);
-  width: min(1080px, 100%);
-  margin: 0 auto;
-  padding: 100px clamp(20px, 4.4vw, 48px) 20px;
+  gap: clamp(24px, 3.5vw, 44px);
+  padding-block: 100px 20px;
+  padding-inline: 0;
   opacity: calc(1 - var(--fp-hero-collapse) * 0.85);
   transform: translate3d(0, calc(var(--fp-hero-collapse) * -36px), 0);
 }
@@ -1048,9 +1062,9 @@ body:has(.farm-portal) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px 28px;
-  width: min(1080px, 100%);
   margin: 8px auto 0;
-  padding: 16px clamp(20px, 4.4vw, 48px) 22px;
+  padding-block: 16px 22px;
+  padding-inline: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
   background: linear-gradient(180deg, rgba(4, 20, 26, 0) 0%, rgba(4, 20, 26, 0.42) 100%);
   opacity: calc(1 - var(--fp-hero-collapse) * 0.9);
@@ -1766,7 +1780,7 @@ body:has(.farm-portal) {
 /* —— Corner assurance disclosure (collapsed by default) —— */
 .fp-assurance-dock {
   position: fixed;
-  right: max(16px, calc((100vw - 1240px) / 2 + 16px));
+  right: max(16px, calc((100vw - var(--fp-content-max)) / 2 + 16px));
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   display: flex;
@@ -2271,7 +2285,8 @@ body:has(.farm-portal) {
 @media (min-width: 1280px) {
   .fp-gate,
   .farm-portal {
-    --fp-content: 1080px;
+    --fp-content-max: 1080px;
+    --fp-content: var(--fp-content-max);
   }
 
   .fp-wordmark-main {
@@ -2307,7 +2322,7 @@ body:has(.farm-portal) {
   }
 
   .fp-topbar {
-    padding-inline: max(28px, calc((100% - var(--fp-content)) / 2));
+    padding-inline: clamp(16px, 2.5vw, 24px);
   }
 
   .fp-hero {
@@ -2324,8 +2339,6 @@ body:has(.farm-portal) {
       linear-gradient(180deg, rgba(4, 20, 26, 0.48) 0%, rgba(4, 20, 26, 0.1) 32%, rgba(4, 20, 26, 0.34) 68%, rgba(4, 20, 26, 0.88) 100%);
   }
 
-  .fp-hero-inner,
-  .fp-hero-credits,
   .fp-footer-inner,
   .fp-band-inner,
   .fp-interlude-inner,
@@ -2335,12 +2348,10 @@ body:has(.farm-portal) {
   }
 
   .fp-hero-inner {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 280px);
-    align-items: center;
-    gap: 48px;
+    grid-template-columns: minmax(0, 34rem) minmax(250px, 280px);
+    gap: 40px;
     padding-top: 92px;
     padding-bottom: 12px;
-    padding-inline: 0;
   }
 
   .fp-hero-copy {
@@ -2373,8 +2384,7 @@ body:has(.farm-portal) {
 
   .fp-hero-credits {
     gap: 12px 32px;
-    margin-inline: auto;
-    padding: 14px 0 16px;
+    padding-block: 14px 16px;
   }
 
   .farm-portal::before {
@@ -2410,7 +2420,14 @@ body:has(.farm-portal) {
   }
 
   .fp-assurance-dock {
-    right: max(20px, calc((100% - var(--fp-content)) / 2));
+    right: max(20px, calc((100vw - var(--fp-content-max)) / 2));
+  }
+}
+
+@media (min-width: 1440px) {
+  .fp-hero-inner {
+    grid-template-columns: minmax(0, 36rem) minmax(260px, 300px);
+    gap: 44px;
   }
 }
 
@@ -2609,7 +2626,8 @@ body:has(.farm-portal) {
 
   .fp-hero-inner {
     grid-template-columns: 1fr;
-    padding: 78px 18px 4px;
+    justify-content: stretch;
+    padding-block: 78px 4px;
     gap: 14px;
   }
 
