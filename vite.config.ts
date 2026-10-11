@@ -46,9 +46,25 @@ export default defineConfig(async () => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      // vinext `dev --hostname 0.0.0.0` binds all interfaces; keep the browser
+      // HMR websocket on localhost:3000 so port-forwarded Windows clients do
+      // not try to open ws://0.0.0.0 or race a dead socket.
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+        port: 3000,
+        clientPort: 3000,
+      },
+      // Vite 8 forwardConsole calls transport.send() from window error hooks.
+      // If that runs before the HMR socket assigns `ws`, send() throws
+      // "Cannot read properties of undefined (reading 'send')" and the overlay
+      // loops (often shown as "50 of 50" unhandled rejections).
+      forwardConsole: false,
+      ...(isCodexSeatbeltSandbox
+        ? { watch: { useFsEvents: false, usePolling: true } }
+        : {}),
+    },
     plugins: [
       vinext(),
       sites(),
