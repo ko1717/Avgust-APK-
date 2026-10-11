@@ -478,7 +478,7 @@ export function FarmPortalView({
 
         <div className="fp-gate-frame">
           <section className="fp-gate-brand" aria-label="Identidad AVGUST CARE 360">
-            <p className="fp-kicker">Aseguramiento Aptus · Fincas de flores</p>
+            <p className="fp-kicker">Aseguramiento AVGUST · Fincas de flores</p>
             <h1 className="fp-wordmark">
               <span className="fp-wordmark-pre">AVGUST</span>
               <span className="fp-wordmark-main">
@@ -630,7 +630,7 @@ export function FarmPortalView({
         <div className="fp-hero-veil" aria-hidden />
         <div className="fp-hero-inner">
           <div className="fp-hero-copy">
-            <p className="fp-kicker">Portal de finca · Aseguramiento Aptus</p>
+            <p className="fp-kicker">Portal de finca · Aseguramiento AVGUST</p>
             <h1 id="farm-portal-title" className="fp-wordmark">
               <span className="fp-wordmark-pre">AVGUST</span>
               <span className="fp-wordmark-main">
@@ -738,7 +738,7 @@ export function FarmPortalView({
             aria-expanded={false}
             aria-controls="fp-assurance-panel"
             onClick={() => setAssuranceOpen(true)}
-            title="Agendar y consultar aseguramientos"
+            title="Agendar y consultar el aseguramiento AVGUST"
           >
             <CalendarDays size={18} aria-hidden />
             <span>Aseguramiento</span>
@@ -758,7 +758,7 @@ export function FarmPortalView({
           >
             <header className="fp-assurance-panel-head">
               <div>
-                <p className="fp-assurance-kicker">Solicitud y historial</p>
+                <p className="fp-assurance-kicker">Aseguramiento AVGUST</p>
                 <h2 id="fp-assurance-title">Aseguramiento</h2>
               </div>
               <button
@@ -1055,6 +1055,7 @@ export function FarmPortalView({
                 }
                 chapterTiles
               />
+              <section id="fp-kpi-board" className="fp-kpi-board-slot" aria-label="Tablero de indicadores" />
               </div>
               </div>
 

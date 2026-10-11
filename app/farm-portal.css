@@ -2255,6 +2255,157 @@
   color: rgba(255, 255, 255, 0.46);
 }
 
+/* KPI board mount. Empty until the indicadores section renders inside #fp-kpi-board. */
+.fp-kpi-board-slot:empty {
+  display: none;
+}
+
+.fp-kpi-board-slot:not(:empty) {
+  min-width: 0;
+}
+
+/* Large desktop: one editorial column, smaller hero type, calmer color. */
+@media (min-width: 1280px) {
+  .fp-gate,
+  .farm-portal {
+    --fp-content: 1080px;
+  }
+
+  .fp-wordmark-main {
+    font-size: 5.7rem;
+    letter-spacing: -0.045em;
+  }
+
+  .fp-wordmark-pre {
+    font-size: 0.92rem;
+    letter-spacing: 0.46em;
+  }
+
+  .fp-kicker {
+    letter-spacing: 0.2em;
+  }
+
+  .fp-gate {
+    padding-inline: max(32px, calc((100% - var(--fp-content)) / 2));
+  }
+
+  .fp-gate-frame,
+  .fp-gate-foot {
+    width: 100%;
+    max-width: var(--fp-content);
+  }
+
+  .fp-gate-frame {
+    gap: 48px;
+  }
+
+  .fp-gate-stage {
+    filter: saturate(0.7) contrast(1.02);
+  }
+
+  .fp-topbar {
+    padding-inline: max(28px, calc((100% - var(--fp-content)) / 2));
+  }
+
+  .fp-hero {
+    min-height: clamp(560px, 70svh, 720px);
+  }
+
+  .fp-hero-stage-photo {
+    filter: saturate(0.7) contrast(1.02) brightness(0.97);
+  }
+
+  .fp-hero-veil {
+    background:
+      radial-gradient(46% 52% at 80% 42%, rgba(0, 127, 163, 0.08), transparent 70%),
+      linear-gradient(90deg, rgba(4, 20, 26, 0.9) 0%, rgba(4, 20, 26, 0.68) 40%, rgba(4, 20, 26, 0.36) 72%, rgba(4, 20, 26, 0.52) 100%),
+      linear-gradient(180deg, rgba(4, 20, 26, 0.5) 0%, transparent 28%, transparent 58%, rgba(4, 20, 26, 0.92) 100%);
+  }
+
+  .fp-hero-inner,
+  .fp-hero-credits,
+  .fp-footer-inner,
+  .fp-band-inner,
+  .fp-interlude-inner,
+  .fp-metrics-loading,
+  .fp-metrics-empty {
+    width: min(var(--fp-content), calc(100% - 48px));
+  }
+
+  .fp-hero-inner {
+    grid-template-columns: minmax(0, 1fr) 228px;
+    gap: 36px;
+    padding-top: 104px;
+    padding-bottom: 28px;
+    padding-inline: 0;
+  }
+
+  .fp-hero-copy {
+    max-width: 34rem;
+  }
+
+  .fp-hero-farm {
+    margin-top: 20px;
+    font-size: 1.65rem;
+  }
+
+  .fp-hero-actions {
+    margin-top: 22px;
+  }
+
+  .fp-hero-index {
+    min-width: 0;
+    padding: 20px 20px 18px;
+    gap: 10px;
+  }
+
+  .fp-hero-index-value {
+    font-size: 4.5rem;
+  }
+
+  .fp-hero-credits {
+    gap: 10px 28px;
+    margin-inline: auto;
+    padding: 16px 0 22px;
+  }
+
+  .farm-portal::before {
+    filter: saturate(0.82);
+  }
+
+  .fp-band-inner {
+    padding-inline: 0;
+  }
+
+  .fp-interlude {
+    min-height: clamp(300px, 40vh, 400px);
+  }
+
+  .fp-interlude-inner {
+    padding-inline: 0;
+  }
+
+  .fp-interlude h2 {
+    font-size: 3rem;
+  }
+
+  .fp-footer-inner {
+    padding-inline: 0;
+  }
+
+  .farm-portal .metrics-outcome-score > strong {
+    font-size: 64px;
+  }
+
+  .fp-section-mark span {
+    font-size: 1.7rem;
+  }
+
+  .fp-assurance-dock {
+    right: max(20px, calc((100% - var(--fp-content)) / 2));
+  }
+}
+
 /* —— Responsive —— */
 @media (max-width: 1080px) {
   .fp-topbar-meta strong {
