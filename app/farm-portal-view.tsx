@@ -71,6 +71,13 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Pro
   }
 }
 
+const STATUS_GLANCE: Record<MetricStatus, string> = {
+  healthy: 'Saludable',
+  acceptable: 'Alerta',
+  critical: 'Vulnerable',
+  pending: 'Sin medición'
+};
+
 function StatusBadge({value}: {value: MetricStatus}) {
   const labels: Record<MetricStatus, string> = {
     healthy: 'Saludable (95-100%)',
@@ -108,6 +115,7 @@ export function FarmPortalView({
   const [assuranceRequests, setAssuranceRequests] = useState<AssuranceRequest[]>([]);
   const [scrollCompact, setScrollCompact] = useState(false);
   const heroRef = useRef<HTMLElement | null>(null);
+  const portalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function initAuth() {
@@ -201,11 +209,14 @@ export function FarmPortalView({
       if (!hero) return;
 
       const rect = hero.getBoundingClientRect();
-      const range = Math.max(160, hero.offsetHeight * 0.55);
-      const traveled = Math.min(range, Math.max(0, -rect.top));
+      const range = Math.max(180, hero.offsetHeight * 0.62);
+      const traveled = Math.min(range, Math.max(0, -rect.top + 4));
       const progress = traveled / range;
       hero.style.setProperty('--fp-hero-collapse', progress.toFixed(3));
-      setScrollCompact(progress > 0.42);
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      const page = Math.min(1, Math.max(0, window.scrollY / max));
+      portalRef.current?.style.setProperty('--fp-page-progress', page.toFixed(3));
+      setScrollCompact(progress > 0.36);
     };
 
     const onScroll = () => {
@@ -397,6 +408,27 @@ export function FarmPortalView({
     item => item.status === 'pending' || item.status === 'scheduled'
   );
 
+  useEffect(() => {
+    if (!invitation) return;
+    const root = portalRef.current;
+    if (!root) return;
+    const nodes = Array.from(root.querySelectorAll<HTMLElement>('.fp-reveal'));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || typeof IntersectionObserver === 'undefined') {
+      nodes.forEach(node => node.classList.add('is-in'));
+      return;
+    }
+    const io = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add('is-in');
+        io.unobserve(entry.target);
+      }
+    }, {threshold: 0.12, rootMargin: '0px 0px 8% 0px'});
+    nodes.forEach(node => io.observe(node));
+    return () => io.disconnect();
+  }, [invitation, current?.visit.id, cloudLoading, farmVisits.length, expandedActions]);
+
   if (viewingReportId) {
     return (
       <Suspense fallback={<div className="fp-loading"><div className="fp-spinner" aria-hidden /><h2>Cargando informe…</h2><p>Preparando el aseguramiento en línea.</p></div>}>
@@ -421,7 +453,9 @@ export function FarmPortalView({
   if (!invitation) {
     return (
       <div className="fp-gate">
-        <div className="fp-gate-stage" aria-hidden />
+        <div className="fp-gate-stage" aria-hidden>
+          <span className="fp-gate-sweep" />
+        </div>
         <div className="fp-gate-veil" aria-hidden />
 
         <div className="fp-gate-frame">
@@ -482,11 +516,14 @@ export function FarmPortalView({
                   </button>
                 )}
               </div>
+              <p className="fp-gate-foot">
+                AVGUST Crop Protection
+                <br />
+                Juntos Crecemos Bien
+              </p>
             </form>
           </section>
         </div>
-
-        <p className="fp-gate-foot">AVGUST Crop Protection · Juntos Crecemos Bien</p>
       </div>
     );
   }
@@ -495,7 +532,12 @@ export function FarmPortalView({
   const latestScore = current?.score ?? null;
 
   return (
-    <div className={`farm-portal${scrollCompact ? ' is-compact' : ''}`}>
+    <div
+      ref={portalRef}
+      className={`farm-portal${scrollCompact ? ' is-compact' : ''}`}
+      data-status={latestStatus}
+    >
+      <div className="fp-scroll-rail" aria-hidden />
       <div className="fp-lateral fp-lateral-left" aria-hidden>
         <span className="fp-lateral-brand">AVGUST</span>
       </div>
@@ -513,18 +555,13 @@ export function FarmPortalView({
         </div>
 
         <div className="fp-topbar-actions">
-          {current && (
-            <div
-              className={`fp-status-chip ${latestStatus}`}
-              title={`Índice oficial del aseguramiento: ${latestScore === null ? '—' : `${latestScore}%`}. ${metricStatusDescriptions[latestStatus]}`}
-            >
-              <span>Índice oficial</span>
-              <strong>
-                {latestScore === null ? '—' : `${latestScore}%`}
-              </strong>
-              <StatusBadge value={latestStatus} />
-            </div>
-          )}
+          <div
+            className={`fp-status-chip ${latestStatus}`}
+            title={`Índice oficial del aseguramiento: ${latestScore === null ? '—' : `${latestScore}%`}. ${metricStatusDescriptions[latestStatus]}`}
+          >
+            <strong>{latestScore === null ? '—' : `${latestScore}%`}</strong>
+            <span className="fp-status-word">{STATUS_GLANCE[latestStatus]}</span>
+          </div>
           <div className="fp-topbar-scroll-ctas" aria-hidden={!scrollCompact}>
             <a className="fp-topbar-cta" href="#fp-metrics-anchor">
               Ver el indicador
@@ -547,9 +584,9 @@ export function FarmPortalView({
             <span aria-hidden>·</span>
             <span>Código de aseguramiento {invitation.code}</span>
           </div>
-          <button type="button" className="b2b-btn b2b-btn-secondary" onClick={handleLogout} title="Cerrar sesión">
-            <LogOut size={14} aria-hidden />
-            Salir
+          <button type="button" className="fp-exit" onClick={handleLogout} title="Cerrar sesión" aria-label="Salir del portal">
+            <LogOut size={18} aria-hidden />
+            <span>Salir</span>
           </button>
         </div>
       </header>
@@ -571,6 +608,19 @@ export function FarmPortalView({
             </p>
             <h1 id="farm-portal-title">Portal de finca</h1>
             <p className="fp-hero-farm">{invitation.farm}</p>
+            <div
+              className={`fp-hero-score ${latestStatus}`}
+              style={{'--fp-score': latestScore ?? 0} as CSSProperties}
+              aria-hidden="true"
+            >
+              <div className="fp-hero-score-face">
+                <strong>
+                  {latestScore === null ? '—' : latestScore}
+                  {latestScore !== null && <span>%</span>}
+                </strong>
+                <em>{STATUS_GLANCE[latestStatus]}</em>
+              </div>
+            </div>
             <p className="fp-hero-lead">
               Estado del cultivo, capítulos y acciones correctivas — con la lectura oficial del programa.
             </p>
@@ -601,9 +651,18 @@ export function FarmPortalView({
             )}
           </div>
         </div>
+        <div className="fp-hero-edge" aria-hidden />
       </section>
 
       <aside className={`fp-assurance-dock ${assuranceOpen ? 'is-open' : ''}`}>
+        {assuranceOpen && (
+          <button
+            type="button"
+            className="fp-assurance-scrim"
+            aria-label="Cerrar panel de aseguramiento"
+            onClick={() => setAssuranceOpen(false)}
+          />
+        )}
         {!assuranceOpen ? (
           <button
             type="button"
@@ -812,7 +871,7 @@ export function FarmPortalView({
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
           ) : !current ? (
-            <div className="fp-metrics-empty" aria-live="polite">
+            <div className="fp-metrics-empty fp-reveal" aria-live="polite">
               <span className="fp-empty-kicker">Estado de la finca</span>
               <strong>
                 {cloudLoading
@@ -847,7 +906,7 @@ export function FarmPortalView({
             </div>
           ) : (
             <div className="metrics-executive-dashboard">
-              <section className={`metrics-outcome ${latestStatus}`} aria-label="Conclusión de la finca">
+              <section className={`metrics-outcome ${latestStatus} fp-reveal`} aria-label="Conclusión de la finca">
                 <div className="metrics-outcome-main">
                   <div className="metrics-section-kicker">
                     Aseguramiento consultado · {current.date}
@@ -907,6 +966,7 @@ export function FarmPortalView({
                 </div>
               </section>
 
+              <div className="fp-reveal">
               <MetricsKpiStrip
                 count={historyAnalysis?.records.length || 0}
                 scope={`${historyAnalysis?.farm || invitation.farm} · aseguramientos revisados`}
@@ -917,9 +977,10 @@ export function FarmPortalView({
                 showComparison={showVisitComparison}
                 collapsible
               />
+              </div>
 
               <div className="metrics-overview-grid">
-                <section className="metrics-priority-panel">
+                <section className="metrics-priority-panel fp-reveal">
                   <div className="metrics-section-heading">
                     <div>
                       <div className="metrics-section-kicker">Qué corregir</div>
@@ -979,7 +1040,7 @@ export function FarmPortalView({
               </div>
 
               {podium.length > 1 && (
-                <section className="metrics-podium-panel">
+                <section className="metrics-podium-panel fp-reveal">
                   <div className="metrics-section-heading">
                     <div>
                       <div className="metrics-section-kicker">Historial reciente</div>
