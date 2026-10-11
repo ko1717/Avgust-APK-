@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal — leyenda de estados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" />
+  <link rel="stylesheet" href="../app/b2b-metrics.css" />
+  <link rel="stylesheet" href="../app/farm-portal.css" />
+  <style>
+    body {
+      margin: 0;
+      background: #eef2f4;
+      font-family: Manrope, 'Segoe UI', sans-serif;
+    }
+    .capture-frame {
+      width: 1120px;
+      margin: 32px auto;
+      padding: 28px;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 24px 60px -40px rgba(4, 20, 26, 0.45);
+    }
+    .capture-title {
+      margin: 0 0 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5b6b75;
+    }
+    .fp-hero-index.mock {
+      max-width: 280px;
+      margin-bottom: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="farm-portal is-dashboard">
+    <div class="capture-frame">
+      <p class="capture-title">AVGUST CARE 360 · Portal de finca · Leyenda de estados (escritorio)</p>
+
+      <aside class="fp-hero-index healthy mock" aria-label="Índice oficial de ejemplo">
+        <span class="fp-hero-index-label">Índice oficial</span>
+        <strong class="fp-hero-index-value">96<small>%</small></strong>
+        <span class="fp-hero-index-track" aria-hidden><span style="width: 96%"></span></span>
+        <span class="b2b-kpi-badge healthy">Saludable (95-100%)</span>
+      </aside>
+
+      <section class="fp-status-legend is-compact" aria-label="Umbrales del índice oficial de aseguramiento">
+        <header class="fp-status-legend-head">
+          <p class="fp-kicker">Cómo se lee el índice</p>
+          <h3>Semáforo oficial del aseguramiento</h3>
+        </header>
+        <ul class="fp-status-legend-list">
+          <li class="healthy">
+            <span class="fp-status-legend-range">95–100%</span>
+            <strong>Saludable</strong>
+            <p>Proceso de aspersión confiable que favorece la eficiencia del control fitosanitario y contribuye a mantener la sanidad del cultivo.</p>
+          </li>
+          <li class="acceptable">
+            <span class="fp-status-legend-range">80–94%</span>
+            <strong>Alerta</strong>
+            <p>Desviaciones que pueden comprometer la eficiencia de la aspersión que requiere una acción correctiva.</p>
+          </li>
+          <li class="critical">
+            <span class="fp-status-legend-range">&lt; 80%</span>
+            <strong>Vulnerable</strong>
+            <p>Deficiencias importantes que ponen en riesgo la protección fitosanitaria del cultivo.</p>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</body>
+</html>
