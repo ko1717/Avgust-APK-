@@ -52,6 +52,7 @@ import {
   CHAPTER_WEIGHTS,
   farmKey,
   findings,
+  metricStatus,
   metricStatusDescriptions,
   metricStatusLabels,
   sameChapterScope,
@@ -148,16 +149,58 @@ function vsMetaDelta(score: number | null) {
   return Math.round((score - 95) * 10) / 10;
 }
 
-function kpiCardStatusLabel(score: number | null, findingsCount?: number) {
-  if (findingsCount !== undefined) {
-    if (findingsCount === 0) return 'Excelente';
-    if (findingsCount <= 10) return 'Aceptable';
-    return 'En riesgo';
-  }
-  if (score === null) return 'Sin medición';
-  if (score >= 95) return 'Excelente';
-  if (score >= 80) return 'Aceptable';
-  return 'En riesgo';
+function kpiScoreStatusLabel(score: number | null) {
+  if (score === null) return metricStatusLabels.pending;
+  return metricStatusLabels[metricStatus(score)];
+}
+
+function kpiScoreStatusClass(score: number | null) {
+  if (score === null) return 'is-neutral';
+  return `is-${metricStatus(score)}`;
+}
+
+function kpiFindingsStatusLabel(findingsCount: number) {
+  if (findingsCount === 0) return 'Sin desviaciones';
+  if (findingsCount <= 10) return 'Seguimiento';
+  return 'Prioritario';
+}
+
+function kpiFindingsStatusClass(findingsCount: number) {
+  if (findingsCount === 0) return 'is-healthy';
+  if (findingsCount <= 10) return 'is-acceptable';
+  return 'is-critical';
+}
+
+const INDEX_STATUS_THRESHOLDS: {
+  status: Exclude<MetricStatus, 'pending'>;
+  range: string;
+}[] = [
+  {status: 'healthy', range: '95–100%'},
+  {status: 'acceptable', range: '80–94%'},
+  {status: 'critical', range: '< 80%'}
+];
+
+function IndexStatusLegend({compact = false}: {compact?: boolean}) {
+  return (
+    <section
+      className={`fp-status-legend${compact ? ' is-compact' : ''}`}
+      aria-label="Umbrales del índice oficial de aseguramiento"
+    >
+      <header className="fp-status-legend-head">
+        <p className="fp-kicker">Cómo se lee el índice</p>
+        <h3>Semáforo oficial del aseguramiento</h3>
+      </header>
+      <ul className="fp-status-legend-list">
+        {INDEX_STATUS_THRESHOLDS.map(item => (
+          <li key={item.status} className={item.status}>
+            <span className="fp-status-legend-range">{item.range}</span>
+            <strong>{metricStatusLabels[item.status]}</strong>
+            <p>{metricStatusDescriptions[item.status]}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 function formatVisitDateLabel(isoDate?: string) {
@@ -182,7 +225,8 @@ function PortalStatusKpiCard({
   priorDelta,
   metaDelta,
   visits,
-  statusLabel
+  statusLabel,
+  statusClassName
 }: {
   tone: 'green' | 'blue' | 'purple' | 'orange';
   icon: ReactNode;
@@ -193,15 +237,9 @@ function PortalStatusKpiCard({
   metaDelta?: number | null;
   visits?: number;
   statusLabel: string;
+  statusClassName?: string;
 }) {
-  const statusClass =
-    statusLabel === 'Excelente'
-      ? 'is-excellent'
-      : statusLabel === 'Aceptable'
-        ? 'is-acceptable'
-        : statusLabel === 'En riesgo'
-          ? 'is-risk'
-          : 'is-neutral';
+  const statusClass = statusClassName ?? 'is-neutral';
 
   return (
     <article className={`fp-status-kpi is-${tone}`}>
@@ -1197,7 +1235,8 @@ export function FarmPortalView({
                     priorDelta={indexDelta}
                     metaDelta={vsMetaDelta(latestScore)}
                     visits={visitCount}
-                    statusLabel={kpiCardStatusLabel(latestScore)}
+                    statusLabel={kpiScoreStatusLabel(latestScore)}
+                    statusClassName={kpiScoreStatusClass(latestScore)}
                   />
                   <PortalStatusKpiCard
                     tone="blue"
@@ -1209,7 +1248,8 @@ export function FarmPortalView({
                     }
                     priorDelta={mezclasChapter?.delta ?? null}
                     metaDelta={vsMetaDelta(mezclasChapter?.score ?? null)}
-                    statusLabel={kpiCardStatusLabel(mezclasChapter?.score ?? null)}
+                    statusLabel={kpiScoreStatusLabel(mezclasChapter?.score ?? null)}
+                    statusClassName={kpiScoreStatusClass(mezclasChapter?.score ?? null)}
                   />
                   <PortalStatusKpiCard
                     tone="purple"
@@ -1227,7 +1267,8 @@ export function FarmPortalView({
                     }
                     priorDelta={medicionesChapter?.delta ?? null}
                     metaDelta={vsMetaDelta(medicionesChapter?.score ?? null)}
-                    statusLabel={kpiCardStatusLabel(medicionesChapter?.score ?? null)}
+                    statusLabel={kpiScoreStatusLabel(medicionesChapter?.score ?? null)}
+                    statusClassName={kpiScoreStatusClass(medicionesChapter?.score ?? null)}
                   />
                   <PortalStatusKpiCard
                     tone="orange"
@@ -1236,9 +1277,12 @@ export function FarmPortalView({
                     value={String(findingsCount)}
                     priorDelta={null}
                     metaDelta={null}
-                    statusLabel={kpiCardStatusLabel(null, findingsCount)}
+                    statusLabel={kpiFindingsStatusLabel(findingsCount)}
+                    statusClassName={kpiFindingsStatusClass(findingsCount)}
                   />
                 </div>
+
+                <IndexStatusLegend compact />
 
                 {historyAnalysis && (
                   <Suspense fallback={<div className="fp-metrics-loading">Cargando tendencia…</div>}>
@@ -1325,6 +1369,32 @@ export function FarmPortalView({
             </>
           )}
         </div>
+
+        {current && (
+          <section className="fp-interlude" aria-label="Cómo se lee el índice oficial">
+            <div className="fp-interlude-inner">
+              <p className="fp-kicker">Cómo se lee el índice</p>
+              <h2>
+                Cinco procesos.
+                <br />
+                Un índice oficial.
+              </h2>
+              <ul className="fp-interlude-scale">
+                {INDEX_STATUS_THRESHOLDS.map(item => (
+                  <li key={item.status} className={item.status}>
+                    <strong>{item.range}</strong>
+                    <span>{metricStatusLabels[item.status]}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="fp-interlude-note">
+                Pesos por capítulo{' '}
+                {[1, 2, 3, 4, 5].map(id => Math.round((CHAPTER_WEIGHTS[id] || 0) * 100)).join(' / ')}.
+                Cada visita revisada por tu técnico AVGUST actualiza esta lectura.
+              </p>
+            </div>
+          </section>
+        )}
       </main>
 
       <footer className="fp-footer fp-footer-compact">

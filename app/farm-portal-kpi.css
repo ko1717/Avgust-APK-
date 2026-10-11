@@ -309,3 +309,69 @@
 .fp-kpi-delta-chip.is-flat {
   color: var(--fp-kpi-muted);
 }
+
+.fp-kpi-threshold-legend {
+  margin: 0 0 1rem;
+  padding: 12px 14px;
+  border: 1px solid var(--fp-kpi-hair);
+  border-radius: 12px;
+  background: #f8fafb;
+}
+
+.fp-kpi-threshold-legend ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fp-kpi-threshold-legend li {
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 3px solid var(--fp-kpi-green);
+  min-width: 0;
+}
+
+.fp-kpi-threshold-legend li.acceptable {
+  border-top-color: var(--fp-kpi-gold);
+}
+
+.fp-kpi-threshold-legend li.critical {
+  border-top-color: var(--fp-kpi-cyan-deep, #005f7a);
+}
+
+.fp-kpi-threshold-legend strong {
+  font-size: 0.82rem;
+  color: var(--fp-kpi-ink);
+}
+
+.fp-kpi-threshold-range {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--fp-kpi-muted);
+}
+
+.fp-kpi-threshold-legend p {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--fp-kpi-muted);
+}
+
+.fp-kpi-threshold-legend.is-compact {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+}
+
+.fp-kpi-threshold-legend.is-compact ul {
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .fp-kpi-threshold-legend ul {
+    grid-template-columns: 1fr;
+  }
+}

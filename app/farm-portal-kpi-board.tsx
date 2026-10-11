@@ -3,15 +3,42 @@
 import {useMemo, useState} from 'react';
 import {Minus, TrendingDown, TrendingUp} from 'lucide-react';
 import type {MetricRecord} from '@/lib/metric-analysis';
-import type {MetricStatus} from '@/lib/model';
+import {metricStatusDescriptions, metricStatusLabels, type MetricStatus} from '@/lib/model';
 import type {ChapterTrendKpi} from './metrics-kpi-strip';
 import './farm-portal-kpi.css';
 
 const STATUS_LABELS: Record<Exclude<MetricStatus, 'pending'>, string> = {
-  healthy: 'Saludable',
-  acceptable: 'Alerta',
-  critical: 'Vulnerable'
+  healthy: metricStatusLabels.healthy,
+  acceptable: metricStatusLabels.acceptable,
+  critical: metricStatusLabels.critical
 };
+
+const STATUS_RANGES: Record<Exclude<MetricStatus, 'pending'>, string> = {
+  healthy: '95–100%',
+  acceptable: '80–94%',
+  critical: '< 80%'
+};
+
+function IndexThresholdLegend({compact = false}: {compact?: boolean}) {
+  const order: Exclude<MetricStatus, 'pending'>[] = ['healthy', 'acceptable', 'critical'];
+  return (
+    <div
+      className={`fp-kpi-threshold-legend${compact ? ' is-compact' : ''}`}
+      role="note"
+      aria-label="Umbrales Saludable, Alerta y Vulnerable"
+    >
+      <ul>
+        {order.map(status => (
+          <li key={status} className={status}>
+            <strong>{STATUS_LABELS[status]}</strong>
+            <span className="fp-kpi-threshold-range">{STATUS_RANGES[status]}</span>
+            {!compact && <p>{metricStatusDescriptions[status]}</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const STATUS_COLORS: Record<Exclude<MetricStatus, 'pending'>, string> = {
   healthy: 'var(--fp-kpi-green)',
@@ -382,6 +409,7 @@ export default function FarmPortalKpiBoard({
             <p className="fp-kpi-tile-caption">Aún no hay serie para comparar en este rango.</p>
           )}
         </div>
+        <IndexThresholdLegend compact />
       </section>
     );
   }
@@ -397,6 +425,8 @@ export default function FarmPortalKpiBoard({
           {latestDate ? ` (${latestDate})` : ''}.
         </p>
       </header>
+
+      <IndexThresholdLegend />
 
       <div className="fp-kpi-grid">
         <article className="fp-kpi-tile">

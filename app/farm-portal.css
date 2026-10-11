@@ -1441,24 +1441,98 @@ body:has(.farm-portal) {
   letter-spacing: 0.04em;
 }
 
+.fp-status-kpi-pill.is-healthy,
 .fp-status-kpi-pill.is-excellent {
   background: rgba(120, 190, 32, 0.14);
   color: #3f6212;
 }
 
 .fp-status-kpi-pill.is-acceptable {
-  background: rgba(0, 127, 163, 0.12);
-  color: #0c4a6e;
-}
-
-.fp-status-kpi-pill.is-risk {
   background: rgba(242, 169, 0, 0.18);
   color: #92400e;
+}
+
+.fp-status-kpi-pill.is-critical,
+.fp-status-kpi-pill.is-risk {
+  background: rgba(0, 95, 122, 0.12);
+  color: #005f7a;
 }
 
 .fp-status-kpi-pill.is-neutral {
   background: rgba(15, 33, 40, 0.08);
   color: var(--fp-slate);
+}
+
+.fp-status-legend {
+  margin: 18px 0 4px;
+  padding: 16px 18px;
+  border: 1px solid rgba(15, 33, 40, 0.08);
+  border-radius: var(--fp-radius-md);
+  background: linear-gradient(180deg, #fff 0%, #f8fafb 100%);
+}
+
+.fp-status-legend-head h3 {
+  margin: 6px 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--fp-ink);
+}
+
+.fp-status-legend-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fp-status-legend-list li {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 3px solid var(--fp-green);
+  min-width: 0;
+}
+
+.fp-status-legend-list li.acceptable {
+  border-top-color: var(--fp-gold);
+}
+
+.fp-status-legend-list li.critical {
+  border-top-color: var(--fp-critical, #005f7a);
+}
+
+.fp-status-legend-range {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fp-muted);
+}
+
+.fp-status-legend-list strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--fp-ink);
+}
+
+.fp-status-legend-list p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--fp-muted);
+}
+
+.fp-status-legend.is-compact .fp-status-legend-list p {
+  font-size: 0.74rem;
+}
+
+@media (max-width: 900px) {
+  .fp-status-legend-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .fp-dashboard-rail {
