@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {
   CONSULTA_AVGUST_MODEL,
   CONSULTA_AVGUST_SYSTEM_PROMPT,
@@ -26,7 +29,7 @@ test('prompt stays inside agriculture and CARE 360 and refuses doses', () => {
   assert.match(CONSULTA_AVGUST_SYSTEM_PROMPT, /FUERA DE ALCANCE/);
   assert.match(CONSULTA_AVGUST_SYSTEM_PROMPT, /CARE 360/);
   assert.match(CONSULTA_AVGUST_SYSTEM_PROMPT, /No inventes números de dosis/);
-  assert.equal(CONSULTA_AVGUST_MODEL, 'gemini-2.5-flash-lite');
+  assert.equal(CONSULTA_AVGUST_MODEL, 'gemini-3.5-flash-lite');
 });
 
 test('history must end with a user turn and drops empty text', () => {
@@ -45,6 +48,23 @@ test('history must end with a user turn and drops empty text', () => {
   const body = buildGeminiRequestBody(good.messages, {farm: 'La Pradera'}, CONSULTA_AVGUST_MODEL);
   assert.equal(body.generationConfig.maxOutputTokens, 768);
   assert.doesNotMatch(JSON.stringify(body), /AIza|GEMINI_API_KEY/);
+});
+
+test('function and route sources do not embed a Gemini key', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const files = [
+    'functions/index.js',
+    'functions/consulta-avgust.js',
+    'functions/package.json',
+    'app/api/consulta-avgust/route.ts',
+    'lib/consulta-avgust-core.mjs',
+    'scripts/build-firebase.mjs',
+    'firebase.json'
+  ];
+  const combined = files.map(rel => fs.readFileSync(path.join(root, rel), 'utf8')).join('\n');
+  assert.doesNotMatch(combined, /AIza[0-9A-Za-z\-_]{10,}/);
+  assert.doesNotMatch(combined, /GEMINI_API_KEY\s*[:=]\s*['"][^'"]+['"]/);
+  assert.doesNotMatch(combined, /x-goog-api-key['"]?\s*[:=]\s*['"][^'"]+['"]/);
 });
 
 test('browser calls only allow the portal origins', () => {

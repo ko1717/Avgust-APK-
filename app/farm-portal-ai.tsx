@@ -150,9 +150,12 @@ function ConsultaDock({farm, clientName}: {farm: string; clientName: string}) {
               <details>
                 <summary>Cómo la activa Kevin</summary>
                 <ol>
-                  <li>Crea una clave gratuita en Google AI Studio (sin vincular facturación).</li>
-                  <li>Guárdala como GEMINI_API_KEY en el servidor, nunca en el portal.</li>
-                  <li>En Hosting, apunta NEXT_PUBLIC_CONSULTA_AVGUST_URL a esa ruta y vuelve a publicar.</li>
+                  <li>Crea una clave gratuita en Google AI Studio, sin facturación de Gemini.</li>
+                  <li>En el servidor: GEMINI_API_KEY y npm run consulta:listen. Nunca en el portal.</li>
+                  <li>
+                    web.app necesita la función consultaAvgust. Hoy el proyecto no está en Blaze, así que no se
+                    publica. Tras Blaze, el build usa NEXT_PUBLIC_CONSULTA_AVGUST_URL.
+                  </li>
                 </ol>
                 <p>Pasos y límites del tier gratuito: docs/portal-ai.md.</p>
               </details>

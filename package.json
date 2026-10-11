@@ -13,6 +13,8 @@
     "build:firebase": "node scripts/build-firebase.mjs",
     "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting,firestore",
     "deploy:portal": "firebase use gen-lang-client-0175464290 && npm run deploy:firebase",
+    "deploy:consulta": "firebase use gen-lang-client-0175464290 && firebase deploy --only functions:consultaAvgust",
+    "consulta:listen": "node functions/consulta-avgust.js --listen",
     "verify:firebase-portal": "node scripts/verify-firebase-portal.mjs",
     "firebase:deploy": "npm run deploy:firebase",
     "firebase:deploy:hosting": "npm run build:firebase && firebase deploy --only hosting",

@@ -1,17 +1,26 @@
 /**
- * Optional HTTP handler for Consulta AVGUST.
+ * HTTP handler for Consulta AVGUST.
  *
- * NOT registered in firebase.json. `npm run deploy:portal` does not publish it.
- * Cloud Functions need the Blaze plan (billing account). This repo does not enable billing.
- * Prefer the Vinext route at app/api/consulta-avgust/route.ts with GEMINI_API_KEY in the server env.
+ * Cloud Function entry: functions/index.js exports `consultaAvgust`.
+ * GEMINI_API_KEY is a Cloud Functions secret (or the process env for local listen).
+ * Never written into Hosting, NEXT_PUBLIC_*, or firebase-applet-config.json.
  *
- * Local check without a key (expects 503):
+ * Local check without a key (expects available:false / POST 503):
  *   node functions/consulta-avgust.js --listen
  *   curl -s http://127.0.0.1:8787/api/consulta-avgust
+ *
+ * The deploy bundle copies lib/consulta-avgust-core.mjs beside this file
+ * (scripts/stage-consulta-function.mjs). From the repo, the lib/ path is used.
  */
+import {existsSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {pathToFileURL} from 'node:url';
-import {
+
+const coreUrl = existsSync(new URL('./consulta-avgust-core.mjs', import.meta.url))
+  ? new URL('./consulta-avgust-core.mjs', import.meta.url)
+  : new URL('../lib/consulta-avgust-core.mjs', import.meta.url);
+
+const {
   buildGeminiRequestBody,
   clipFarmContext,
   consultaAllowOrigin,
@@ -19,7 +28,7 @@ import {
   normalizeConsultaMessages,
   readGeminiText,
   resolveConsultaModel
-} from '../lib/consulta-avgust-core.mjs';
+} = await import(coreUrl.href);
 
 function send(res, status, body, origin) {
   const headers = {

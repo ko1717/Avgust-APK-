@@ -13,6 +13,18 @@ const portalOrigin =
   process.env.PUBLIC_PORTAL_ORIGIN ||
   'https://gen-lang-client-0175464290.web.app';
 
+/** Public consult proxy URL. Empty keeps the Hosting button disabled. Never an API key. */
+function consultaPublicUrl() {
+  const raw = (process.env.NEXT_PUBLIC_CONSULTA_AVGUST_URL || '').trim().replace(/\/$/, '');
+  if (!raw) return '';
+  if (!/^https:\/\//.test(raw) || /AIza|GEMINI_API_KEY|GOOGLE_API_KEY|AQ\./.test(raw)) {
+    throw new Error(
+      'NEXT_PUBLIC_CONSULTA_AVGUST_URL must be an https endpoint. Do not put the Gemini key in it.'
+    );
+  }
+  return raw;
+}
+
 function run(command, args, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -35,11 +47,13 @@ function run(command, args, extraEnv = {}) {
 }
 
 async function main() {
+  const consultaUrl = consultaPublicUrl();
+  const consultaEnv = consultaUrl ? {NEXT_PUBLIC_CONSULTA_AVGUST_URL: consultaUrl} : {};
   console.log(
-    `build:firebase — NEXT_PUBLIC_PORTAL_ORIGIN=${portalOrigin} HOSTING_PORTAL_ONLY=1`
+    `build:firebase — NEXT_PUBLIC_PORTAL_ORIGIN=${portalOrigin} HOSTING_PORTAL_ONLY=1 CONSULTA_URL=${consultaUrl || '(unset, button stays off)'}`
   );
-  await run('npx', ['vinext', 'build']);
-  await run('node', ['scripts/prepare-firebase-hosting.mjs']);
+  await run('npx', ['vinext', 'build'], consultaEnv);
+  await run('node', ['scripts/prepare-firebase-hosting.mjs'], consultaEnv);
 }
 
 main().catch(error => {

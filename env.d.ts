@@ -20,7 +20,7 @@ declare namespace NodeJS {
     GEMINI_API_KEY?: string;
     /** Server-only alias of GEMINI_API_KEY. */
     GOOGLE_API_KEY?: string;
-    /** Server-only model id. Defaults to gemini-2.5-flash-lite. */
+    /** Server-only model id. Defaults to gemini-3.5-flash-lite. */
     GEMINI_MODEL?: string;
     /** Extra browser origins allowed to call the consult route, comma-separated. */
     CONSULTA_AVGUST_ORIGINS?: string;
