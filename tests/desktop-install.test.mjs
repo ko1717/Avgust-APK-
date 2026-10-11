@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import {createRequire} from 'node:module';
 
@@ -31,12 +33,42 @@ test('packaging scripts run on Windows and Linux', () => {
   assert.equal(builder.win.target[0].target, 'nsis');
   assert.equal(builder.nsis.artifactName, 'AVGUST-CARE-360-Instalador-${version}-Windows-x64.${ext}');
   assert.ok(builder.files.includes('csp.cjs'));
+  const appletPath = path.resolve('firebase-applet-config.json');
+  const packed = builder.files.find(entry => entry && entry.to === 'firebase-applet-config.json');
+  assert.ok(packed, 'firebase-applet-config.json must be packed into the asar');
+  assert.equal(path.resolve(packed.from), appletPath);
+  const besideAsar = builder.extraResources.find(entry => entry && entry.to === 'firebase-applet-config.json');
+  assert.ok(besideAsar, 'firebase-applet-config.json must be copied next to app.asar');
+  assert.equal(path.resolve(besideAsar.from), appletPath);
   if (process.platform !== 'win32') {
     assert.equal(builder.electronDist, undefined);
     const systemWine = spawnSync('wine', ['--version'], {stdio: 'ignore'}).status === 0;
     if (systemWine) assert.equal(builder.toolsets, undefined);
     else assert.equal(builder.toolsets.wine, '1.0.1');
   }
+});
+
+test('packaged csp resolves firebase-applet-config.json beside the script and next to the asar', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'care360-asar-'));
+  const resources = path.join(root, 'resources');
+  const appDir = path.join(resources, 'app');
+  fs.mkdirSync(appDir, {recursive: true});
+  fs.copyFileSync('firebase-applet-config.json', path.join(appDir, 'firebase-applet-config.json'));
+  fs.copyFileSync('firebase-applet-config.json', path.join(resources, 'firebase-applet-config.json'));
+  const script = path.join(appDir, 'csp.cjs');
+  fs.copyFileSync('desktop/csp.cjs', script);
+  const load = () => {
+    const fromApp = createRequire(script);
+    delete fromApp.cache[script];
+    return fromApp(script);
+  };
+  const packaged = load();
+  assert.equal(packaged.projectId, applet.projectId);
+  assert.equal(packaged.portalOrigin, `https://${applet.projectId}.web.app`);
+  fs.rmSync(path.join(appDir, 'firebase-applet-config.json'));
+  const fromResources = load();
+  assert.equal(fromResources.projectId, applet.projectId);
+  fs.rmSync(root, {recursive: true, force: true});
 });
 
 test('Android shell loads the desktop UI and the portal Firebase project', () => {

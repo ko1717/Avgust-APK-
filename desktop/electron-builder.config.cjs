@@ -8,6 +8,8 @@ const {spawnSync} = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const appletConfig = path.join(__dirname, '..', 'firebase-applet-config.json');
+
 const config = {
   appId: 'co.avgust.care360.desktop',
   productName: 'AVGUST CARE 360',
@@ -21,7 +23,14 @@ const config = {
     'generated/**',
     'ui/**',
     'icon.ico',
-    'package.json'
+    'package.json',
+    // Beside csp.cjs inside app.asar (require('./firebase-applet-config.json')).
+    {from: appletConfig, to: 'firebase-applet-config.json'}
+  ],
+  // resources/firebase-applet-config.json, which is where
+  // require('../firebase-applet-config.json') resolves once csp.cjs is at the asar root.
+  extraResources: [
+    {from: appletConfig, to: 'firebase-applet-config.json'}
   ],
   asar: true,
   npmRebuild: false,

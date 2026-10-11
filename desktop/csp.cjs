@@ -2,8 +2,30 @@
  * Content-Security-Policy shared by the Electron shell and the packaged UI
  * (Windows installer and Android WebView). Hosts come from the same applet
  * config the portal uses, so Publicar en línea reaches that Firebase project.
+ *
+ * Dev runs this file from desktop/, so the config is the repo-root
+ * ../firebase-applet-config.json. The Windows package puts csp.cjs at the
+ * asar root; that same ../ path then points at resources/ next to app.asar,
+ * and the asar also contains a copy beside this file.
  */
-const config = require('../firebase-applet-config.json');
+const fs = require('node:fs');
+const path = require('node:path');
+
+function readAppletConfig() {
+  const candidates = [
+    path.join(__dirname, 'firebase-applet-config.json'),
+    path.join(__dirname, '..', 'firebase-applet-config.json')
+  ];
+  for (const file of candidates) {
+    if (!fs.existsSync(file)) continue;
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  }
+  const error = new Error("Cannot find module '../firebase-applet-config.json'");
+  error.code = 'MODULE_NOT_FOUND';
+  throw error;
+}
+
+const config = readAppletConfig();
 
 const projectId = String(config.projectId || '');
 const authDomain = String(config.authDomain || '');
