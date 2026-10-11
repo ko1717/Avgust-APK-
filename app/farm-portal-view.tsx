@@ -45,10 +45,10 @@ import {
 } from '@/lib/firebase';
 import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
 import MetricsKpiStrip, {type ChapterTrendKpi} from './metrics-kpi-strip';
-import FarmPortalKpiBoard from './farm-portal-kpi-board';
 import './b2b-metrics.css';
 import './farm-portal.css';
 
+const FarmPortalKpiBoard = lazy(() => import('./farm-portal-kpi-board'));
 const StandaloneOnlineReport = lazy(() =>
   import('./online-report-view').then(module => ({default: module.StandaloneOnlineReport}))
 );
@@ -1051,19 +1051,21 @@ export function FarmPortalView({
                 showComparison
                 note={
                   hasChapterDeltas
-                    ? 'Porcentaje de cada capítulo en el aseguramiento consultado. La flecha compara con la última visita que evaluó ese mismo capítulo.'
-                    : 'Porcentaje de cada capítulo en el aseguramiento consultado. Las flechas de tendencia aparecerán desde la próxima visita revisada.'
+                    ? 'Porcentaje de cada capítulo en el aseguramiento consultado.'
+                    : 'Porcentaje de cada capítulo en el aseguramiento consultado. Los capítulos sin medición se muestran como no evaluados.'
                 }
                 chapterTiles
               />
               {historyAnalysis && (
-                <FarmPortalKpiBoard
-                  records={historyAnalysis.records}
-                  chapterTrends={chapterTrends}
-                  indexDelta={indexDelta}
-                  latestDate={current?.date}
-                  baselineDate={baseline?.date}
-                />
+                <Suspense fallback={null}>
+                  <FarmPortalKpiBoard
+                    records={historyAnalysis.records}
+                    chapterTrends={chapterTrends}
+                    indexDelta={indexDelta}
+                    latestDate={current?.date}
+                    baselineDate={baseline?.date}
+                  />
+                </Suspense>
               )}
               </div>
               </div>

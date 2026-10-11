@@ -2,11 +2,11 @@
 
 import {lazy, Suspense, useEffect, useState} from 'react';
 import {ensurePortalQueryOnHosting} from '@/lib/hosting-portal';
-import FarmPortalAi from './farm-portal-ai';
 
 const FarmPortalView = lazy(() =>
   import('./farm-portal-view').then(module => ({default: module.FarmPortalView}))
 );
+const FarmPortalAi = lazy(() => import('./farm-portal-ai'));
 const StandaloneOnlineReport = lazy(() =>
   import('./online-report-view').then(module => ({default: module.StandaloneOnlineReport}))
 );
@@ -72,17 +72,21 @@ export default function FarmPortalHost() {
   }
 
   return (
-    <Suspense fallback={<PortalBoot />}>
-      <FarmPortalView
-        initialToken={portalToken}
-        visits={[]}
-        portalOnly
-        onExitPortal={() => {
-          // Hosting has no technician console — stay on the invitation gate.
-          ensurePortalQueryOnHosting();
-        }}
-      />
-      <FarmPortalAi />
-    </Suspense>
+    <>
+      <Suspense fallback={<PortalBoot />}>
+        <FarmPortalView
+          initialToken={portalToken}
+          visits={[]}
+          portalOnly
+          onExitPortal={() => {
+            // Hosting has no technician console — stay on the invitation gate.
+            ensurePortalQueryOnHosting();
+          }}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <FarmPortalAi />
+      </Suspense>
+    </>
   );
 }

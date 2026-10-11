@@ -228,6 +228,127 @@ function assertPortalAssets() {
   }
 }
 
+function normalizeRel(rel) {
+  const clean = String(rel)
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\/+/, '')
+    .split('?')[0]
+    .split('#')[0];
+  const parts = [];
+  for (const part of clean.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') parts.pop();
+    else parts.push(part);
+  }
+  return parts.join('/');
+}
+
+/** Static and dynamic chunk URLs referenced by an HTML, JS, or CSS file. */
+export function staticRefsIn(text, fromRel = '') {
+  const refs = new Set();
+  const add = rel => {
+    const norm = normalizeRel(rel);
+    if (norm) refs.add(norm);
+  };
+  const abs = text.match(/\/_next\/static\/[A-Za-z0-9_./-]+\.(?:js|css|woff2)/g) || [];
+  for (const ref of abs) add(ref);
+  const bare = text.match(/(?:^|[^A-Za-z0-9_/])(_next\/static\/[A-Za-z0-9_./-]+\.(?:js|css|woff2))/g) || [];
+  for (const ref of bare) {
+    const match = ref.match(/_next\/static\/[A-Za-z0-9_./-]+\.(?:js|css|woff2)/);
+    if (match) add(match[0]);
+  }
+  const relative = text.match(/(?:^|[^A-Za-z0-9_])\.\/[A-Za-z0-9_./-]+\.(?:js|css)/g) || [];
+  const baseDir = fromRel ? path.posix.dirname(fromRel) : '';
+  for (const ref of relative) {
+    const match = ref.match(/\.\/[A-Za-z0-9_./-]+\.(?:js|css)/);
+    if (!match) continue;
+    add(baseDir ? path.posix.join(baseDir, match[0]) : match[0]);
+  }
+  return refs;
+}
+
+/**
+ * Files reachable from the Hosting HTML shell. Console chunks that the
+ * portal-only build no longer imports are absent from this set.
+ */
+export function collectReachableStatic(dir) {
+  const reachable = new Set();
+  const queue = [];
+  const enqueue = rel => {
+    const norm = normalizeRel(rel);
+    if (!norm || reachable.has(norm)) return;
+    if (!exists(path.join(dir, norm))) return;
+    reachable.add(norm);
+    queue.push(norm);
+  };
+
+  for (const seed of ['index.html', '404.html', 'sw.js', 'manifest.webmanifest']) enqueue(seed);
+
+  while (queue.length) {
+    const rel = queue.shift();
+    if (!/\.(html|js|css|webmanifest|json)$/.test(rel)) continue;
+    let text = '';
+    try {
+      const stat = fs.statSync(path.join(dir, rel));
+      if (!stat.isFile() || stat.size > 8_000_000) continue;
+      text = fs.readFileSync(path.join(dir, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    for (const ref of staticRefsIn(text, rel)) enqueue(ref);
+  }
+  return reachable;
+}
+
+/** Drop `_next/static` files the portal shell never loads (console weight). */
+export function pruneUnreachableStatic(dir) {
+  const reachable = collectReachableStatic(dir);
+  const staticRoot = path.join(dir, '_next', 'static');
+  const removed = [];
+  if (!exists(staticRoot)) return {removed, reachable};
+
+  const walk = current => {
+    for (const entry of fs.readdirSync(current, {withFileTypes: true})) {
+      const abs = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(abs);
+        continue;
+      }
+      const rel = path.relative(dir, abs).split(path.sep).join('/');
+      if (reachable.has(rel)) continue;
+      const size = fs.statSync(abs).size;
+      fs.rmSync(abs);
+      removed.push({rel, size});
+    }
+  };
+  walk(staticRoot);
+
+  const emptyDirs = [];
+  const sweep = current => {
+    for (const entry of fs.readdirSync(current, {withFileTypes: true})) {
+      if (!entry.isDirectory()) continue;
+      const abs = path.join(current, entry.name);
+      sweep(abs);
+      if (!fs.readdirSync(abs).length) emptyDirs.push(abs);
+    }
+  };
+  sweep(staticRoot);
+  for (const abs of emptyDirs) fs.rmSync(abs, {recursive: true, force: true});
+  return {removed, reachable};
+}
+
+function assertHtmlReferencesExist(dir) {
+  const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  const refs = [...html.matchAll(/(?:src|href)="(\/[^"]+)"/g)].map(match =>
+    normalizeRel(match[1])
+  );
+  const missing = refs.filter(rel => rel && !exists(path.join(dir, rel)));
+  if (missing.length) {
+    throw new Error(`Hosting HTML references missing files: ${missing.join(', ')}`);
+  }
+}
+
 async function main() {
   console.log('--- Preparing Firebase Hosting bundle (farm client portal only) ---');
   await ensureVinextBuild();
@@ -235,7 +356,26 @@ async function main() {
   const html = await prerenderIndexHtml();
   copyClientAssets();
   const indexPath = writeHtml(html);
+  const {removed, reachable} = pruneUnreachableStatic(outDir);
   assertPortalAssets();
+  assertHtmlReferencesExist(outDir);
+  const workspaceLeft = [...reachable].filter(rel =>
+    /(?:^|\/)(?:workspace|technician-shell)[^/]*\.(?:js|css)$/.test(rel)
+  );
+  if (workspaceLeft.length) {
+    throw new Error(
+      `Portal Hosting bundle still reaches console chunks: ${workspaceLeft.join(', ')}`
+    );
+  }
+
+  const prunedKb = Math.round(removed.reduce((sum, item) => sum + item.size, 0) / 1024);
+  if (removed.length) {
+    console.log(`Pruned ${removed.length} unreachable static files (${prunedKb} KB)`);
+    for (const item of removed.slice(0, 24)) {
+      console.log(`   - ${item.rel} (${Math.round(item.size / 1024)} KB)`);
+    }
+    if (removed.length > 24) console.log(`   - … ${removed.length - 24} more`);
+  }
 
   const sizeKb = Math.round(fs.statSync(indexPath).size / 1024);
   console.log(`✅ Firebase Hosting public dir ready: dist/firebase-hosting/ (index.html ${sizeKb} KB)`);
@@ -245,12 +385,17 @@ async function main() {
   console.log('   Deploy: npm run deploy:firebase   # requires firebase login / CI token');
 }
 
-main()
-  .then(() => {
-    // Force-exit in case vinext left open handles after SIGTERM.
-    setTimeout(() => process.exit(0), 300).unref?.();
-  })
-  .catch(error => {
-    console.error('prepare-firebase-hosting failed:', error instanceof Error ? error.message : error);
-    setTimeout(() => process.exit(1), 300).unref?.();
-  });
+const isDirectRun =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectRun) {
+  main()
+    .then(() => {
+      // Force-exit in case vinext left open handles after SIGTERM.
+      setTimeout(() => process.exit(0), 300).unref?.();
+    })
+    .catch(error => {
+      console.error('prepare-firebase-hosting failed:', error instanceof Error ? error.message : error);
+      setTimeout(() => process.exit(1), 300).unref?.();
+    });
+}

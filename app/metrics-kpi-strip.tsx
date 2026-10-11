@@ -1,6 +1,6 @@
 'use client';
 import {useId,useState} from 'react';
-import {ChevronDown,ClipboardCheck,Minus,TrendingDown,TrendingUp} from 'lucide-react';
+import {ChevronDown,ClipboardCheck,TrendingDown,TrendingUp} from 'lucide-react';
 import './b2b-metrics.css';
 import './metrics-disclosure.css';
 
@@ -15,33 +15,22 @@ function chapterTone(score:number|null){
   return 'critical';
 }
 
-function chapterDeltaCopy(chapter:ChapterTrendKpi){
-  if(chapter.score===null)return 'No evaluado';
-  if(chapter.delta===null)return 'Sin visita previa';
-  if(chapter.delta===0)return 'Se mantuvo';
-  return `${chapter.delta>0?'+':''}${formatPoints(chapter.delta)} pts`;
-}
-
 function ChapterPercentTiles({chapters,note}:{chapters:ChapterTrendKpi[];note?:string}){
   return <>
     <ol className="fp-chapter-tiles">
       {chapters.map(chapter=>{
-        const direction=chapter.score===null||chapter.delta===null?'none':chapter.delta>0?'up':chapter.delta<0?'down':'flat';
-        const scoreLabel=chapter.score===null?'sin medición':`${formatPoints(chapter.score)} por ciento`;
-        return <li key={chapter.id} className={`fp-chapter-tile is-${chapterTone(chapter.score)} is-${direction}`}>
-          <header>
-            <strong>Cap. {chapter.id}</strong>
-            <span title={chapter.title}>{chapter.title}</span>
-          </header>
-          <b aria-label={`Capítulo ${chapter.id}, ${scoreLabel}. ${chapterDeltaCopy(chapter)}`}>
-            {chapter.score===null?'—':<>{formatPoints(chapter.score)}<small>%</small></>}
-          </b>
-          <i aria-hidden><span style={{width:`${Math.min(100,Math.max(0,chapter.score??0))}%`}}/></i>
-          <em>
-            {direction==='up'?<TrendingUp size={13} aria-hidden/>:direction==='down'?<TrendingDown size={13} aria-hidden/>:direction==='flat'?<Minus size={13} aria-hidden/>:null}
-            {chapterDeltaCopy(chapter)}
-          </em>
-          <small>{chapter.baselineDate?`vs. ${chapter.baselineDate}`:`Peso ${chapter.weightPct}`}</small>
+        const tone=chapterTone(chapter.score);
+        const scoreText=chapter.score===null?'No evaluado':`${formatPoints(chapter.score)}%`;
+        const scoreLabel=chapter.score===null?'no evaluado':`${formatPoints(chapter.score)} por ciento`;
+        return <li
+          key={chapter.id}
+          className={`fp-chapter-tile is-${tone}`}
+          aria-label={`Capítulo ${chapter.id}, ${chapter.title}, ${scoreLabel}, peso ${chapter.weightPct} por ciento`}
+        >
+          <span className="fp-chapter-tile-id">Cap. {chapter.id}</span>
+          <span className="fp-chapter-tile-score">{scoreText}</span>
+          <span className="fp-chapter-tile-name" title={chapter.title}>{chapter.title}</span>
+          <span className="fp-chapter-tile-meta">Peso {chapter.weightPct}%</span>
         </li>;
       })}
     </ol>

@@ -1,13 +1,17 @@
 'use client';
 
-import {lazy, Suspense, useEffect, useState} from 'react';
-import {
-  isFirebaseHostingHostname,
-  isHostingPortalOnlyBuild
-} from '@/lib/hosting-portal';
+import {lazy, Suspense, type ComponentType} from 'react';
 
 const FarmPortalHost = lazy(() => import('./farm-portal-host'));
-const Workspace = lazy(() => import('./workspace'));
+
+/**
+ * Hosting builds set NEXT_PUBLIC_HOSTING_PORTAL_ONLY=1 before Rollup runs, so
+ * the technician import is dead code and the console chunk is not emitted.
+ */
+const TechnicianShell: ComponentType | null =
+  process.env.NEXT_PUBLIC_HOSTING_PORTAL_ONLY === '1'
+    ? null
+    : lazy(() => import('./technician-shell'));
 
 function Boot({label}: {label: string}) {
   return (
@@ -27,19 +31,19 @@ function Boot({label}: {label: string}) {
 }
 
 /**
- * Firebase Hosting builds (`NEXT_PUBLIC_HOSTING_PORTAL_ONLY=1`) and the live
- * Hosting hostnames mount only the farm client portal.
- * Vinext / Sites / desktop keep the full technician workspace.
+ * Firebase Hosting builds mount only the farm client portal.
+ * Vinext / Sites / desktop keep the full CARE 360 technician shell.
  */
 export default function Home() {
-  const portalOnlyBuild = isHostingPortalOnlyBuild();
-  const [hostingHost, setHostingHost] = useState(false);
+  if (process.env.NEXT_PUBLIC_HOSTING_PORTAL_ONLY === '1') {
+    return (
+      <Suspense fallback={<Boot label="Cargando Portal de Finca…" />}>
+        <FarmPortalHost />
+      </Suspense>
+    );
+  }
 
-  useEffect(() => {
-    setHostingHost(isFirebaseHostingHostname());
-  }, []);
-
-  if (portalOnlyBuild || hostingHost) {
+  if (!TechnicianShell) {
     return (
       <Suspense fallback={<Boot label="Cargando Portal de Finca…" />}>
         <FarmPortalHost />
@@ -49,7 +53,7 @@ export default function Home() {
 
   return (
     <Suspense fallback={<Boot label="Cargando AVGUST CARE 360…" />}>
-      <Workspace />
+      <TechnicianShell />
     </Suspense>
   );
 }
