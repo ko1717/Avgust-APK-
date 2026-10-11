@@ -81,6 +81,15 @@ function StatusBadge({value}: {value: MetricStatus}) {
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
 }
 
+function SectionMark({index, label}: {index: string; label: string}) {
+  return (
+    <div className="fp-section-mark" aria-hidden>
+      <span>{index}</span>
+      <p>{label}</p>
+    </div>
+  );
+}
+
 export function FarmPortalView({
   initialToken,
   visits,
@@ -424,20 +433,35 @@ export function FarmPortalView({
         <div className="fp-gate-stage" aria-hidden />
         <div className="fp-gate-veil" aria-hidden />
 
+        <header className="fp-gate-top">
+          <img src="/portal/avgust-logo-light.svg" alt="AVGUST Crop Protection" className="fp-gate-mark" />
+          <span className="fp-gate-top-tag">Portal de finca</span>
+        </header>
+
         <div className="fp-gate-frame">
-          <header className="fp-gate-brand" aria-label="Identidad AVGUST">
-            <img src="/avgust-logo.svg" alt="AVGUST Crop Protection" className="fp-gate-mark" />
-            <p className="fp-gate-product">
-              AVGUST <span>CARE 360</span>
-            </p>
-            <h1 className="fp-gate-headline">Portal de finca</h1>
+          <section className="fp-gate-brand" aria-label="Identidad AVGUST CARE 360">
+            <p className="fp-kicker">Aseguramiento MIPE · Fincas de flores</p>
+            <h1 className="fp-wordmark">
+              <span className="fp-wordmark-pre">AVGUST</span>
+              <span className="fp-wordmark-main">
+                CARE <em>360</em>
+              </span>
+            </h1>
+            <span className="fp-brand-rule" aria-hidden>
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
             <p className="fp-gate-lead">
-              Accede al estado de tu cultivo con la lectura oficial del programa AVGUST CARE 360.
+              <strong>Portal de finca.</strong> La lectura oficial de tu cultivo, capítulo por capítulo,
+              con las acciones que tu técnico AVGUST ya revisó.
             </p>
-          </header>
+          </section>
 
           <section className="fp-gate-panel" aria-labelledby="portal-access-title">
             <form onSubmit={handleVerifyCode} className="fp-gate-access">
+              <span className="fp-gate-step">Acceso privado</span>
               <h2 id="portal-access-title">Ingresa tu código</h2>
               <p>Código ASEG emitido por tu técnico AVGUST — acceso exclusivo a tu finca.</p>
 
@@ -486,7 +510,10 @@ export function FarmPortalView({
           </section>
         </div>
 
-        <p className="fp-gate-foot">AVGUST Crop Protection · Juntos Crecemos Bien</p>
+        <footer className="fp-gate-foot">
+          <span>AVGUST Crop Protection</span>
+          <span>Juntos Crecemos Bien</span>
+        </footer>
       </div>
     );
   }
@@ -496,18 +523,11 @@ export function FarmPortalView({
 
   return (
     <div className={`farm-portal${scrollCompact ? ' is-compact' : ''}`}>
-      <div className="fp-lateral fp-lateral-left" aria-hidden>
-        <span className="fp-lateral-brand">AVGUST</span>
-      </div>
-      <div className="fp-lateral fp-lateral-right" aria-hidden>
-        <span className="fp-lateral-brand">CARE 360</span>
-      </div>
-
       <header className={`fp-topbar${scrollCompact ? ' is-compact' : ''}`}>
         <div className="fp-topbar-brand">
-          <img src="/avgust-logo.svg" alt="AVGUST" />
+          <img src="/portal/avgust-logo-light.svg" alt="AVGUST" />
           <div className="fp-topbar-meta">
-            <small>Portal de Finca · CARE 360</small>
+            <small>CARE 360 · Portal de finca</small>
             <strong title={invitation.farm}>{invitation.farm}</strong>
           </div>
         </div>
@@ -542,12 +562,12 @@ export function FarmPortalView({
           </div>
           <div className="fp-chip is-desktop fp-topbar-guest">
             <span>
-              Invitado: <strong>{invitation.clientName}</strong>
+              Invitado <strong>{invitation.clientName}</strong>
             </span>
-            <span aria-hidden>·</span>
-            <span>Código de aseguramiento {invitation.code}</span>
+            <span aria-hidden className="fp-chip-sep" />
+            <span>{invitation.code}</span>
           </div>
-          <button type="button" className="b2b-btn b2b-btn-secondary" onClick={handleLogout} title="Cerrar sesión">
+          <button type="button" className="fp-topbar-exit" onClick={handleLogout} title="Cerrar sesión">
             <LogOut size={14} aria-hidden />
             Salir
           </button>
@@ -566,41 +586,85 @@ export function FarmPortalView({
         <div className="fp-hero-veil" aria-hidden />
         <div className="fp-hero-inner">
           <div className="fp-hero-copy">
-            <p className="fp-hero-product">
-              AVGUST <span>CARE 360</span>
-            </p>
-            <h1 id="farm-portal-title">Portal de finca</h1>
+            <p className="fp-kicker">Portal de finca · Aseguramiento MIPE</p>
+            <h1 id="farm-portal-title" className="fp-wordmark">
+              <span className="fp-wordmark-pre">AVGUST</span>
+              <span className="fp-wordmark-main">
+                CARE <em>360</em>
+              </span>
+              <span className="fp-visually-hidden"> · Portal de finca</span>
+            </h1>
+            <span className="fp-brand-rule" aria-hidden>
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
             <p className="fp-hero-farm">{invitation.farm}</p>
             <p className="fp-hero-lead">
-              Estado del cultivo, capítulos y acciones correctivas — con la lectura oficial del programa.
+              Estado del cultivo, capítulos y acciones correctivas con la lectura oficial del programa.
             </p>
+            <div className="fp-hero-actions">
+              <a className="fp-hero-cta" href="#fp-metrics-anchor">
+                Ver el indicador
+                <ChevronDown size={16} aria-hidden />
+              </a>
+              {current && (
+                <>
+                  <button
+                    type="button"
+                    className="fp-hero-ghost"
+                    onClick={() => setViewingReportId(current.visit.id)}
+                  >
+                    <ExternalLink size={15} aria-hidden />
+                    Último informe
+                  </button>
+                  <button
+                    type="button"
+                    className="fp-hero-ghost"
+                    onClick={() => void exportWord(current.visit)}
+                  >
+                    <FileText size={15} aria-hidden />
+                    Descargar Word
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="fp-hero-actions">
-            <a className="fp-hero-cta" href="#fp-metrics-anchor">
-              Ver el indicador {latestScore === null ? '' : `· ${latestScore}%`}
-            </a>
-            {current && (
-              <>
-                <button
-                  type="button"
-                  className="b2b-btn b2b-btn-secondary"
-                  onClick={() => setViewingReportId(current.visit.id)}
-                >
-                  <ExternalLink size={16} aria-hidden />
-                  Último informe
-                </button>
-                <button
-                  type="button"
-                  className="b2b-btn b2b-btn-primary"
-                  onClick={() => void exportWord(current.visit)}
-                >
-                  <FileText size={16} aria-hidden />
-                  Descargar Word
-                </button>
-              </>
-            )}
-          </div>
+
+          {current && (
+            <aside className={`fp-hero-index ${latestStatus}`} aria-label="Índice oficial del último aseguramiento">
+              <span className="fp-hero-index-label">Índice oficial</span>
+              <strong className="fp-hero-index-value">
+                {latestScore === null ? '—' : latestScore}
+                {latestScore !== null && <small>%</small>}
+              </strong>
+              <span className="fp-hero-index-track" aria-hidden>
+                <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
+              </span>
+              <StatusBadge value={latestStatus} />
+            </aside>
+          )}
         </div>
+
+        <dl className="fp-hero-credits">
+          <div>
+            <dt>Cliente</dt>
+            <dd>{invitation.clientName}</dd>
+          </div>
+          <div>
+            <dt>Código</dt>
+            <dd>{invitation.code}</dd>
+          </div>
+          <div>
+            <dt>Último aseguramiento</dt>
+            <dd>{current ? current.date : 'Pendiente'}</dd>
+          </div>
+          <div>
+            <dt>Técnico</dt>
+            <dd>{current?.visit.responsible || 'AVGUST'}</dd>
+          </div>
+        </dl>
       </section>
 
       <aside className={`fp-assurance-dock ${assuranceOpen ? 'is-open' : ''}`}>
@@ -847,6 +911,7 @@ export function FarmPortalView({
             </div>
           ) : (
             <div className="metrics-executive-dashboard">
+              <SectionMark index="01" label="Estado de la finca" />
               <section className={`metrics-outcome ${latestStatus}`} aria-label="Conclusión de la finca">
                 <div className="metrics-outcome-main">
                   <div className="metrics-section-kicker">
@@ -907,6 +972,7 @@ export function FarmPortalView({
                 </div>
               </section>
 
+              <SectionMark index="02" label="Capítulos evaluados" />
               <MetricsKpiStrip
                 count={historyAnalysis?.records.length || 0}
                 scope={`${historyAnalysis?.farm || invitation.farm} · aseguramientos revisados`}
@@ -918,6 +984,7 @@ export function FarmPortalView({
                 collapsible
               />
 
+              <SectionMark index="03" label="Acciones correctivas" />
               <div className="metrics-overview-grid">
                 <section className="metrics-priority-panel">
                   <div className="metrics-section-heading">
@@ -978,6 +1045,37 @@ export function FarmPortalView({
                 </section>
               </div>
 
+              <section className="fp-interlude" aria-label="Cómo se lee el índice oficial">
+                <div className="fp-interlude-inner">
+                  <p className="fp-kicker">Cómo se lee el índice</p>
+                  <h2>
+                    Cinco procesos.
+                    <br />
+                    Un índice oficial.
+                  </h2>
+                  <ul className="fp-interlude-scale">
+                    <li className="healthy">
+                      <strong>95–100%</strong>
+                      <span>Saludable</span>
+                    </li>
+                    <li className="acceptable">
+                      <strong>80–94%</strong>
+                      <span>Alerta</span>
+                    </li>
+                    <li className="critical">
+                      <strong>&lt; 80%</strong>
+                      <span>Vulnerable</span>
+                    </li>
+                  </ul>
+                  <p className="fp-interlude-note">
+                    Pesos por capítulo{' '}
+                    {[1, 2, 3, 4, 5].map(id => Math.round((CHAPTER_WEIGHTS[id] || 0) * 100)).join(' / ')}.
+                    Cada visita revisada por tu técnico AVGUST actualiza esta lectura.
+                  </p>
+                </div>
+              </section>
+
+              {podium.length > 1 && <SectionMark index="04" label="Trayectoria" />}
               {podium.length > 1 && (
                 <section className="metrics-podium-panel">
                   <div className="metrics-section-heading">
@@ -1046,7 +1144,19 @@ export function FarmPortalView({
       </main>
 
       <footer className="fp-footer">
-        <span>AVGUST CARE 360 · Portal de Finca · Juntos Crecemos Bien</span>
+        <span className="fp-brand-rule" aria-hidden>
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+        <div className="fp-footer-inner">
+          <img src="/portal/avgust-logo-light.svg" alt="AVGUST Crop Protection" />
+          <p>
+            <strong>AVGUST CARE 360</strong> · Portal de finca
+          </p>
+          <span>Juntos Crecemos Bien</span>
+        </div>
       </footer>
     </div>
   );
