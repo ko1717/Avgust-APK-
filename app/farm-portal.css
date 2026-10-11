@@ -2548,7 +2548,7 @@ body:has(.farm-portal) {
 .fp-assurance-panel {
   position: relative;
   width: min(400px, calc(100vw - 32px));
-  max-height: min(74vh, 660px);
+  max-height: min(720px, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2822,6 +2822,15 @@ body:has(.farm-portal) {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.fp-assurance-panel .fp-schedule-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: 4px;
+  padding: 12px 0 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #fff 34%);
 }
 
 .fp-schedule-msg {
