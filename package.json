@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "node server.js",
-    "dev:portal": "vinext dev --host 0.0.0.0 -p 3000",
+    "dev:portal": "vinext dev --hostname 0.0.0.0 -p 3000",
     "build": "node build.js",
     "build:web": "vinext build",
     "build:firebase": "node scripts/build-firebase.mjs",
