@@ -1,5 +1,5 @@
 'use client';
-import {lazy, Suspense, useState, useEffect, useMemo} from 'react';
+import {lazy, Suspense, useState, useEffect, useMemo, useRef, type CSSProperties} from 'react';
 import {
   CalendarDays,
   ChevronDown,
@@ -106,6 +106,8 @@ export function FarmPortalView({
   const [requestBusy, setRequestBusy] = useState(false);
   const [requestMsg, setRequestMsg] = useState<{text: string; error?: boolean} | null>(null);
   const [assuranceRequests, setAssuranceRequests] = useState<AssuranceRequest[]>([]);
+  const [scrollCompact, setScrollCompact] = useState(false);
+  const heroRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     async function initAuth() {
@@ -185,6 +187,40 @@ export function FarmPortalView({
       unsubscribe();
     };
   }, [invitation?.farm, invitation?.clientPhone, invitation?.clientEmail]);
+
+  useEffect(() => {
+    if (!invitation) {
+      setScrollCompact(false);
+      return;
+    }
+
+    let raf = 0;
+    const updateScrollChrome = () => {
+      raf = 0;
+      const hero = heroRef.current;
+      if (!hero) return;
+
+      const rect = hero.getBoundingClientRect();
+      const range = Math.max(160, hero.offsetHeight * 0.55);
+      const traveled = Math.min(range, Math.max(0, -rect.top));
+      const progress = traveled / range;
+      hero.style.setProperty('--fp-hero-collapse', progress.toFixed(3));
+      setScrollCompact(progress > 0.42);
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(updateScrollChrome);
+    };
+
+    updateScrollChrome();
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [invitation]);
 
   const cloudFarm = invitation?.farm || '';
   const cloudLoading = Boolean(cloudFarm) && cloudSyncedFarm !== cloudFarm;
@@ -459,7 +495,7 @@ export function FarmPortalView({
   const latestScore = current?.score ?? null;
 
   return (
-    <div className="farm-portal">
+    <div className={`farm-portal${scrollCompact ? ' is-compact' : ''}`}>
       <div className="fp-lateral fp-lateral-left" aria-hidden>
         <span className="fp-lateral-brand">AVGUST</span>
       </div>
@@ -467,7 +503,7 @@ export function FarmPortalView({
         <span className="fp-lateral-brand">CARE 360</span>
       </div>
 
-      <header className="fp-topbar">
+      <header className={`fp-topbar${scrollCompact ? ' is-compact' : ''}`}>
         <div className="fp-topbar-brand">
           <img src="/avgust-logo.svg" alt="AVGUST" />
           <div className="fp-topbar-meta">
@@ -489,7 +525,22 @@ export function FarmPortalView({
               <StatusBadge value={latestStatus} />
             </div>
           )}
-          <div className="fp-chip is-desktop">
+          <div className="fp-topbar-scroll-ctas" aria-hidden={!scrollCompact}>
+            <a className="fp-topbar-cta" href="#fp-metrics-anchor">
+              Ver el indicador
+            </a>
+            {current && (
+              <button
+                type="button"
+                className="fp-topbar-cta is-report"
+                onClick={() => setViewingReportId(current.visit.id)}
+              >
+                <ExternalLink size={14} aria-hidden />
+                Último informe
+              </button>
+            )}
+          </div>
+          <div className="fp-chip is-desktop fp-topbar-guest">
             <span>
               Invitado: <strong>{invitation.clientName}</strong>
             </span>
@@ -503,8 +554,15 @@ export function FarmPortalView({
         </div>
       </header>
 
-      <section className="fp-hero" aria-labelledby="farm-portal-title">
-        <div className="fp-hero-stage" aria-hidden />
+      <section
+        ref={heroRef}
+        className="fp-hero"
+        aria-labelledby="farm-portal-title"
+        style={{'--fp-hero-collapse': 0} as CSSProperties}
+      >
+        <div className="fp-hero-stage" aria-hidden>
+          <div className="fp-hero-stage-photo" />
+        </div>
         <div className="fp-hero-veil" aria-hidden />
         <div className="fp-hero-inner">
           <div className="fp-hero-copy">
@@ -519,7 +577,7 @@ export function FarmPortalView({
           </div>
           <div className="fp-hero-actions">
             <a className="fp-hero-cta" href="#fp-metrics-anchor">
-              Ver índice oficial {latestScore === null ? '' : `· ${latestScore}%`}
+              Ver el indicador {latestScore === null ? '' : `· ${latestScore}%`}
             </a>
             {current && (
               <>
