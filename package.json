@@ -31,10 +31,10 @@
     "desktop:test": "npm run desktop:build && node tests/desktop-store.cjs",
     "desktop:smoke": "npm run desktop:build && powershell -NoProfile -ExecutionPolicy Bypass -File tools/desktop-smoke.ps1",
     "test:backup": "pwsh -NoProfile -File tests/backup-restore.ps1",
-    "desktop:installer": "npm run desktop:build && powershell -NoProfile -ExecutionPolicy Bypass -File tools/windows-installer.ps1",
+    "desktop:installer": "npm run desktop:build && node tools/desktop-installer.mjs",
     "android:sync": "cap sync android",
-    "android:toolchain": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/android-toolchain.ps1",
-    "android:apk": "npm run desktop:build && cap sync android && powershell -NoProfile -ExecutionPolicy Bypass -File tools/android-build.ps1"
+    "android:toolchain": "node tools/android-toolchain.mjs",
+    "android:apk": "npm run desktop:build && cap sync android && node tools/android-build.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

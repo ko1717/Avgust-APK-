@@ -15,6 +15,29 @@ Firebase Hosting (**gen-lang-client-0175464290**, cuenta `vixnine777@gmail.com`)
 
 Trabaja siempre sobre la rama `main` (`git checkout main && git pull`).
 
+## Instalar en Windows y Android
+
+La edición de campo (Windows y APK) guarda visitas y fotos en el equipo. **Publicar en línea** escribe en el mismo Firebase que el portal (`firebase-applet-config.json`, proyecto **gen-lang-client-0175464290**). El cliente sigue entrando en https://gen-lang-client-0175464290.web.app/. Estos comandos no publican Hosting: el portal se despliega aparte con `deploy-portal.bat` o `npm run deploy:portal`.
+
+Node.js **22.16 o posterior** y `npm ci` en `main`.
+
+**Windows (en un PC Windows x64):**
+
+```
+npm run desktop:installer
+```
+
+Doble clic en `release\AVGUST-CARE-360-Instalador-1.5.35-Windows-x64.exe` (también queda copiado en `artifacts\` y `dist\installers\`). El asistente deja un acceso directo en el escritorio y en el menú Inicio. En el PC de Kevin no hace falta Wine. Si el instalador NSIS no puede terminar, el mismo comando deja el portable `AVGUST-CARE-360-1.5.35-Windows-x64-portable.exe`.
+
+**Android (APK de depuración, en Windows, Linux o macOS):**
+
+```
+npm run android:toolchain
+npm run android:apk
+```
+
+`android:toolchain` deja JDK/SDK en `.android-build` si hace falta (platform **android-35** y build-tools **35.0.0**; en Linux/macOS el JDK 21 tiene que estar ya instalado). El APK queda en `android\app\build\outputs\apk\debug\app-debug.apk` y como `artifacts\AVGUST-CARE-360-1.5.35-debug.apk`. En el teléfono: permitir orígenes desconocidos y abrir ese archivo. En Windows, `tools\android-toolchain.ps1` sigue siendo el mismo preparador que invoca `npm run android:toolchain`.
+
 ## App
 
 Los objetivos y la metodología provienen del protocolo Word suministrado. Las preguntas se extrajeron de las listas de chequeo sin cambiar sus criterios técnicos. El indicador usa respuestas “Sí” sobre criterios aplicables (“Sí” + “No”), excluye “No aplica” y pondera los capítulos así: 1 (5%), 2 (25%), 3 (10%), 4 (30%) y 5 (30%). Clasifica cada visita como Saludable (95–100%), Alerta (80–94%) o Vulnerable (menos de 80%). El diseño del Word es nuevo, conserva la estructura y el contenido institucional pero no reproduce exactamente la diagramación del original.
@@ -82,6 +105,6 @@ La web muestra compromisos por finca en las secciones Hoy, Próximos siete días
 
 ## Aplicación de Android
 
-El APK es la misma edición local que Windows: sin cuentas, sin ChatGPT y sin conexión. Fincas, visitas y fotografías se guardan en el teléfono. El respaldo `.care360` está en Inicio, igual que en el computador. Word, Excel y CSV se entregan al menú del sistema para guardarlos o compartirlos. La impresión a PDF no está disponible en el teléfono.
+El APK es la misma edición de campo que Windows: las fincas, las visitas y las fotografías se guardan en el teléfono y se pueden usar sin cobertura. Con internet, **Publicar en línea** envía el informe revisado al portal de Firebase Hosting (mismo proyecto que la web). El respaldo `.care360` está en Inicio, igual que en el computador. Word, Excel y CSV se entregan al menú del sistema para guardarlos o compartirlos. La impresión a PDF no está disponible en el teléfono.
 
-`npm run android:apk` construye la interfaz local, la empaqueta y genera `android/app/build/outputs/apk/debug/app-debug.apk`.
+`npm run android:apk` construye la interfaz local, la empaqueta y genera `android/app/build/outputs/apk/debug/app-debug.apk`. Los pasos de instalación están en «Instalar en Windows y Android».

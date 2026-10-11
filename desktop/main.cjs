@@ -1,4 +1,5 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,Menu}=require('electron');
+const {CSP,portalOrigin,isExternalAuthUrl}=require('./csp.cjs');
 const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
@@ -12,7 +13,6 @@ const trace=()=>{};
 if(smokePath)app.disableHardwareAcceleration();
 if(smokePath)app.setPath('userData',path.join(path.dirname(smokePath),'smoke-data'));
 let win,store,localServer,localUrl='';
-const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'";
 const headers={'Content-Security-Policy':CSP,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store'};
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{...headers,'Content-Type':'application/json'}});
 async function serve(req){try{trace({request:req.url,method:req.method});
@@ -55,8 +55,8 @@ if(!app.requestSingleInstanceLock()){app.quit();}else{
   await startLocalServer();
   win=new BrowserWindow({width:1360,height:900,minWidth:800,minHeight:600,show:false,title:'AVGUST CARE 360',backgroundColor:'#f5f5f6',icon:path.join(__dirname,'icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,devTools:!app.isPackaged}});
   Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'Archivo',submenu:[{label:'Salir',role:'quit'}]},{label:'Editar',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},{label:'Ver',submenu:[{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}]));
-  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
-  win.webContents.on('will-navigate',(event,url)=>{if(url.startsWith('mailto:')){event.preventDefault();void shell.openExternal(url);return;}if(!url.startsWith(localUrl+'/'))event.preventDefault();});
+  win.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith('mailto:')||url.startsWith(portalOrigin)){void shell.openExternal(url);return {action:'deny'};}if(isExternalAuthUrl(url))return {action:'allow',overrideBrowserWindowOptions:{width:480,height:720,autoHideMenuBar:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true}}};return {action:'deny'};});
+  win.webContents.on('will-navigate',(event,url)=>{if(url.startsWith('mailto:')||url.startsWith(portalOrigin)){event.preventDefault();void shell.openExternal(url);return;}if(!url.startsWith(localUrl+'/'))event.preventDefault();});
   win.webContents.session.setPermissionRequestHandler((_w,_p,callback)=>callback(false));
   win.webContents.session.setPermissionCheckHandler(()=>false);
   win.webContents.on('will-prevent-unload',event=>{const choice=dialog.showMessageBoxSync(win,{type:'question',buttons:['Continuar trabajando','Salir sin guardar'],defaultId:0,cancelId:0,title:'Visita en edición',message:'Hay cambios sin guardar. ¿Quieres salir?',detail:'La copia automática permite recuperar el último borrador guardado localmente.'});if(choice===1)event.preventDefault();});
