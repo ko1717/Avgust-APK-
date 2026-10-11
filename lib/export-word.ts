@@ -4,6 +4,7 @@ import {CHAPTER_WEIGHTS, measurementGroupsFor, metricStatus, metricStatusDescrip
 import {reportFindings, reportSections, type ReportSnapshot} from './reports';
 import {nativeFiles, saveThroughBridge} from './native';
 import template from './template.json';
+import {complianceAnswerLabel} from './portal-format';
 import {
   bodyParagraph,
   callout,
@@ -37,13 +38,6 @@ function serviceName(kind?: string) {
 
 function spanishCount(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function answerLabel(value?: string) {
-  if (value === 'SI') return 'Sí';
-  if (value === 'NO') return 'No';
-  if (value === 'NA') return 'No aplica';
-  return 'Sin evaluar';
 }
 
 function chapterColumnWidths() {
@@ -99,12 +93,12 @@ export async function exportWord(v: Visit, snapshot?: ReportSnapshot) {
     sectionHeading('Indicador del aseguramiento'),
     bodyParagraph(assessment.score === null
       ? 'Sin medición: no hay respuestas aplicables para calcular el indicador.'
-      : `${metricStatusLabels[assessment.status]} · ${formatPercent(assessment.score)}. ${spanishCount(assessment.positive, 'respuesta “Sí”', 'respuestas “Sí”')} de ${spanishCount(assessment.applicable, 'criterio aplicable', 'criterios aplicables')}; ${spanishCount(assessment.findings, 'hallazgo', 'hallazgos')} por corregir.`),
+      : `${metricStatusLabels[assessment.status]} · ${formatPercent(assessment.score)}. ${spanishCount(assessment.positive, 'respuesta “Sí cumple”', 'respuestas “Sí cumple”')} de ${spanishCount(assessment.applicable, 'criterio aplicable', 'criterios aplicables')}; ${spanishCount(assessment.findings, 'hallazgo', 'hallazgos')} por corregir.`),
     bodyParagraph(metricStatusDescriptions[assessment.status]),
     labelValueTable([
       ['Indicador de aseguramiento', assessment.score === null ? 'Sin medición' : `${formatPercent(assessment.score)} · ${metricStatusLabels[assessment.status]}`],
       ['Puntos oficiales', `${formatQuantity(assessment.pointsEarned)} / 100`],
-      ['Cumplimiento de criterios', assessment.criteriaCompliance === null ? 'Sin medición' : `${formatPercent(assessment.criteriaCompliance)} · ${assessment.positive} sí de ${assessment.applicable} aplicables`],
+      ['Cumplimiento de criterios', assessment.criteriaCompliance === null ? 'Sin medición' : `${formatPercent(assessment.criteriaCompliance)} · ${assessment.positive} “Sí cumple” de ${assessment.applicable} aplicables`],
       ['Alcance evaluado', `${assessment.evaluatedChapters.length} de 5 capítulos (${Math.round(assessment.auditedWeight * 100)}% del peso)`],
       ['Criterios respondidos', `${assessment.answered} de ${assessment.total}`],
       ['Hallazgos por corregir', String(assessment.findings)]
@@ -135,7 +129,7 @@ export async function exportWord(v: Visit, snapshot?: ReportSnapshot) {
       columnWidths: chapterColumnWidths()
     }),
     verticalSpace(80),
-    bodyParagraph(`${assessment.answered} de ${assessment.total} ${assessment.total === 1 ? 'criterio respondido' : 'criterios respondidos'}. ${spanishCount(assessment.findings, 'respuesta “No”', 'respuestas “No”')} en los capítulos con cuestionario.`),
+    bodyParagraph(`${assessment.answered} de ${assessment.total} ${assessment.total === 1 ? 'criterio respondido' : 'criterios respondidos'}. ${spanishCount(assessment.findings, 'respuesta “No cumple”', 'respuestas “No cumple”')} en los capítulos con cuestionario.`),
     bodyParagraph(`Capítulos no evaluados: ${missingChapters.map(section => `${section.id}. ${section.title}`).join('; ') || 'Ninguno'}.`),
     sectionHeading('Desarrollo de la evaluación')
   );
@@ -149,7 +143,7 @@ export async function exportWord(v: Visit, snapshot?: ReportSnapshot) {
     for (const item of section.items) {
       const answer = v.answers[item.id];
       children.push(
-        sectionHeading(`${item.id} · ${answerLabel(answer?.value)}`, HeadingLevel.HEADING_2),
+        sectionHeading(`${item.id} · ${complianceAnswerLabel(answer?.value)}`, HeadingLevel.HEADING_2),
         bodyParagraph(item.text, {keepNext: Boolean(answer?.observation || answer?.recommendation)})
       );
       if (answer?.observation) {

@@ -135,7 +135,9 @@ test('visit, evolution and consolidated Word documents keep a professional struc
         'Wilson Castro',
         'Ana Ruiz',
         'Laura Gómez',
-        'Indicador'
+        'Indicador',
+        'Sí cumple',
+        'No cumple'
       ]
     },
     {
@@ -177,7 +179,7 @@ test('visit, evolution and consolidated Word documents keep a professional struc
   assert.match(visitText, /por encima/);
   assert.match(visitText, /suavizador/);
   assert.match(visitText, /1 hallazgo por corregir/);
-  assert.match(visitText, /1 respuesta “No”/);
+  assert.match(visitText, /1 respuesta “No cumple”/);
   assert.doesNotMatch(visitText, /1 hallazgos|1 respuestas/);
   assert.doesNotMatch(visitText, /por encima\*\*|\*\*por encima/);
 });

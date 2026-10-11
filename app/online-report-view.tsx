@@ -14,6 +14,7 @@ import {
 import {getOnlineReport,type OnlineReportData} from '@/lib/firebase';
 import {getPortalOrigin} from '@/lib/portal-origin';
 import {catalog,metricStatusLabels,type MetricStatus} from '@/lib/model';
+import {complianceAnswerLabel} from '@/lib/portal-format';
 
 function StatusBadge({value}:{value:string}){
   const labels:Record<string,string>={
@@ -135,7 +136,7 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
             <div>
               <div className="b2b-kicker flex items-center gap-2 mb-1">
                 <span className="w-2 h-2 rounded-full bg-[#78be20]"></span>
-                <span>Aseguramiento técnico de campo · Aptus</span>
+                <span>Aseguramiento técnico de campo · AVGUST</span>
               </div>
               <h1 className="text-2xl font-black text-slate-950 tracking-tight m-0">{report.farm}</h1>
               <div className="flex items-center gap-3 mt-2 text-xs text-slate-600 flex-wrap">
@@ -176,13 +177,13 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
             <div className="p-3 bg-slate-50 rounded-xl">
               <span className="text-[11px] font-bold text-slate-500 uppercase block">Criterios Evaluados</span>
               <strong className="text-base font-extrabold text-slate-900">{report.applicableCount}</strong>
-              <small className="block text-[10px] text-slate-500 mt-0.5">Respuestas Sí / No</small>
+              <small className="block text-xs text-slate-500 mt-0.5">Respuestas {complianceAnswerLabel('SI')} / {complianceAnswerLabel('NO')}</small>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl">
               <span className="text-[11px] font-bold text-slate-500 uppercase block">Desviaciones</span>
               <strong className={`text-base font-extrabold ${report.findingsCount>0?'text-[#dc2626]':'text-[#78be20]'}`}>{report.findingsCount}</strong>
-              <small className="block text-[10px] text-slate-500 mt-0.5">Respuestas No (hallazgos)</small>
+              <small className="block text-xs text-slate-500 mt-0.5">Respuestas {complianceAnswerLabel('NO')} (hallazgos)</small>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl">
@@ -234,9 +235,9 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
                   </div>
 
                   <div className="text-xs text-slate-600 flex items-center gap-3 mt-1 flex-wrap">
-                    <span>{positiveCount} conformes (Sí)</span>
+                    <span>{positiveCount} {complianceAnswerLabel('SI')}</span>
                     <span>·</span>
-                    <span>{noCount} no conformes (No)</span>
+                    <span>{noCount} {complianceAnswerLabel('NO')}</span>
                     {naCount>0 && (
                       <>
                         <span>·</span>
@@ -253,7 +254,8 @@ export function StandaloneOnlineReport({reportId,onClose}:{reportId:string;onClo
                         const a=v.answers[q.id];
                         return (
                           <div key={q.id} className="p-2.5 bg-white border border-rose-200 rounded-lg text-xs">
-                            <strong className="text-slate-900 block font-bold mb-1">{q.id}. {q.text}</strong>
+                            <strong className="text-slate-900 block font-bold mb-1">{q.id} · {complianceAnswerLabel(a?.value)}</strong>
+                            <p className="text-slate-800 m-0 mb-1">{q.text}</p>
                             {a?.observation && (
                               <p className="text-slate-700 m-0 mb-1"><span className="font-semibold text-rose-700">Hallazgo:</span> {a.observation}</p>
                             )}

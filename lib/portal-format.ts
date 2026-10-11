@@ -2,6 +2,30 @@
  * Farm-portal presentation helpers. Keep technician console copy elsewhere.
  */
 
+/**
+ * Client-facing criterion answer.
+ * Technician inputs and the import matrix keep the short Sí / No.
+ * SI, SÍ, NO and the long forms already stored in text all land here.
+ */
+export function complianceAnswerLabel(value?: string | null): string {
+  const folded = String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  if (folded === 'si' || folded === 'si cumple' || folded === 'cumple' || folded === 'yes') {
+    return 'Sí cumple';
+  }
+  if (folded === 'no' || folded === 'no cumple' || folded === 'incumple') {
+    return 'No cumple';
+  }
+  if (folded === 'na' || folded === 'n/a' || folded === 'no aplica') {
+    return 'No aplica';
+  }
+  return 'Sin evaluar';
+}
+
 /** Strip common markdown markers so clients never see raw `**` / `_` / backticks. */
 export function stripMarkdownLite(input: string | null | undefined): string {
   if (!input) return '';

@@ -1,3 +1,4 @@
+import {complianceAnswerLabel} from '@/lib/portal-format';
 import {serviceLabels} from '@/lib/team';
 import {measurementGroupsFor,ungroupedMeasurements,actionLabels,metricStatusLabels,type Visit} from '@/lib/model';
 import {reportFindings,reportSections,type ReportSnapshot} from '@/lib/reports';
@@ -23,16 +24,16 @@ export default function Report({v,snapshot}:{v:Visit;snapshot?:ReportSnapshot}){
   <h2>Cronograma de actividades</h2>
   <table><tbody>{[['Visita y aseguramiento',v.date],['Entrega del informe',v.delivery],['Seguimiento',v.followup]].map(([k,a])=><tr key={k}><th>{k}</th><td suppressHydrationWarning={['Visita y aseguramiento','Entrega del informe','Seguimiento'].includes(k)}>{a||'No programado'}</td></tr>)}</tbody></table>
   <h2>Indicador de la visita</h2>
-  {m.score===null?<p>Sin medición: no hay respuestas aplicables para calcular el indicador.</p>:<p><strong>{metricStatusLabels[m.status]} · {m.score}%</strong>. {m.positive} respuestas “Sí” de {m.applicable} criterios aplicables; {m.findings} hallazgos por corregir.</p>}
+  {m.score===null?<p>Sin medición: no hay respuestas aplicables para calcular el indicador.</p>:<p><strong>{metricStatusLabels[m.status]} · {m.score}%</strong>. {m.positive} respuestas “Sí cumple” de {m.applicable} criterios aplicables; {m.findings} hallazgos por corregir.</p>}
   <h2>Plan de acción</h2>
   {reportFindingsForVersion.length?reportFindingsForVersion.map(f=>{const action=f.action||{owner:'',due:'',status:'proposed' as const,closure:'',photoId:''};return <section key={f.id}><h3>Hallazgo {f.id} · {actionLabels[action.status]}</h3><p>{f.answer.observation||f.text}</p><p>Acción: {f.answer.recommendation||'Sin registrar'}</p><p>Responsable: {action.owner||'Sin asignar'} · Fecha límite: {action.due||'Sin fecha'}</p>{action.closure&&<p>Seguimiento / cierre: {action.closure}</p>}{action.photoId&&<p>Evidencia: fotografía {v.photos.findIndex(p=>p.id===action.photoId)+1} del registro fotográfico.</p>}</section>}):<p>No hay hallazgos en los capítulos evaluados.</p>}
   <h2>Alcance de la evaluación</h2>
-  <p>{m.answered} de {m.total} criterios respondidos. {m.findings} respuestas “No” en los capítulos evaluados.</p>
+  <p>{m.answered} de {m.total} criterios respondidos. {m.findings} respuestas “No cumple” en los capítulos evaluados.</p>
   <p>Capítulos no evaluados: {sections.filter(c=>!v.chapters.includes(c.id)).map(c=>`${c.id}. ${c.title}`).join('; ')||'Ninguno'}.</p>
   {sections.filter(c=>v.chapters.includes(c.id)).map(c=><section key={c.id}>
    <h2>Capítulo {c.id}. {c.title}</h2>
    {c.items.map(q=>{const a=v.answers[q.id];return <div key={q.id}>
-    <h3>{q.id} · {a?.value==='SI'?'Sí':a?.value==='NO'?'No':a?.value==='NA'?'No aplica':'Sin evaluar'}</h3>
+    <h3>{q.id} · {complianceAnswerLabel(a?.value)}</h3>
     <p>{q.text}</p>
     {a?.observation&&<p><strong>Hallazgo / observación: </strong>{a.observation}</p>}
     {a?.recommendation&&<p><strong>Recomendación: </strong>{a.recommendation}</p>}

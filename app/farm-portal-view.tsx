@@ -43,7 +43,7 @@ import {
   subscribeToFarmVisits,
   type AssuranceRequest
 } from '@/lib/firebase';
-import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
+import {complianceAnswerLabel, portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
 import MetricsKpiStrip, {type ChapterTrendKpi} from './metrics-kpi-strip';
 import './b2b-metrics.css';
 import './farm-portal.css';
@@ -253,9 +253,12 @@ export function FarmPortalView({
     };
 
     updateScrollChrome();
+    const scroller = heroRef.current?.closest('.farm-portal');
+    scroller?.addEventListener('scroll', onScroll, {passive: true});
     window.addEventListener('scroll', onScroll, {passive: true});
     window.addEventListener('resize', onScroll);
     return () => {
+      scroller?.removeEventListener('scroll', onScroll);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       if (raf) cancelAnimationFrame(raf);
@@ -614,7 +617,7 @@ export function FarmPortalView({
           </div>
           <button type="button" className="fp-topbar-exit" onClick={handleLogout} title="Cerrar sesión">
             <LogOut size={14} aria-hidden />
-            Salir
+            <span>Salir</span>
           </button>
         </div>
       </header>
@@ -1093,7 +1096,7 @@ export function FarmPortalView({
                               {problem.id} · {problem.text}
                             </strong>
                             <span>
-                              Cap. {problem.chapter} · {problem.weightPct}%
+                              {complianceAnswerLabel('NO')} · Cap. {problem.chapter} · {problem.weightPct}%
                             </span>
                           </div>
                           <p className="metrics-action-observation">
