@@ -2,6 +2,7 @@
 
 import {lazy, Suspense, useEffect, useState} from 'react';
 import {ensurePortalQueryOnHosting} from '@/lib/hosting-portal';
+import FarmPortalAi from './farm-portal-ai';
 
 const FarmPortalView = lazy(() =>
   import('./farm-portal-view').then(module => ({default: module.FarmPortalView}))
@@ -81,6 +82,7 @@ export default function FarmPortalHost() {
           ensurePortalQueryOnHosting();
         }}
       />
+      <FarmPortalAi />
     </Suspense>
   );
 }

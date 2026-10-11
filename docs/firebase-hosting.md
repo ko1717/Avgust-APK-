@@ -16,6 +16,8 @@ La consola técnica completa de AVGUST CARE 360 **no** se sirve en Hosting: perm
 
 Los enlaces que genera la app técnica **siempre** usan el origen `https://gen-lang-client-0175464290.web.app` (o tu dominio personalizado una vez configurado), nunca localhost ni Sites.
 
+Ese hostname **no se puede renombrar** a «avgust care 360». El `siteId` de Hosting es inmutable y la URL pública es `SITE_ID.web.app`. El id actual es el del proyecto: `gen-lang-client-0175464290`. Detalle y los dos caminos reales (dominio propio o sitio secundario) están en la sección siguiente.
+
 Vista previa del portal dentro de CARE 360 (localhost / Sites): `/?portal=finca` en la app completa.
 
 ## Verificación local (antes de deploy)
@@ -51,29 +53,77 @@ npm run deploy:portal
 
 - Los enlaces de invitación y de informe **siempre** usan `https://gen-lang-client-0175464290.web.app`, aunque el técnico esté en localhost, Sites o `firebaseapp.com`. Un `NEXT_PUBLIC_PORTAL_ORIGIN` distinto no redirige esos enlaces hasta que actualices también `lib/portal-match.mjs` / dominio personalizado en Firebase.
 
-## Dominio personalizado (Kevin debe ser titular del dominio)
+## ¿La URL puede ser «avgust care 360»?
 
-Firebase no vende dominios: **Kevin** (o la organización) compra y controla el DNS en su registrador (GoDaddy, Cloudflare, Google Domains, etc.). Luego se enlaza al mismo sitio de Hosting.
+No. `https://gen-lang-client-0175464290.web.app` no se convierte en esa frase.
+
+- El id del sitio (`siteId`) es **inmutable**. La API de Hosting lo marca así al crear el sitio, y con ese id se arman `SITE_ID.web.app` y `SITE_ID.firebaseapp.com`.
+- El sitio por defecto de este proyecto **es** `gen-lang-client-0175464290`. No se borra y no se renombra.
+- `firebase.json` no tiene un nombre visible del sitio. La clave `site` (si se pone) es el id técnico, no un título. Poner `"site": "gen-lang-client-0175464290"` no cambia la URL. Este repo **no** lo define, para que el deploy siga yendo al sitio por defecto. No inventamos un nombre de marca ahí.
+- Un id de sitio solo admite etiqueta de hostname: minúsculas, números y guiones, **30 caracteres o menos**, único en todo Firebase. Espacios, puntos y el texto «avgust care 360» no son válidos.
+
+Quedan dos opciones. Ninguna convierte el hostname actual en esas tres palabras.
+
+### 1. Dominio propio (la opción que se ve como AVGUST)
+
+Ejemplos válidos, si Kevin es titular del DNS: `care360.avgust.com`, `portal.avgust.com`, `portal.avgust.com.co`. El sitio de Firebase sigue existiendo; el dominio nuevo es un alias con certificado. La URL `*.web.app` sigue viva.
+
+Kevin (o la empresa) tiene que ser dueño del dominio en el registrador. Firebase no vende ni transfiere dominios.
 
 ### Checklist — Firebase Console
 
 1. [Firebase Console](https://console.firebase.google.com/) → proyecto **gen-lang-client-0175464290** → **Hosting**.
-2. **Agregar dominio personalizado** → escribe el dominio (p. ej. `portal.avgust.co` o `finca.tudominio.com`).
-3. Elige si es dominio raíz (`example.com`) o subdominio (`portal.example.com`). Para raíz suele hacer falta un registro **A**; para subdominio, **CNAME**.
-4. Copia los registros DNS que muestra Firebase (valores exactos de la consola; no uses ejemplos genéricos de internet).
-5. En el registrador del dominio, crea esos registros y espera propagación (minutos a 48 h).
-6. En Firebase, pulsa **Verificar** hasta que el dominio quede **Conectado**.
-7. Activa **SSL** (Firebase provisiona certificado automáticamente cuando el DNS es correcto).
+2. En el sitio por defecto, **Agregar dominio personalizado**.
+3. Escribe el dominio completo, por ejemplo `care360.avgust.com`. No escribas «avgust care 360».
+4. Firebase muestra un registro **TXT** para probar que el dominio es tuyo. Créalo en el DNS y pulsa **Verificar**.
+5. Firebase muestra los registros de tráfico. Cópialos tal cual (no uses IPs de blogs):
+   - Subdominio (`care360`, `portal`): normalmente un **CNAME** hacia el valor que indique la consola.
+   - Dominio raíz (`avgust.com`): registros **A** hacia las IP que indique la consola.
+6. Espera a que el estado pase a **Conectado**. Firebase emite el certificado SSL solo; no hace falta comprar uno. Puede tardar desde unos minutos hasta 24 h.
+7. **Authentication → Settings → Authorized domains**: añade el dominio nuevo (si no entró solo).
+8. Cuando el dominio responda, actualiza los enlaces de invitación y vuelve a publicar:
+   - `lib/portal-match.mjs` → `PORTAL_ORIGIN`
+   - `lib/portal-origin.ts` → origen por defecto `https://gen-lang-client-0175464290.web.app`
+   - `npm run deploy:portal`
+9. Prueba `https://TU-DOMINIO/?invitation=TOKEN`.
 
 ### Checklist — DNS (titular del dominio)
 
-- [ ] Acceso de administrador al registrador (cuenta de Kevin).
+- [ ] Acceso de administrador al registrador (cuenta de Kevin o de la empresa).
 - [ ] Registro **TXT** de verificación de Firebase (si lo pide el asistente).
-- [ ] Registro **A** hacia las IPs de Hosting **o** **CNAME** hacia `gen-lang-client-0175464290.web.app` (según indique la consola).
+- [ ] Registro **A** hacia las IPs de Hosting **o** **CNAME** hacia el destino que muestre la consola (a menudo el propio `gen-lang-client-0175464290.web.app` o un host de Google; manda la consola, no esta página).
 - [ ] Sin registros conflictivos (otro A/CNAME en el mismo host).
 - [ ] Tras conectar: en **Authentication → Settings → Authorized domains**, añadir el dominio personalizado.
 - [ ] Actualizar enlaces públicos: `lib/portal-match.mjs` (`PORTAL_ORIGIN`) y `DEFAULT_FIREBASE_HOSTING_ORIGIN` en `lib/portal-origin.ts`, luego `npm run deploy:portal`.
 - [ ] Probar invitación: `https://TU-DOMINIO/?invitation=TOKEN` y publicación de informe.
+- [ ] Si más adelante el navegador debe llamar a la consulta desde ese dominio, añade el origen en `CONSULTA_AVGUST_ORIGINS` (ver `docs/portal-ai.md`).
+
+### 2. Sitio secundario (sigue siendo `*.web.app`)
+
+Un proyecto puede tener hasta 36 sitios. El segundo **no** renombra el primero. Si el id `avgust-care-360` está libre, la URL nueva sería `https://avgust-care-360.web.app` — todavía un subdominio de Firebase, sin espacios.
+
+No lo creamos desde este repo: hace falta `firebase login` con la cuenta del proyecto, y un id ya ocupado en otro proyecto de Firebase falla.
+
+```bash
+npx firebase login
+npx firebase use gen-lang-client-0175464290
+npx firebase hosting:sites:create avgust-care-360
+```
+
+Para publicar **también** ahí, sin dejar de publicar el sitio actual, harían falta dos targets en `.firebaserc` y `hosting` como arreglo en `firebase.json`. Mientras no exista el sitio, este repo deja `firebase.json` con un solo sitio (el de siempre) y **no** pone `"site"`.
+
+Comandos, solo cuando el sitio ya exista y Kevin quiera desplegarlo a propósito:
+
+```bash
+npx firebase target:apply hosting care360 avgust-care-360
+npx firebase deploy --only hosting:care360
+```
+
+Eso exige el bloque `"target": "care360"` en `firebase.json`. No está en el archivo a propósito: el deploy actual (`npm run deploy:portal`) seguiría el sitio `gen-lang-client-0175464290`.
+
+## Dominio personalizado (resumen)
+
+Firebase no vende dominios: **Kevin** (o la organización) compra y controla el DNS en su registrador (GoDaddy, Cloudflare, Google Domains, etc.). Luego se enlaza al mismo sitio de Hosting. Los pasos concretos están en la sección anterior.
 
 ## Consola Firebase (una vez por proyecto)
 
@@ -129,3 +179,4 @@ Arquitectura fija: la consola CARE 360 **no** vive en Hosting. La app (web/escri
 - En Hosting no hay camino a la consola de técnicos (sin “Volver a la consola de trabajo”).
 - No se aprovisionan usuarios Auth reales en este flujo (anónimo + códigos de invitación).
 - Solo el proyecto **gen-lang-client-0175464290** es el target de Hosting, Firestore e invitaciones.
+- **Consulta AVGUST** (chat acotado a agricultura / CARE 360) aparece como botón apagado hasta que haya una clave gratuita de Gemini en un servidor. Hosting estático no ejecuta `/api`. Límites y cómo pegar la clave: [`docs/portal-ai.md`](portal-ai.md). No se activa facturación desde este repo.
