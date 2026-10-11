@@ -662,7 +662,7 @@ export function FarmPortalView({
           </div>
           <div>
             <dt>Técnico</dt>
-            <dd>{current?.visit.responsible || 'AVGUST'}</dd>
+            <dd>{current?.visit.responsible || 'Equipo AVGUST'}</dd>
           </div>
         </dl>
       </section>
