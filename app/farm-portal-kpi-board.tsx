@@ -1,6 +1,6 @@
 'use client';
 
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 import {Minus, TrendingDown, TrendingUp} from 'lucide-react';
 import type {MetricRecord} from '@/lib/metric-analysis';
 import type {MetricStatus} from '@/lib/model';
@@ -33,12 +33,47 @@ function formatDelta(delta: number) {
   return `${delta > 0 ? '+' : ''}${value} pts`;
 }
 
+type TrendRange = '7d' | '30d' | '90d' | '12m' | 'year';
+
+const TREND_RANGE_LABELS: Record<TrendRange, string> = {
+  '7d': '7d',
+  '30d': '30d',
+  '90d': '90d',
+  '12m': '12m',
+  year: 'Año'
+};
+
+function filterRecordsByRange(records: MetricRecord[], range: TrendRange): MetricRecord[] {
+  if (!records.length) return records;
+  const latest = records[records.length - 1];
+  const latestMs = Date.parse(`${latest.date}T12:00:00`);
+  if (Number.isNaN(latestMs)) return records;
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const windows: Record<TrendRange, number> = {
+    '7d': 7 * dayMs,
+    '30d': 30 * dayMs,
+    '90d': 90 * dayMs,
+    '12m': 365 * dayMs,
+    year: 365 * dayMs
+  };
+
+  const cutoff = latestMs - windows[range];
+  const filtered = records.filter(record => {
+    const ms = Date.parse(`${record.date}T12:00:00`);
+    return !Number.isNaN(ms) && ms >= cutoff;
+  });
+  return filtered.length ? filtered : records.slice(-1);
+}
+
 type FarmPortalKpiBoardProps = {
   records: MetricRecord[];
   chapterTrends: ChapterTrendKpi[];
   indexDelta: number | null;
   latestDate?: string;
   baselineDate?: string;
+  /** Full grid or single trend panel for the dashboard mockup layout. */
+  variant?: 'full' | 'trend';
 };
 
 function IndexEvolutionBars({points}: {points: {score: number; isLatest: boolean}[]}) {
@@ -267,9 +302,20 @@ export default function FarmPortalKpiBoard({
   chapterTrends,
   indexDelta,
   latestDate,
-  baselineDate
+  baselineDate,
+  variant = 'full'
 }: FarmPortalKpiBoardProps) {
-  const chartRecords = useMemo(() => records.slice(-MAX_VISITS_CHART), [records]);
+  const [trendRange, setTrendRange] = useState<TrendRange>('30d');
+
+  const rangedRecords = useMemo(
+    () => (variant === 'trend' ? filterRecordsByRange(records, trendRange) : records),
+    [records, trendRange, variant]
+  );
+
+  const chartRecords = useMemo(
+    () => rangedRecords.slice(-MAX_VISITS_CHART),
+    [rangedRecords]
+  );
 
   const barPoints = useMemo(
     () =>
@@ -295,6 +341,50 @@ export default function FarmPortalKpiBoard({
 
   const statusTotal = statusCounts.healthy + statusCounts.acceptable + statusCounts.critical;
   const visitLabel = records.length === 1 ? '1 visita revisada' : `${records.length} visitas revisadas`;
+
+  if (variant === 'trend') {
+    const trendDelta =
+      chartRecords.length >= 2
+        ? Math.round(
+            (chartRecords[chartRecords.length - 1].score - chartRecords[chartRecords.length - 2].score) * 10
+          ) / 10
+        : indexDelta;
+
+    return (
+      <section className="fp-kpi-board is-trend-panel" id="fp-kpi-trend" aria-labelledby="fp-kpi-trend-title">
+        <header className="fp-kpi-trend-head">
+          <div>
+            <h3 id="fp-kpi-trend-title">Tendencia del indicador</h3>
+            <p className="fp-kpi-board-note">
+              Índice oficial en aseguramientos revisados
+              {latestDate ? ` · última lectura ${latestDate}` : ''}.
+            </p>
+          </div>
+          <div className="fp-kpi-range-tabs" role="tablist" aria-label="Rango de tiempo">
+            {(Object.keys(TREND_RANGE_LABELS) as TrendRange[]).map(key => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={trendRange === key}
+                className={trendRange === key ? 'is-active' : ''}
+                onClick={() => setTrendRange(key)}
+              >
+                {TREND_RANGE_LABELS[key]}
+              </button>
+            ))}
+          </div>
+        </header>
+        <div className="fp-kpi-trend-chart-wrap">
+          {barPoints.length ? (
+            <IndexTrendLine points={barPoints} indexDelta={trendDelta} />
+          ) : (
+            <p className="fp-kpi-tile-caption">Aún no hay serie para comparar en este rango.</p>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="fp-kpi-board" aria-labelledby="fp-kpi-board-title">

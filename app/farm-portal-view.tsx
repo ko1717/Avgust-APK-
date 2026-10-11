@@ -1,18 +1,43 @@
 'use client';
-import {lazy, Suspense, useState, useEffect, useMemo, useRef, type CSSProperties} from 'react';
 import {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type ReactNode
+} from 'react';
+import {
+  AlertTriangle,
+  BarChart3,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
+  ClipboardList,
   Download,
-  Globe,
-  LogOut,
-  Lock,
-  KeyRound,
+  Droplets,
   ExternalLink,
+  FileStack,
   FileText,
+  Globe,
+  Home,
+  KeyRound,
+  Lightbulb,
+  LineChart,
+  Lock,
+  LogOut,
+  MapPin,
   Minus,
+  Scale,
+  Search,
+  Sprout,
   TrendingDown,
   TrendingUp,
+  UserRound,
+  Wifi,
+  WifiOff,
   X
 } from 'lucide-react';
 import {
@@ -43,8 +68,8 @@ import {
   subscribeToFarmVisits,
   type AssuranceRequest
 } from '@/lib/firebase';
-import {complianceAnswerLabel, portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
-import MetricsKpiStrip, {type ChapterTrendKpi} from './metrics-kpi-strip';
+import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
+import {type ChapterTrendKpi} from './metrics-kpi-strip';
 import './b2b-metrics.css';
 import './farm-portal.css';
 
@@ -112,12 +137,99 @@ function trendLabel(direction: TrendDirection) {
   return 'Primera lectura';
 }
 
-function SectionMark({index, label}: {index: string; label: string}) {
+type PortalNavId = 'inicio' | 'informes' | 'solicitudes' | 'metricas';
+
+function chapterTrend(trends: ChapterTrendKpi[], id: number) {
+  return trends.find(chapter => chapter.id === id);
+}
+
+function vsMetaDelta(score: number | null) {
+  if (score === null) return null;
+  return Math.round((score - 95) * 10) / 10;
+}
+
+function kpiCardStatusLabel(score: number | null, findingsCount?: number) {
+  if (findingsCount !== undefined) {
+    if (findingsCount === 0) return 'Excelente';
+    if (findingsCount <= 10) return 'Aceptable';
+    return 'En riesgo';
+  }
+  if (score === null) return 'Sin medición';
+  if (score >= 95) return 'Excelente';
+  if (score >= 80) return 'Aceptable';
+  return 'En riesgo';
+}
+
+function formatVisitDateLabel(isoDate?: string) {
+  if (!isoDate) return '—';
+  try {
+    return new Date(`${isoDate}T12:00:00`).toLocaleDateString('es-CO', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch {
+    return isoDate;
+  }
+}
+
+function PortalStatusKpiCard({
+  tone,
+  icon,
+  title,
+  value,
+  valueSuffix,
+  priorDelta,
+  metaDelta,
+  visits,
+  statusLabel
+}: {
+  tone: 'green' | 'blue' | 'purple' | 'orange';
+  icon: ReactNode;
+  title: string;
+  value: string;
+  valueSuffix?: string;
+  priorDelta?: number | null;
+  metaDelta?: number | null;
+  visits?: number;
+  statusLabel: string;
+}) {
+  const statusClass =
+    statusLabel === 'Excelente'
+      ? 'is-excellent'
+      : statusLabel === 'Aceptable'
+        ? 'is-acceptable'
+        : statusLabel === 'En riesgo'
+          ? 'is-risk'
+          : 'is-neutral';
+
   return (
-    <div className="fp-section-mark" aria-hidden>
-      <span>{index}</span>
-      <p>{label}</p>
-    </div>
+    <article className={`fp-status-kpi is-${tone}`}>
+      <div className="fp-status-kpi-icon" aria-hidden>{icon}</div>
+      <div className="fp-status-kpi-body">
+        <h4>{title}</h4>
+        <p className="fp-status-kpi-value">
+          <strong>{value}</strong>
+          {valueSuffix ? <span>{valueSuffix}</span> : null}
+        </p>
+        <ul className="fp-status-kpi-compare">
+          {priorDelta !== undefined && priorDelta !== null && (
+            <li className={priorDelta >= 0 ? 'is-up' : 'is-down'}>
+              {priorDelta >= 0 ? '+' : ''}
+              {priorDelta} vs. anterior
+            </li>
+          )}
+          {metaDelta !== undefined && metaDelta !== null && (
+            <li className={metaDelta >= 0 ? 'is-up' : 'is-down'}>
+              {metaDelta >= 0 ? '+' : ''}
+              {metaDelta} vs. meta
+            </li>
+          )}
+          {visits !== undefined && <li>{visits} visitas</li>}
+        </ul>
+        <span className={`fp-status-kpi-pill ${statusClass}`}>{statusLabel}</span>
+      </div>
+    </article>
   );
 }
 
@@ -147,7 +259,12 @@ export function FarmPortalView({
   const [requestMsg, setRequestMsg] = useState<{text: string; error?: boolean} | null>(null);
   const [assuranceRequests, setAssuranceRequests] = useState<AssuranceRequest[]>([]);
   const [scrollCompact, setScrollCompact] = useState(false);
+  const [portalNav, setPortalNav] = useState<PortalNavId>('inicio');
+  const [online, setOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
   const heroRef = useRef<HTMLElement | null>(null);
+  const shellScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function initAuth() {
@@ -229,6 +346,17 @@ export function FarmPortalView({
   }, [invitation?.farm, invitation?.clientPhone, invitation?.clientEmail]);
 
   useEffect(() => {
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!invitation) {
       setScrollCompact(false);
       return;
@@ -238,14 +366,16 @@ export function FarmPortalView({
     const updateScrollChrome = () => {
       raf = 0;
       const hero = heroRef.current;
-      if (!hero) return;
+      const scroller = shellScrollRef.current;
+      if (!hero || !scroller) return;
 
       const rect = hero.getBoundingClientRect();
-      const range = Math.max(160, hero.offsetHeight * 0.55);
-      const traveled = Math.min(range, Math.max(0, -rect.top));
+      const scrollerRect = scroller.getBoundingClientRect();
+      const range = Math.max(120, hero.offsetHeight * 0.45);
+      const traveled = Math.min(range, Math.max(0, scrollerRect.top - rect.top));
       const progress = traveled / range;
       hero.style.setProperty('--fp-hero-collapse', progress.toFixed(3));
-      setScrollCompact(progress > 0.42);
+      setScrollCompact(progress > 0.35);
     };
 
     const onScroll = () => {
@@ -253,17 +383,43 @@ export function FarmPortalView({
     };
 
     updateScrollChrome();
-    const scroller = heroRef.current?.closest('.farm-portal');
+    const scroller = shellScrollRef.current;
     scroller?.addEventListener('scroll', onScroll, {passive: true});
-    window.addEventListener('scroll', onScroll, {passive: true});
     window.addEventListener('resize', onScroll);
     return () => {
       scroller?.removeEventListener('scroll', onScroll);
-      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [invitation]);
+
+  const openAssurance = (tab: 'schedule' | 'reports') => {
+    setAssuranceTab(tab);
+    setAssuranceOpen(true);
+    setPortalNav(tab === 'schedule' ? 'solicitudes' : 'informes');
+  };
+
+  const handlePortalNav = (id: PortalNavId) => {
+    setPortalNav(id);
+    if (id === 'informes') {
+      openAssurance('reports');
+      return;
+    }
+    if (id === 'solicitudes') {
+      openAssurance('schedule');
+      return;
+    }
+    const scroller = shellScrollRef.current;
+    if (!scroller) return;
+    if (id === 'metricas') {
+      const target = document.getElementById('fp-kpi-trend');
+      if (target) {
+        target.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }
+      return;
+    }
+    scroller.scrollTo({top: 0, behavior: 'smooth'});
+  };
 
   const cloudFarm = invitation?.farm || '';
   const cloudLoading = Boolean(cloudFarm) && cloudSyncedFarm !== cloudFarm;
@@ -338,8 +494,6 @@ export function FarmPortalView({
       };
     });
   }, [historyAnalysis, current]);
-  const hasChapterDeltas = chapterTrends.some(chapter => chapter.delta !== null);
-
   const selectedProblems = useMemo(() => {
     if (!current) return [];
     return findings(current.visit).map(f => {
@@ -357,27 +511,6 @@ export function FarmPortalView({
       };
     });
   }, [current]);
-
-  const podium = useMemo(() => {
-    if (!historyAnalysis) return [];
-    return historyAnalysis.records.slice(-3).map((record, index, items) => {
-      const prior = index > 0 ? items[index - 1] : undefined;
-      return {
-        record,
-        label:
-          index === items.length - 1
-            ? 'Último aseguramiento'
-            : index === items.length - 2
-              ? 'Aseguramiento anterior'
-              : 'Inicio del periodo',
-        delta:
-          prior && sameChapterScope(prior.visit, record.visit)
-            ? record.score - prior.score
-            : null,
-        hasPrevious: Boolean(prior)
-      };
-    });
-  }, [historyAnalysis]);
 
   const handleVerifyCode = async (e: {preventDefault: () => void}) => {
     e.preventDefault();
@@ -562,16 +695,79 @@ export function FarmPortalView({
 
   const latestStatus: MetricStatus = current?.status ?? 'pending';
   const latestScore = current?.score ?? null;
+  const mezclasChapter = chapterTrend(chapterTrends, 4);
+  const medicionesChapter = chapterTrend(chapterTrends, 2);
+  const findingsCount = current?.findings ?? 0;
+  const visitCount = historyAnalysis?.records.length ?? 0;
+
+  const sidebarPrimary: {id: PortalNavId; label: string; icon: typeof Home}[] = [
+    {id: 'inicio', label: 'Inicio', icon: Home},
+    {id: 'informes', label: 'Informes', icon: FileStack},
+    {id: 'solicitudes', label: 'Solicitudes', icon: ClipboardList},
+    {id: 'metricas', label: 'Métricas', icon: LineChart}
+  ];
 
   return (
-    <div className={`farm-portal${scrollCompact ? ' is-compact' : ''}`}>
+    <div className={`farm-portal is-dashboard${scrollCompact ? ' is-compact' : ''}`}>
+      <aside className="fp-sidebar" aria-label="Navegación del portal">
+        <div className="fp-sidebar-brand">
+          <img src="/portal/avgust-logo-light.svg" alt="AVGUST Crop Protection" />
+        </div>
+        <nav className="fp-sidebar-nav">
+          {sidebarPrimary.map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`fp-sidebar-link${portalNav === item.id ? ' is-active' : ''}`}
+                onClick={() => handlePortalNav(item.id)}
+              >
+                <Icon size={18} aria-hidden />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+          <div className="fp-sidebar-divider" role="presentation" />
+          <button type="button" className="fp-sidebar-link is-disabled" disabled title="Disponible en la app técnica AVGUST">
+            <MapPin size={18} aria-hidden />
+            <span>Fincas</span>
+          </button>
+          <button type="button" className="fp-sidebar-link is-disabled" disabled title="Consulta en línea próximamente en el portal">
+            <Search size={18} aria-hidden />
+            <span>Consulta</span>
+          </button>
+          <button type="button" className="fp-sidebar-link is-disabled" disabled title="Disponible en la app técnica AVGUST">
+            <CalendarDays size={18} aria-hidden />
+            <span>Visitas</span>
+          </button>
+          <button type="button" className="fp-sidebar-link is-disabled" disabled title="Disponible en la app técnica AVGUST">
+            <BarChart3 size={18} aria-hidden />
+            <span>Seguimiento</span>
+          </button>
+        </nav>
+        <div className="fp-sidebar-foot">
+          <div className={`fp-sidebar-status${online ? ' is-online' : ''}`}>
+            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />}
+            <span>{online ? 'En línea' : 'Sin conexión'}</span>
+          </div>
+        </div>
+      </aside>
+
+      <div className="fp-shell-main">
       <header className={`fp-topbar${scrollCompact ? ' is-compact' : ''}`}>
-        <div className="fp-page-width fp-topbar-row">
+        <div className="fp-topbar-row">
         <div className="fp-topbar-brand">
-          <img src="/portal/avgust-logo-light.svg" alt="AVGUST" />
+          <div className="fp-topbar-wordmark" aria-hidden>
+            <span>CARE</span>
+            <em>360</em>
+          </div>
           <div className="fp-topbar-meta">
-            <small>CARE 360 · Portal de finca</small>
-            <strong title={invitation.farm}>{invitation.farm}</strong>
+            <small>Portal de finca</small>
+            <strong title={invitation.farm}>
+              <Sprout size={14} aria-hidden />
+              {invitation.farm}
+            </strong>
           </div>
         </div>
 
@@ -595,7 +791,7 @@ export function FarmPortalView({
             </div>
           )}
           <div className="fp-topbar-scroll-ctas" aria-hidden={!scrollCompact}>
-            <a className="fp-topbar-cta" href="#fp-metrics-anchor">
+            <a className="fp-topbar-cta" href="#fp-dashboard">
               Ver el indicador
             </a>
             {current && (
@@ -610,20 +806,26 @@ export function FarmPortalView({
             )}
           </div>
           <div className="fp-chip is-desktop fp-topbar-guest">
+            <UserRound size={14} aria-hidden />
             <span>
               Invitado <strong>{invitation.clientName}</strong>
             </span>
-            <span aria-hidden className="fp-chip-sep" />
+          </div>
+          <div className="fp-chip is-desktop fp-topbar-code">
             <span>{invitation.code}</span>
           </div>
           <button type="button" className="fp-topbar-exit" onClick={handleLogout} title="Cerrar sesión">
             <LogOut size={14} aria-hidden />
             <span>Salir</span>
           </button>
+          <span className="fp-topbar-avatar" aria-hidden>
+            {invitation.clientName.slice(0, 1).toUpperCase()}
+          </span>
         </div>
         </div>
       </header>
 
+      <div className="fp-shell-scroll" ref={shellScrollRef}>
       <section
         ref={heroRef}
         className="fp-hero"
@@ -655,9 +857,9 @@ export function FarmPortalView({
               Estado del cultivo, capítulos y acciones correctivas con la lectura oficial del programa.
             </p>
             <div className="fp-hero-actions">
-              <a className="fp-hero-cta" href="#fp-metrics-anchor">
+              <a className="fp-hero-cta is-primary" href="#fp-dashboard">
                 Ver el indicador
-                <ChevronDown size={16} aria-hidden />
+                <ChevronRight size={16} aria-hidden />
               </a>
               {current && (
                 <>
@@ -708,25 +910,26 @@ export function FarmPortalView({
           )}
         </div>
 
-        <dl className="fp-page-width fp-hero-credits">
-          <div>
-            <dt>Cliente</dt>
-            <dd>{invitation.clientName}</dd>
-          </div>
-          <div>
-            <dt>Código</dt>
-            <dd>{invitation.code}</dd>
-          </div>
-          <div>
-            <dt>Último aseguramiento</dt>
-            <dd>{current ? current.date : 'Pendiente'}</dd>
-          </div>
-          <div>
-            <dt>Técnico</dt>
-            <dd>{current?.visit.responsible || 'Equipo AVGUST'}</dd>
-          </div>
-        </dl>
       </section>
+
+      <dl className="fp-meta-strip">
+        <div>
+          <dt>Cliente</dt>
+          <dd>{invitation.clientName}</dd>
+        </div>
+        <div>
+          <dt>Código</dt>
+          <dd>{invitation.code}</dd>
+        </div>
+        <div>
+          <dt>Último aseguramiento</dt>
+          <dd>{current ? current.date : 'Pendiente'}</dd>
+        </div>
+        <div>
+          <dt>Técnico</dt>
+          <dd>{current?.visit.responsible || 'Equipo AVGUST'}</dd>
+        </div>
+      </dl>
 
       <aside className={`fp-assurance-dock ${assuranceOpen ? 'is-open' : ''}`}>
         {assuranceOpen && (
@@ -940,8 +1143,8 @@ export function FarmPortalView({
         )}
       </aside>
 
-      <main className="fp-main" id="fp-metrics-anchor">
-        <div className="b2b-metrics-wrapper" aria-label="Indicadores de aseguramiento">
+      <main className="fp-main" id="fp-dashboard">
+        <div className="fp-dashboard" aria-label="Indicadores de aseguramiento">
           {cloudLoading && !farmVisits.length ? (
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
           ) : !current ? (
@@ -955,308 +1158,197 @@ export function FarmPortalView({
               <p>
                 {cloudLoading
                   ? 'Estamos cargando las visitas revisadas desde AVGUST Cloud.'
-                  : 'Cuando tu técnico publique un informe revisado, aquí verás el resultado ponderado, la tendencia por capítulo y las desviaciones con acción correctiva.'}
-              </p>
-              <ul className="fp-empty-preview" aria-hidden={cloudLoading ? true : undefined}>
-                <li><span>Índice de aseguramiento</span><em>Saludable · Alerta · Vulnerable</em></li>
-                <li><span>5 procesos</span><em>Pesos 5 / 25 / 10 / 30 / 30</em></li>
-                <li><span>Acciones</span><em>Hallazgos y compromisos</em></li>
-              </ul>
-              <p className="fp-weights-note">
-                Umbrales oficiales: Saludable 95–100% · Alerta 80–94% · Vulnerable &lt;80%.
+                  : 'Cuando tu técnico publique un informe revisado, aquí verás el índice oficial, los capítulos clave y las acciones correctivas.'}
               </p>
               <button
                 type="button"
                 className="fp-metrics-assurance-link"
                 style={{marginTop: 16}}
-                onClick={() => {
-                  setAssuranceTab('schedule');
-                  setAssuranceOpen(true);
-                }}
+                onClick={() => openAssurance('schedule')}
               >
                 <CalendarDays size={15} aria-hidden />
                 Solicitar un aseguramiento
               </button>
             </div>
           ) : (
-            <div className="metrics-executive-dashboard">
-              <div className="fp-band is-field">
-              <div className="fp-band-inner">
-              <SectionMark index="01" label="Estado de la finca" />
-              <section className={`metrics-outcome ${latestStatus}`} aria-label="Conclusión de la finca">
-                <div className="metrics-outcome-main">
-                  <div className="metrics-section-kicker">
-                    Aseguramiento consultado · {current.date}
+            <>
+              <div className="fp-dashboard-main">
+                <header className="fp-dashboard-head">
+                  <div>
+                    <h2>
+                      <Sprout size={20} aria-hidden />
+                      Estado de la finca
+                    </h2>
+                    <p>Resumen del desempeño actual del cultivo.</p>
                   </div>
-                  <h3>{historyAnalysis?.farm || invitation.farm}</h3>
-                  <StatusBadge value={latestStatus} />
-                  <p className="metrics-outcome-copy">{metricStatusDescriptions[latestStatus]}</p>
-                  <div className="metrics-outcome-actions">
+                  <div className="fp-dashboard-date" aria-label="Fecha del aseguramiento consultado">
+                    <CalendarDays size={16} aria-hidden />
+                    {formatVisitDateLabel(current.date)}
+                  </div>
+                </header>
+
+                <div className="fp-status-kpi-grid">
+                  <PortalStatusKpiCard
+                    tone="green"
+                    icon={<Sprout size={18} />}
+                    title="Indicador"
+                    value={latestScore === null ? '—' : `${latestScore}`}
+                    valueSuffix={latestScore === null ? undefined : '%'}
+                    priorDelta={indexDelta}
+                    metaDelta={vsMetaDelta(latestScore)}
+                    visits={visitCount}
+                    statusLabel={kpiCardStatusLabel(latestScore)}
+                  />
+                  <PortalStatusKpiCard
+                    tone="blue"
+                    icon={<Droplets size={18} />}
+                    title="Mezclas"
+                    value={mezclasChapter?.score === null || mezclasChapter?.score === undefined ? '—' : `${mezclasChapter.score}`}
+                    valueSuffix={
+                      mezclasChapter?.score === null || mezclasChapter?.score === undefined ? undefined : '%'
+                    }
+                    priorDelta={mezclasChapter?.delta ?? null}
+                    metaDelta={vsMetaDelta(mezclasChapter?.score ?? null)}
+                    statusLabel={kpiCardStatusLabel(mezclasChapter?.score ?? null)}
+                  />
+                  <PortalStatusKpiCard
+                    tone="purple"
+                    icon={<Scale size={18} />}
+                    title="Mediciones y pesaje"
+                    value={
+                      medicionesChapter?.score === null || medicionesChapter?.score === undefined
+                        ? '—'
+                        : `${medicionesChapter.score}`
+                    }
+                    valueSuffix={
+                      medicionesChapter?.score === null || medicionesChapter?.score === undefined
+                        ? undefined
+                        : '%'
+                    }
+                    priorDelta={medicionesChapter?.delta ?? null}
+                    metaDelta={vsMetaDelta(medicionesChapter?.score ?? null)}
+                    statusLabel={kpiCardStatusLabel(medicionesChapter?.score ?? null)}
+                  />
+                  <PortalStatusKpiCard
+                    tone="orange"
+                    icon={<AlertTriangle size={18} />}
+                    title="Hallazgos"
+                    value={String(findingsCount)}
+                    priorDelta={null}
+                    metaDelta={null}
+                    statusLabel={kpiCardStatusLabel(null, findingsCount)}
+                  />
+                </div>
+
+                {historyAnalysis && (
+                  <Suspense fallback={<div className="fp-metrics-loading">Cargando tendencia…</div>}>
+                    <FarmPortalKpiBoard
+                      variant="trend"
+                      records={historyAnalysis.records}
+                      chapterTrends={chapterTrends}
+                      indexDelta={indexDelta}
+                      latestDate={current.date}
+                      baselineDate={baseline?.date}
+                    />
+                  </Suspense>
+                )}
+              </div>
+
+              <aside className="fp-dashboard-rail" aria-label="Perfil de finca y acciones">
+                <article className="fp-farm-card">
+                  <div className="fp-farm-card-photo" aria-hidden />
+                  <div className="fp-farm-card-body">
+                    <div className="fp-farm-card-title">
+                      <h3>{invitation.farm}</h3>
+                      <span className="fp-farm-card-badge">Activa</span>
+                    </div>
+                    <dl className="fp-farm-card-facts">
+                      <div>
+                        <dt>Código</dt>
+                        <dd>{invitation.code}</dd>
+                      </div>
+                      <div>
+                        <dt>Cliente</dt>
+                        <dd>{invitation.clientName}</dd>
+                      </div>
+                      <div>
+                        <dt>Área</dt>
+                        <dd>N/D</dd>
+                      </div>
+                      <div>
+                        <dt>Última visita</dt>
+                        <dd>{current.date}</dd>
+                      </div>
+                    </dl>
                     <button
                       type="button"
-                      className="b2b-btn b2b-btn-secondary"
+                      className="fp-farm-card-cta"
                       onClick={() => setViewingReportId(current.visit.id)}
                     >
-                      <Globe size={16} aria-hidden />
-                      Ver informe en línea
+                      Ver detalles de la finca
                     </button>
                   </div>
-                </div>
-                <div
-                  className="metrics-outcome-score"
-                  aria-label={`Índice oficial de aseguramiento ${latestScore} por ciento`}
-                >
-                  <strong>
-                    {latestScore}
-                    <span>%</span>
-                  </strong>
-                  <small>Índice oficial</small>
-                  <p className="fp-score-explain">
-                    Resultado ponderado de los capítulos evaluados en esta visita. Es el único
-                    indicador de referencia del portal.
-                  </p>
-                  <div className="metrics-score-track">
-                    <span style={{width: `${Math.min(100, Math.max(0, latestScore ?? 0))}%`}} />
-                  </div>
-                </div>
-                <div className="metrics-outcome-facts fp-facts-with-trend">
-                  <div>
-                    <span>Desviaciones</span>
-                    <strong>{current.findings}</strong>
-                  </div>
-                  <div>
-                    <span>Cobertura</span>
-                    <strong>{current.evaluatedChapters}/5 capítulos</strong>
-                  </div>
-                  <div className={`fp-index-trend is-${indexTrend}`}>
-                    <span>Tendencia del índice</span>
-                    <strong>
-                      <i aria-hidden>
-                        <TrendIcon direction={indexTrend} size={16} />
-                      </i>
-                      {indexDelta === null
-                        ? 'Primera lectura'
-                        : `${trendLabel(indexTrend)} ${indexDelta === 0 ? '' : formatDelta(indexDelta)}`.trim()}
-                    </strong>
-                    <small>
-                      {baseline
-                        ? `Vs. visita ${baseline.date} · ${baseline.score}% → ${current.score}%`
-                        : 'Aún no hay una visita anterior con el mismo alcance para comparar.'}
-                    </small>
-                  </div>
-                </div>
-              </section>
+                </article>
 
-              <SectionMark index="02" label="Capítulos evaluados" />
-              <MetricsKpiStrip
-                count={historyAnalysis?.records.length || 0}
-                scope={`${historyAnalysis?.farm || invitation.farm} · aseguramientos revisados`}
-                chapterTrends={chapterTrends}
-                comparisonLabel={hasChapterDeltas ? 'Vs. visita anterior' : 'Lectura actual'}
-                showComparison
-                note={
-                  hasChapterDeltas
-                    ? 'Porcentaje de cada capítulo en el aseguramiento consultado.'
-                    : 'Porcentaje de cada capítulo en el aseguramiento consultado. Los capítulos sin medición se muestran como no evaluados.'
-                }
-                chapterTiles
-              />
-              {historyAnalysis && (
-                <Suspense fallback={null}>
-                  <FarmPortalKpiBoard
-                    records={historyAnalysis.records}
-                    chapterTrends={chapterTrends}
-                    indexDelta={indexDelta}
-                    latestDate={current?.date}
-                    baselineDate={baseline?.date}
-                  />
-                </Suspense>
-              )}
-              </div>
-              </div>
-
-              <div className="fp-band is-greenhouse">
-              <div className="fp-band-inner">
-              <SectionMark index="03" label="Acciones correctivas" />
-              <div className="metrics-overview-grid">
-                <section className="metrics-priority-panel">
-                  <div className="metrics-section-heading">
-                    <div>
-                      <div className="metrics-section-kicker">Qué corregir</div>
-                      <h3>Desviaciones y acciones</h3>
-                    </div>
-                    <span className={`metrics-count ${selectedProblems.length ? 'risk' : 'clear'}`}>
-                      {selectedProblems.length}
-                    </span>
-                  </div>
+                <section className="fp-actions-card">
+                  <header>
+                    <h3>
+                      <Lightbulb size={18} aria-hidden />
+                      Acciones recomendadas
+                    </h3>
+                    {selectedProblems.length > 0 && (
+                      <button
+                        type="button"
+                        className="fp-actions-card-link"
+                        onClick={() => setExpandedActions(value => !value)}
+                      >
+                        {expandedActions ? 'Ver menos' : 'Ver todas'}
+                        <ChevronRight size={14} aria-hidden />
+                      </button>
+                    )}
+                  </header>
                   {selectedProblems.length ? (
-                    <ul className="metrics-action-list">
+                    <ul className="fp-actions-mini-list">
                       {(expandedActions ? selectedProblems : selectedProblems.slice(0, 3)).map(problem => (
-                        <li key={problem.id} className={problem.thin ? 'is-thin-action' : undefined}>
-                          <div className="metrics-action-title">
-                            <strong>
-                              {problem.id} · {problem.text}
-                            </strong>
-                            <span>
-                              {complianceAnswerLabel('NO')} · Cap. {problem.chapter} · {problem.weightPct}%
-                            </span>
-                          </div>
-                          <p className="metrics-action-observation">
-                            <strong>Hallazgo / observación:</strong> {problem.observation}
-                          </p>
-                          <p className="metrics-action-recommendation">
-                            <strong>Acción recomendada:</strong> {problem.recommendation}
-                          </p>
-                          <div className="metrics-action-meta">
-                            <span>
-                              Responsable: <b>{problem.owner}</b>
-                            </span>
-                            <span>
-                              Fecha: <b>{problem.due}</b>
-                            </span>
-                            <span>
-                              Estado: <b>{problem.statusLabel}</b>
-                            </span>
-                          </div>
+                        <li key={problem.id}>
+                          <strong>{problem.id}</strong>
+                          <p>{problem.text}</p>
+                          <span>{problem.recommendation}</span>
                         </li>
                       ))}
-                      {selectedProblems.length > 3 && (
-                        <button
-                          type="button"
-                          className="metrics-more-button"
-                          onClick={() => setExpandedActions(value => !value)}
-                        >
-                          {expandedActions
-                            ? 'Mostrar menos'
-                            : `Ver las ${selectedProblems.length - 3} acciones restantes`}
-                        </button>
-                      )}
                     </ul>
                   ) : (
-                    <p className="metrics-empty">No se identificaron desviaciones en este aseguramiento.</p>
+                    <p className="fp-actions-empty">No hay desviaciones pendientes en este aseguramiento.</p>
                   )}
                 </section>
-              </div>
-              </div>
-              </div>
-
-              <section className="fp-interlude" aria-label="Cómo se lee el índice oficial">
-                <div className="fp-interlude-inner">
-                  <p className="fp-kicker">Cómo se lee el índice</p>
-                  <h2>
-                    Cinco procesos.
-                    <br />
-                    Un índice oficial.
-                  </h2>
-                  <ul className="fp-interlude-scale">
-                    <li className="healthy">
-                      <strong>95–100%</strong>
-                      <span>Saludable</span>
-                    </li>
-                    <li className="acceptable">
-                      <strong>80–94%</strong>
-                      <span>Alerta</span>
-                    </li>
-                    <li className="critical">
-                      <strong>&lt; 80%</strong>
-                      <span>Vulnerable</span>
-                    </li>
-                  </ul>
-                  <p className="fp-interlude-note">
-                    Pesos por capítulo{' '}
-                    {[1, 2, 3, 4, 5].map(id => Math.round((CHAPTER_WEIGHTS[id] || 0) * 100)).join(' / ')}.
-                    Cada visita revisada por tu técnico AVGUST actualiza esta lectura.
-                  </p>
-                </div>
-              </section>
-
-              <div className="fp-band is-ornamental">
-              <div className="fp-band-inner">
-              {podium.length > 1 && <SectionMark index="04" label="Trayectoria" />}
-              {podium.length > 1 && (
-                <section className="metrics-podium-panel">
-                  <div className="metrics-section-heading">
-                    <div>
-                      <div className="metrics-section-kicker">Historial reciente</div>
-                      <h3>Últimos aseguramientos</h3>
-                    </div>
-                    {indexDelta !== null ? (
-                      <span className="metrics-note">Vs. visita con el mismo alcance</span>
-                    ) : null}
-                  </div>
-                  <div className="metrics-podium-list">
-                    {podium.map((point, index) => (
-                      <article
-                        key={point.record.visit.id}
-                        className={point.record.visit.id === current.visit.id ? 'current' : ''}
-                      >
-                        <span className="metrics-podium-rank">0{index + 1}</span>
-                        <div>
-                          <small>
-                            {point.label} · {point.record.date}
-                          </small>
-                          <StatusBadge value={point.record.status} />
-                        </div>
-                        <strong className="metrics-podium-score">{point.record.score}%</strong>
-                        {point.delta !== null ? (
-                          <span
-                            className={`metrics-podium-delta ${
-                              point.delta > 0
-                                ? 'positive'
-                                : point.delta < 0
-                                  ? 'negative'
-                                  : 'neutral'
-                            }`}
-                          >
-                            {point.delta > 0
-                              ? `+${point.delta} pts`
-                              : point.delta < 0
-                                ? `${point.delta} pts`
-                                : 'Sin cambio'}
-                          </span>
-                        ) : null}
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              <div className="fp-metrics-assurance-hint">
-                <button
-                  type="button"
-                  className="fp-metrics-assurance-link"
-                  onClick={() => {
-                    setAssuranceTab('reports');
-                    setAssuranceOpen(true);
-                  }}
-                >
-                  <FileText size={15} aria-hidden />
-                  Ver historial de informes
-                  <ChevronDown size={14} aria-hidden className="fp-metrics-assurance-chevron" />
-                </button>
-              </div>
-              </div>
-              </div>
-            </div>
+              </aside>
+            </>
           )}
         </div>
       </main>
 
-      <footer className="fp-footer">
-        <span className="fp-brand-rule" aria-hidden>
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
-        <div className="fp-footer-inner">
-          <img src="/portal/avgust-logo-light.svg" alt="AVGUST Crop Protection" />
-          <p>
-            <strong>AVGUST CARE 360</strong> · Portal de finca
-          </p>
-          <span>Juntos Crecemos Bien</span>
-        </div>
+      <footer className="fp-footer fp-footer-compact">
+        <span>Juntos Crecemos Bien · AVGUST CARE 360</span>
       </footer>
+      </div>
+      </div>
+
+      <nav className="fp-mobile-nav" aria-label="Navegación móvil">
+        {sidebarPrimary.map(item => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={portalNav === item.id ? 'is-active' : ''}
+              onClick={() => handlePortalNav(item.id)}
+            >
+              <Icon size={20} aria-hidden />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
