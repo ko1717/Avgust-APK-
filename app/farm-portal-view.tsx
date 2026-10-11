@@ -45,6 +45,7 @@ import {
 } from '@/lib/firebase';
 import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
 import MetricsKpiStrip, {type ChapterTrendKpi} from './metrics-kpi-strip';
+import FarmPortalKpiBoard from './farm-portal-kpi-board';
 import './b2b-metrics.css';
 import './farm-portal.css';
 
@@ -1055,7 +1056,15 @@ export function FarmPortalView({
                 }
                 chapterTiles
               />
-              <section id="fp-kpi-board" className="fp-kpi-board-slot" aria-label="Tablero de indicadores" />
+              {historyAnalysis && (
+                <FarmPortalKpiBoard
+                  records={historyAnalysis.records}
+                  chapterTrends={chapterTrends}
+                  indexDelta={indexDelta}
+                  latestDate={current?.date}
+                  baselineDate={baseline?.date}
+                />
+              )}
               </div>
               </div>
 
