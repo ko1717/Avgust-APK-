@@ -90,7 +90,7 @@
 
 .fp-kpi-board-note {
   margin: 0.5rem 0 0;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   line-height: 1.45;
   color: var(--fp-kpi-muted);
   max-width: 42rem;
@@ -129,7 +129,7 @@
 
 .fp-kpi-tile-caption {
   margin: 0.55rem 0 0;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   line-height: 1.35;
   color: var(--fp-kpi-muted);
 }
@@ -146,6 +146,29 @@
   width: 100%;
   max-height: 8.5rem;
   overflow: visible;
+}
+
+.fp-kpi-zone {
+  opacity: 0.55;
+}
+
+.fp-kpi-zone.is-saludable {
+  fill: rgba(120, 190, 32, 0.14);
+}
+
+.fp-kpi-zone.is-alerta {
+  fill: rgba(242, 169, 0, 0.16);
+}
+
+.fp-kpi-zone.is-vulnerable {
+  fill: rgba(220, 38, 38, 0.1);
+}
+
+.fp-kpi-threshold-line {
+  stroke: rgba(15, 33, 40, 0.14);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
 }
 
 .fp-kpi-axis {
@@ -226,7 +249,7 @@
 }
 
 .fp-kpi-donut-legend i.is-critical {
-  background: var(--fp-kpi-cyan-deep, #005f7a);
+  background: #dc2626;
 }
 
 .fp-kpi-donut-legend strong {

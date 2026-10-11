@@ -14,7 +14,7 @@ const STATUS_LABELS: Record<Exclude<MetricStatus, 'pending'>, string> = {
 };
 
 const STATUS_RANGES: Record<Exclude<MetricStatus, 'pending'>, string> = {
-  healthy: '95–100%',
+  healthy: '≥ 95%',
   acceptable: '80–94%',
   critical: '< 80%'
 };
@@ -184,12 +184,36 @@ function IndexTrendLine({
 
   const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
 
+  const yForScore = (score: number) =>
+    pad.top + innerH - ((score - yMin) / (yMax - yMin)) * innerH;
+
   const trendClass =
     indexDelta === null ? 'is-flat' : indexDelta > 0 ? 'is-up' : indexDelta < 0 ? 'is-down' : 'is-flat';
 
   return (
     <div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Tendencia del índice entre visitas">
+        <rect
+          className="fp-kpi-zone is-vulnerable"
+          x={pad.left}
+          y={yForScore(80)}
+          width={innerW}
+          height={Math.max(0, yForScore(yMin) - yForScore(80))}
+        />
+        <rect
+          className="fp-kpi-zone is-alerta"
+          x={pad.left}
+          y={yForScore(95)}
+          width={innerW}
+          height={Math.max(0, yForScore(80) - yForScore(95))}
+        />
+        <rect
+          className="fp-kpi-zone is-saludable"
+          x={pad.left}
+          y={pad.top}
+          width={innerW}
+          height={Math.max(0, yForScore(95) - pad.top)}
+        />
         <line
           className="fp-kpi-axis"
           x1={pad.left}
@@ -204,6 +228,8 @@ function IndexTrendLine({
           x2={pad.left + innerW}
           y2={pad.top + innerH}
         />
+        <line className="fp-kpi-threshold-line" x1={pad.left} y1={yForScore(95)} x2={pad.left + innerW} y2={yForScore(95)} />
+        <line className="fp-kpi-threshold-line" x1={pad.left} y1={yForScore(80)} x2={pad.left + innerW} y2={yForScore(80)} />
         {points.length > 1 && <path className="fp-kpi-line" d={pathD} />}
         {coords.map((c, index) => (
           <circle
@@ -468,7 +494,7 @@ export default function FarmPortalKpiBoard({
               <p className="fp-kpi-tile-caption">Sin clasificación en el historial.</p>
             )}
           </div>
-          <p className="fp-kpi-tile-caption">Saludable 95–100% · Alerta 80–94% · Vulnerable &lt;80%</p>
+          <p className="fp-kpi-tile-caption">Saludable ≥95% · Alerta 80–94% · Vulnerable &lt;80%</p>
         </article>
 
         <article className="fp-kpi-tile">
