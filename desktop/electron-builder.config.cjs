@@ -24,8 +24,8 @@ const config = {
     'ui/**',
     'icon.ico',
     'package.json',
-    // Beside csp.cjs inside app.asar (require('./firebase-applet-config.json')).
-    {from: appletConfig, to: 'firebase-applet-config.json'}
+    // Copied into desktop/ by desktop/build.cjs so it lands at the asar root.
+    'firebase-applet-config.json'
   ],
   // resources/firebase-applet-config.json, which is where
   // require('../firebase-applet-config.json') resolves once csp.cjs is at the asar root.

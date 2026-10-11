@@ -33,13 +33,12 @@ test('packaging scripts run on Windows and Linux', () => {
   assert.equal(builder.win.target[0].target, 'nsis');
   assert.equal(builder.nsis.artifactName, 'AVGUST-CARE-360-Instalador-${version}-Windows-x64.${ext}');
   assert.ok(builder.files.includes('csp.cjs'));
+  assert.ok(builder.files.includes('firebase-applet-config.json'));
   const appletPath = path.resolve('firebase-applet-config.json');
-  const packed = builder.files.find(entry => entry && entry.to === 'firebase-applet-config.json');
-  assert.ok(packed, 'firebase-applet-config.json must be packed into the asar');
-  assert.equal(path.resolve(packed.from), appletPath);
   const besideAsar = builder.extraResources.find(entry => entry && entry.to === 'firebase-applet-config.json');
   assert.ok(besideAsar, 'firebase-applet-config.json must be copied next to app.asar');
   assert.equal(path.resolve(besideAsar.from), appletPath);
+  assert.match(fs.readFileSync('desktop/build.cjs', 'utf8'), /firebase-applet-config\.json/);
   if (process.platform !== 'win32') {
     assert.equal(builder.electronDist, undefined);
     const systemWine = spawnSync('wine', ['--version'], {stdio: 'ignore'}).status === 0;
@@ -51,23 +50,28 @@ test('packaging scripts run on Windows and Linux', () => {
 test('packaged csp resolves firebase-applet-config.json beside the script and next to the asar', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'care360-asar-'));
   const resources = path.join(root, 'resources');
-  const appDir = path.join(resources, 'app');
+  const appDir = path.join(resources, 'app.asar');
+  const devDir = path.join(root, 'desktop');
   fs.mkdirSync(appDir, {recursive: true});
-  fs.copyFileSync('firebase-applet-config.json', path.join(appDir, 'firebase-applet-config.json'));
-  fs.copyFileSync('firebase-applet-config.json', path.join(resources, 'firebase-applet-config.json'));
-  const script = path.join(appDir, 'csp.cjs');
-  fs.copyFileSync('desktop/csp.cjs', script);
-  const load = () => {
+  fs.mkdirSync(devDir, {recursive: true});
+  const write = (file, projectId) => fs.writeFileSync(file, JSON.stringify({...applet, projectId}));
+  write(path.join(appDir, 'firebase-applet-config.json'), 'from-asar');
+  write(path.join(resources, 'firebase-applet-config.json'), 'from-resources');
+  write(path.join(devDir, 'firebase-applet-config.json'), 'from-desktop-copy');
+  write(path.join(root, 'firebase-applet-config.json'), 'from-repo-root');
+  fs.copyFileSync('desktop/csp.cjs', path.join(appDir, 'csp.cjs'));
+  fs.copyFileSync('desktop/csp.cjs', path.join(devDir, 'csp.cjs'));
+  const load = script => {
     const fromApp = createRequire(script);
     delete fromApp.cache[script];
     return fromApp(script);
   };
-  const packaged = load();
-  assert.equal(packaged.projectId, applet.projectId);
-  assert.equal(packaged.portalOrigin, `https://${applet.projectId}.web.app`);
+  const packaged = load(path.join(appDir, 'csp.cjs'));
+  assert.equal(packaged.projectId, 'from-asar');
+  assert.equal(packaged.portalOrigin, 'https://from-asar.web.app');
   fs.rmSync(path.join(appDir, 'firebase-applet-config.json'));
-  const fromResources = load();
-  assert.equal(fromResources.projectId, applet.projectId);
+  assert.equal(load(path.join(appDir, 'csp.cjs')).projectId, 'from-resources');
+  assert.equal(load(path.join(devDir, 'csp.cjs')).projectId, 'from-repo-root');
   fs.rmSync(root, {recursive: true, force: true});
 });
 

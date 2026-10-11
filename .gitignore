@@ -43,6 +43,7 @@ next-env.d.ts
 /release/
 /desktop/ui/
 /desktop/generated/
+/desktop/firebase-applet-config.json
 /desktop/release*/
 /.android-build/
 /electron.exe

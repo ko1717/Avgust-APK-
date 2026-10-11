@@ -12,10 +12,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 function readAppletConfig() {
-  const candidates = [
-    path.join(__dirname, 'firebase-applet-config.json'),
-    path.join(__dirname, '..', 'firebase-applet-config.json')
-  ];
+  const beside = path.join(__dirname, 'firebase-applet-config.json');
+  const parent = path.join(__dirname, '..', 'firebase-applet-config.json');
+  // Outside an asar, the repo-root file is the source of truth (a desktop/
+  // copy is only a build artifact). Inside app.asar, the packed copy is beside
+  // this file and ../ is resources/firebase-applet-config.json.
+  const packaged = __dirname.replace(/\\/g, '/').includes('/app.asar');
+  const candidates = packaged ? [beside, parent] : [parent, beside];
   for (const file of candidates) {
     if (!fs.existsSync(file)) continue;
     return JSON.parse(fs.readFileSync(file, 'utf8'));

@@ -1,6 +1,9 @@
 const {build}=require('esbuild');
 const fs=require('node:fs');
 const path=require('node:path');
+// The installer packs desktop/ as the asar root. csp.cjs reads this copy when
+// the app is inside app.asar; dev still prefers the repo-root original.
+fs.copyFileSync('firebase-applet-config.json', path.join('desktop', 'firebase-applet-config.json'));
 const wasm=path.join('node_modules','sql.js','dist','sql-wasm.wasm');
 if(fs.existsSync(wasm))fs.copyFileSync(wasm,path.join('public','sql-wasm.wasm'));
 Promise.all([
