@@ -1,6 +1,6 @@
 'use client';
 
-import {useMemo, useState} from 'react';
+import {useId, useMemo, useState} from 'react';
 import {Minus, TrendingDown, TrendingUp} from 'lucide-react';
 import type {MetricRecord} from '@/lib/metric-analysis';
 import {metricStatusDescriptions, metricStatusLabels, type MetricStatus} from '@/lib/model';
@@ -105,8 +105,8 @@ type FarmPortalKpiBoardProps = {
 
 function IndexEvolutionBars({points}: {points: {score: number; isLatest: boolean}[]}) {
   const width = 280;
-  const height = 120;
-  const pad = {left: 28, right: 8, top: 8, bottom: 18};
+  const height = 148;
+  const pad = {left: 32, right: 8, top: 10, bottom: 18};
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
   const maxY = 100;
@@ -137,6 +137,19 @@ function IndexEvolutionBars({points}: {points: {score: number; isLatest: boolean
           </text>
         );
       })}
+      {[80, 95].map(tick => {
+        const y = pad.top + innerH - (tick / maxY) * innerH;
+        return (
+          <line
+            key={tick}
+            className="fp-kpi-threshold-line"
+            x1={pad.left}
+            y1={y}
+            x2={pad.left + innerW}
+            y2={y}
+          />
+        );
+      })}
       {points.map((point, index) => {
         const h = (point.score / maxY) * innerH;
         const x = pad.left + index * (barW + barGap);
@@ -144,12 +157,12 @@ function IndexEvolutionBars({points}: {points: {score: number; isLatest: boolean
         return (
           <rect
             key={index}
-            className={`fp-kpi-bar${point.isLatest ? ' is-latest' : ''}`}
+            className={`fp-kpi-bar is-${chapterTone(point.score)}${point.isLatest ? ' is-latest' : ''}`}
             x={x}
             y={y}
             width={barW}
-            height={Math.max(1, h)}
-            rx={2}
+            height={Math.max(2, h)}
+            rx={3}
           />
         );
       })}
@@ -164,9 +177,10 @@ function IndexTrendLine({
   points: {score: number; isLatest: boolean}[];
   indexDelta: number | null;
 }) {
-  const width = 280;
-  const height = 120;
-  const pad = {left: 28, right: 12, top: 12, bottom: 18};
+  const gradientId = useId().replace(/:/g, '');
+  const width = 320;
+  const height = 168;
+  const pad = {left: 34, right: 46, top: 14, bottom: 18};
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
   const scores = points.map(p => p.score);
@@ -182,7 +196,12 @@ function IndexTrendLine({
     return {x, y, ...point};
   });
 
-  const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+  const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
+  const baseline = pad.top + innerH;
+  const areaD =
+    coords.length > 1
+      ? `${pathD} L ${coords[coords.length - 1].x.toFixed(1)} ${baseline} L ${coords[0].x.toFixed(1)} ${baseline} Z`
+      : '';
 
   const yForScore = (score: number) =>
     pad.top + innerH - ((score - yMin) / (yMax - yMin)) * innerH;
@@ -192,7 +211,13 @@ function IndexTrendLine({
 
   return (
     <div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Tendencia del índice entre visitas">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Tendencia del índice entre visitas, con bandas Saludable, Alerta y Vulnerable">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#78be20" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="#007fa3" stopOpacity="0.04" />
+          </linearGradient>
+        </defs>
         <rect
           className="fp-kpi-zone is-vulnerable"
           x={pad.left}
@@ -214,30 +239,40 @@ function IndexTrendLine({
           width={innerW}
           height={Math.max(0, yForScore(95) - pad.top)}
         />
+        <text className="fp-kpi-zone-label is-saludable" x={pad.left + innerW + 6} y={Math.min(yForScore(95) - 6, pad.top + 12)}>
+          ≥95
+        </text>
+        <text className="fp-kpi-zone-label is-alerta" x={pad.left + innerW + 6} y={(yForScore(95) + yForScore(80)) / 2 + 4}>
+          80–94
+        </text>
+        <text className="fp-kpi-zone-label is-vulnerable" x={pad.left + innerW + 6} y={Math.min(baseline - 4, yForScore(80) + 14)}>
+          &lt;80
+        </text>
         <line
           className="fp-kpi-axis"
           x1={pad.left}
           y1={pad.top}
           x2={pad.left}
-          y2={pad.top + innerH}
+          y2={baseline}
         />
         <line
           className="fp-kpi-axis"
           x1={pad.left}
-          y1={pad.top + innerH}
+          y1={baseline}
           x2={pad.left + innerW}
-          y2={pad.top + innerH}
+          y2={baseline}
         />
         <line className="fp-kpi-threshold-line" x1={pad.left} y1={yForScore(95)} x2={pad.left + innerW} y2={yForScore(95)} />
         <line className="fp-kpi-threshold-line" x1={pad.left} y1={yForScore(80)} x2={pad.left + innerW} y2={yForScore(80)} />
+        {areaD && <path className="fp-kpi-area" d={areaD} fill={`url(#${gradientId})`} />}
         {points.length > 1 && <path className="fp-kpi-line" d={pathD} />}
         {coords.map((c, index) => (
           <circle
             key={index}
-            className={`fp-kpi-line-dot${c.isLatest ? ' is-latest' : ''}`}
+            className={`fp-kpi-line-dot is-${chapterTone(c.score)}${c.isLatest ? ' is-latest' : ''}`}
             cx={c.x}
             cy={c.y}
-            r={c.isLatest ? 4.5 : 3.5}
+            r={c.isLatest ? 5 : 3.5}
           />
         ))}
       </svg>

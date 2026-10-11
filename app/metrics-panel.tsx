@@ -12,9 +12,9 @@ import './b2b-metrics.css';
 
 function StatusBadge({value}:{value:MetricStatus}){
   const labels:Record<MetricStatus,string>={
-    healthy:'Saludable (95-100%)',
+    healthy:'Saludable (≥95%)',
     acceptable:'Alerta (80-94%)',
-    critical:'Vulnerable (< 80%)',
+    critical:'Vulnerable (<80%)',
     pending:'Sin medición'
   };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;

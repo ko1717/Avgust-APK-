@@ -1,4 +1,4 @@
-const CACHE='avgust-care-shell-v4';
+const CACHE='avgust-care-shell-v7';
 const SHELL=['/avgust-logo.svg','/favicon.svg','/manrope.woff2','/manifest.webmanifest'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(key=>caches.delete(key)))).then(()=>caches.open(CACHE).then(cache=>cache.addAll(SHELL))).then(()=>self.clients.claim())));

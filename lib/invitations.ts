@@ -264,7 +264,7 @@ El equipo técnico de AVGUST te ha habilitado acceso exclusivo al portal de aseg
 ${url}
 
 En este portal podrás:
-• Consultar el semáforo y estatus oficial de aseguramiento (Saludable 95-100%, Alerta 80-94%, Vulnerable <80%)
+• Consultar el semáforo y estatus oficial de aseguramiento (Saludable ≥95%, Alerta 80-94%, Vulnerable <80%)
 • Ver la evolución de todas las visitas técnicas sin imprimir papel
 • Revisar las recomendaciones y compromisos acordados
 • Descargar los informes en Word o PDF

@@ -18,7 +18,7 @@ import {complianceAnswerLabel} from '@/lib/portal-format';
 
 function StatusBadge({value}:{value:string}){
   const labels:Record<string,string>={
-    healthy:'Saludable (95-100%)',
+    healthy:'Saludable (≥95%)',
     acceptable:'Alerta (80-94%)',
     critical:'Vulnerable (<80%)',
     pending:'Sin evaluar'

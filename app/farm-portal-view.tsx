@@ -613,6 +613,9 @@ export function FarmPortalView({
       if (event.key === 'Escape') closeAssurance();
     };
     document.addEventListener('keydown', onKey);
+    const panel = document.getElementById('fp-assurance-panel');
+    const dateField = panel?.querySelector('input[type="date"]');
+    if (dateField instanceof HTMLElement) dateField.focus();
     return () => document.removeEventListener('keydown', onKey);
   }, [assuranceOpen]);
 

@@ -123,7 +123,7 @@ if (fs.existsSync(indexHtmlPath)) {
 }
 
 const swPath = path.join(distDir, 'sw.js');
-const swContent = `const CACHE = 'avgust-care-shell-v6';
+const swContent = `const CACHE = 'avgust-care-shell-v7';
 const SHELL = ['/', '/avgust-logo.svg', '/favicon.svg', '/manrope.woff2', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
