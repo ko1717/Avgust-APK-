@@ -1,10 +1,33 @@
 'use client';
 
-import {useId, useMemo, useState} from 'react';
-import {Minus, TrendingDown, TrendingUp} from 'lucide-react';
+import {useMemo, useState} from 'react';
+import {Download, Minus, TrendingDown, TrendingUp} from 'lucide-react';
+import {
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ReferenceArea,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
 import type {MetricRecord} from '@/lib/metric-analysis';
 import {metricStatusDescriptions, metricStatusLabels, type MetricStatus} from '@/lib/model';
+import {
+  downloadTrendCsv,
+  filterRecordsByRange,
+  formatPoints,
+  formatSignedPoints,
+  formatTrendAxisDate,
+  seriesStats,
+  toTrendPoints,
+  type TrendPoint,
+  type TrendRange
+} from '@/lib/trend-series';
 import type {ChapterTrendKpi} from './metrics-kpi-strip';
+import FarmPixel from './farm-pixel';
 import './farm-portal-kpi.css';
 
 const STATUS_LABELS: Record<Exclude<MetricStatus, 'pending'>, string> = {
@@ -17,6 +40,35 @@ const STATUS_RANGES: Record<Exclude<MetricStatus, 'pending'>, string> = {
   healthy: '≥ 95%',
   acceptable: '80–94%',
   critical: '< 80%'
+};
+
+const STATUS_COLORS: Record<Exclude<MetricStatus, 'pending'>, string> = {
+  healthy: '#4f9a16',
+  acceptable: '#e0a800',
+  critical: '#d12424'
+};
+
+const DOT_COLORS: Record<MetricStatus, string> = {
+  healthy: '#4f9a16',
+  acceptable: '#e0a800',
+  critical: '#d12424',
+  pending: '#5b6b75'
+};
+
+const TREND_RANGE_LABELS: Record<TrendRange, string> = {
+  '7d': '7d',
+  '30d': '30d',
+  '90d': '90d',
+  '12m': '12m',
+  year: 'Año'
+};
+
+const TREND_RANGE_HINTS: Record<TrendRange, string> = {
+  '7d': '7 días hacia atrás desde la última lectura',
+  '30d': '30 días hacia atrás desde la última lectura',
+  '90d': '90 días hacia atrás desde la última lectura',
+  '12m': '365 días hacia atrás desde la última lectura',
+  year: 'Año calendario de la última lectura'
 };
 
 function IndexThresholdLegend({compact = false}: {compact?: boolean}) {
@@ -40,14 +92,6 @@ function IndexThresholdLegend({compact = false}: {compact?: boolean}) {
   );
 }
 
-const STATUS_COLORS: Record<Exclude<MetricStatus, 'pending'>, string> = {
-  healthy: 'var(--fp-kpi-green)',
-  acceptable: 'var(--fp-kpi-gold)',
-  critical: 'var(--fp-kpi-cyan-deep, #005f7a)'
-};
-
-const MAX_VISITS_CHART = 8;
-
 function chapterTone(score: number | null): 'healthy' | 'acceptable' | 'critical' | 'empty' {
   if (score === null) return 'empty';
   if (score >= 95) return 'healthy';
@@ -55,42 +99,172 @@ function chapterTone(score: number | null): 'healthy' | 'acceptable' | 'critical
   return 'critical';
 }
 
-function formatDelta(delta: number) {
-  const value = Number.isInteger(delta) ? String(delta) : delta.toFixed(1);
-  return `${delta > 0 ? '+' : ''}${value} pts`;
+function ScoreTick({
+  x = 0,
+  y = 0,
+  payload
+}: {
+  x?: string | number;
+  y?: string | number;
+  payload?: {value?: number};
+}) {
+  const value = payload?.value;
+  const marked = value === 80 || value === 95 || value === 100;
+  const fill = value === 95 ? '#2f7a16' : value === 80 ? '#8a5a00' : '#5b6b75';
+  return (
+    <text x={Number(x) || 0} y={Number(y) || 0} dy={4} textAnchor="end" fill={fill} fontSize={11} fontWeight={marked ? 700 : 500}>
+      {value}
+    </text>
+  );
 }
 
-type TrendRange = '7d' | '30d' | '90d' | '12m' | 'year';
+function ScoreDot({cx, cy, payload}: {cx?: number; cy?: number; payload?: TrendPoint}) {
+  if (typeof cx !== 'number' || typeof cy !== 'number' || !payload) return null;
+  const fill = DOT_COLORS[payload.status];
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={payload.isLatest ? 6 : 4.5}
+      fill={fill}
+      stroke="#ffffff"
+      strokeWidth={2}
+    />
+  );
+}
 
-const TREND_RANGE_LABELS: Record<TrendRange, string> = {
-  '7d': '7d',
-  '30d': '30d',
-  '90d': '90d',
-  '12m': '12m',
-  year: 'Año'
-};
+function TrendTooltip({
+  active,
+  payload
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{payload?: TrendPoint}>;
+}) {
+  const point = payload?.[0]?.payload;
+  if (!active || !point) return null;
+  return (
+    <div className="fp-kpi-tooltip">
+      <strong>{point.fullDate}</strong>
+      <span>Índice oficial {formatPoints(point.score)}%</span>
+      <span>{point.statusLabel}</span>
+      <span>
+        {point.findings} {point.findings === 1 ? 'hallazgo' : 'hallazgos'}
+      </span>
+      <span>{point.responsible}</span>
+    </div>
+  );
+}
 
-function filterRecordsByRange(records: MetricRecord[], range: TrendRange): MetricRecord[] {
-  if (!records.length) return records;
-  const latest = records[records.length - 1];
-  const latestMs = Date.parse(`${latest.date}T12:00:00`);
-  if (Number.isNaN(latestMs)) return records;
+function IndexTrendChart({points}: {points: TrendPoint[]}) {
+  const summary =
+    points.length === 0
+      ? 'Sin lecturas del índice oficial'
+      : `Tendencia del índice oficial, ${points.length} ${points.length === 1 ? 'lectura' : 'lecturas'}. Última ${formatPoints(points[points.length - 1].score)}% el ${points[points.length - 1].fullDate}.`;
 
-  const dayMs = 24 * 60 * 60 * 1000;
-  const windows: Record<TrendRange, number> = {
-    '7d': 7 * dayMs,
-    '30d': 30 * dayMs,
-    '90d': 90 * dayMs,
-    '12m': 365 * dayMs,
-    year: 365 * dayMs
-  };
+  return (
+    <figure className="fp-kpi-chart-frame" aria-label={summary}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={points} margin={{top: 16, right: 12, left: 0, bottom: 4}}>
+          <ReferenceArea y1={95} y2={100} fill="rgba(79, 154, 22, 0.2)" strokeOpacity={0} ifOverflow="hidden" />
+          <ReferenceArea y1={80} y2={95} fill="rgba(224, 168, 0, 0.22)" strokeOpacity={0} ifOverflow="hidden" />
+          <ReferenceArea y1={0} y2={80} fill="rgba(209, 36, 36, 0.1)" strokeOpacity={0} ifOverflow="hidden" />
+          <CartesianGrid stroke="rgba(15, 33, 40, 0.08)" vertical={false} />
+          <ReferenceLine y={95} stroke="#4f9a16" strokeDasharray="4 4" strokeOpacity={0.9} />
+          <ReferenceLine y={80} stroke="#e0a800" strokeDasharray="4 4" strokeOpacity={0.95} />
+          <XAxis
+            dataKey="chartKey"
+            tickFormatter={value => formatTrendAxisDate(String(value).split('|')[0] || '')}
+            tick={{fill: '#5b6b75', fontSize: 11}}
+            tickLine={false}
+            axisLine={{stroke: 'rgba(15, 33, 40, 0.18)'}}
+            minTickGap={28}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            domain={[0, 100]}
+            ticks={[0, 40, 80, 95, 100]}
+            width={36}
+            tick={ScoreTick}
+            tickLine={false}
+            axisLine={{stroke: 'rgba(15, 33, 40, 0.18)'}}
+          />
+          <Tooltip
+            content={props => <TrendTooltip active={props.active} payload={props.payload as ReadonlyArray<{payload?: TrendPoint}>} />}
+            cursor={{stroke: '#0f2128', strokeOpacity: 0.25, strokeDasharray: '3 3'}}
+          />
+          <Line
+            type="linear"
+            dataKey="score"
+            name="Índice oficial"
+            stroke="#1f4d32"
+            strokeWidth={2.5}
+            dot={ScoreDot}
+            activeDot={{r: 7, fill: '#1f4d32', stroke: '#fff', strokeWidth: 2}}
+            isAnimationActive={false}
+            connectNulls={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </figure>
+  );
+}
 
-  const cutoff = latestMs - windows[range];
-  const filtered = records.filter(record => {
-    const ms = Date.parse(`${record.date}T12:00:00`);
-    return !Number.isNaN(ms) && ms >= cutoff;
-  });
-  return filtered.length ? filtered : records.slice(-1);
+function ReadingsTable({points}: {points: TrendPoint[]}) {
+  const rows = [...points].reverse();
+  return (
+    <div className="fp-kpi-readings-wrap">
+      <table className="fp-kpi-readings">
+        <caption className="fp-visually-hidden">Lecturas del índice oficial en el rango visible</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Índice</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Hallazgos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(point => (
+            <tr key={point.chartKey}>
+              <td>{point.fullDate}</td>
+              <td className={`is-${point.status}`}>{formatPoints(point.score)}%</td>
+              <td>
+                <span className={`fp-sema-chip is-${point.status}`}>{point.statusLabel}</span>
+              </td>
+              <td>{point.findings}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Fact({
+  label,
+  value,
+  detail,
+  tone
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: 'up' | 'down' | 'flat';
+}) {
+  return (
+    <div className={`fp-kpi-fact${tone ? ` is-${tone}` : ''}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {detail ? <small>{detail}</small> : null}
+    </div>
+  );
+}
+
+function deltaTone(value: number | null): 'up' | 'down' | 'flat' | undefined {
+  if (value === null) return undefined;
+  if (value > 0) return 'up';
+  if (value < 0) return 'down';
+  return 'flat';
 }
 
 type FarmPortalKpiBoardProps = {
@@ -99,201 +273,12 @@ type FarmPortalKpiBoardProps = {
   indexDelta: number | null;
   latestDate?: string;
   baselineDate?: string;
-  /** Full grid or single trend panel for the dashboard mockup layout. */
+  /** Full grid or single trend panel for the dashboard layout. */
   variant?: 'full' | 'trend';
 };
 
-function IndexEvolutionBars({points}: {points: {score: number; isLatest: boolean}[]}) {
-  const width = 280;
-  const height = 148;
-  const pad = {left: 32, right: 8, top: 10, bottom: 18};
-  const innerW = width - pad.left - pad.right;
-  const innerH = height - pad.top - pad.bottom;
-  const maxY = 100;
-  const barGap = 6;
-  const barW = Math.max(8, (innerW - barGap * (points.length - 1)) / Math.max(1, points.length));
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Evolución del índice oficial por visita">
-      <line
-        className="fp-kpi-axis"
-        x1={pad.left}
-        y1={pad.top}
-        x2={pad.left}
-        y2={pad.top + innerH}
-      />
-      <line
-        className="fp-kpi-axis"
-        x1={pad.left}
-        y1={pad.top + innerH}
-        x2={pad.left + innerW}
-        y2={pad.top + innerH}
-      />
-      {[0, 50, 100].map(tick => {
-        const y = pad.top + innerH - (tick / maxY) * innerH;
-        return (
-          <text key={tick} className="fp-kpi-axis-tick" x={pad.left - 6} y={y + 3} textAnchor="end">
-            {tick}
-          </text>
-        );
-      })}
-      {[80, 95].map(tick => {
-        const y = pad.top + innerH - (tick / maxY) * innerH;
-        return (
-          <line
-            key={tick}
-            className="fp-kpi-threshold-line"
-            x1={pad.left}
-            y1={y}
-            x2={pad.left + innerW}
-            y2={y}
-          />
-        );
-      })}
-      {points.map((point, index) => {
-        const h = (point.score / maxY) * innerH;
-        const x = pad.left + index * (barW + barGap);
-        const y = pad.top + innerH - h;
-        return (
-          <rect
-            key={index}
-            className={`fp-kpi-bar is-${chapterTone(point.score)}${point.isLatest ? ' is-latest' : ''}`}
-            x={x}
-            y={y}
-            width={barW}
-            height={Math.max(2, h)}
-            rx={3}
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-function IndexTrendLine({
-  points,
-  indexDelta
-}: {
-  points: {score: number; isLatest: boolean}[];
-  indexDelta: number | null;
-}) {
-  const gradientId = useId().replace(/:/g, '');
-  const width = 320;
-  const height = 168;
-  const pad = {left: 34, right: 46, top: 14, bottom: 18};
-  const innerW = width - pad.left - pad.right;
-  const innerH = height - pad.top - pad.bottom;
-  const scores = points.map(p => p.score);
-  const minScore = Math.min(...scores, 70);
-  const maxScore = Math.max(...scores, 100);
-  const range = Math.max(8, maxScore - minScore);
-  const yMin = minScore - range * 0.08;
-  const yMax = maxScore + range * 0.08;
-
-  const coords = points.map((point, index) => {
-    const x = pad.left + (points.length <= 1 ? innerW / 2 : (index / (points.length - 1)) * innerW);
-    const y = pad.top + innerH - ((point.score - yMin) / (yMax - yMin)) * innerH;
-    return {x, y, ...point};
-  });
-
-  const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
-  const baseline = pad.top + innerH;
-  const areaD =
-    coords.length > 1
-      ? `${pathD} L ${coords[coords.length - 1].x.toFixed(1)} ${baseline} L ${coords[0].x.toFixed(1)} ${baseline} Z`
-      : '';
-
-  const yForScore = (score: number) =>
-    pad.top + innerH - ((score - yMin) / (yMax - yMin)) * innerH;
-
-  const trendClass =
-    indexDelta === null ? 'is-flat' : indexDelta > 0 ? 'is-up' : indexDelta < 0 ? 'is-down' : 'is-flat';
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Tendencia del índice entre visitas, con bandas Saludable, Alerta y Vulnerable">
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#78be20" stopOpacity="0.38" />
-            <stop offset="100%" stopColor="#007fa3" stopOpacity="0.04" />
-          </linearGradient>
-        </defs>
-        <rect
-          className="fp-kpi-zone is-vulnerable"
-          x={pad.left}
-          y={yForScore(80)}
-          width={innerW}
-          height={Math.max(0, yForScore(yMin) - yForScore(80))}
-        />
-        <rect
-          className="fp-kpi-zone is-alerta"
-          x={pad.left}
-          y={yForScore(95)}
-          width={innerW}
-          height={Math.max(0, yForScore(80) - yForScore(95))}
-        />
-        <rect
-          className="fp-kpi-zone is-saludable"
-          x={pad.left}
-          y={pad.top}
-          width={innerW}
-          height={Math.max(0, yForScore(95) - pad.top)}
-        />
-        <text className="fp-kpi-zone-label is-saludable" x={pad.left + innerW + 6} y={Math.min(yForScore(95) - 6, pad.top + 12)}>
-          ≥95
-        </text>
-        <text className="fp-kpi-zone-label is-alerta" x={pad.left + innerW + 6} y={(yForScore(95) + yForScore(80)) / 2 + 4}>
-          80–94
-        </text>
-        <text className="fp-kpi-zone-label is-vulnerable" x={pad.left + innerW + 6} y={Math.min(baseline - 4, yForScore(80) + 14)}>
-          &lt;80
-        </text>
-        <line
-          className="fp-kpi-axis"
-          x1={pad.left}
-          y1={pad.top}
-          x2={pad.left}
-          y2={baseline}
-        />
-        <line
-          className="fp-kpi-axis"
-          x1={pad.left}
-          y1={baseline}
-          x2={pad.left + innerW}
-          y2={baseline}
-        />
-        <line className="fp-kpi-threshold-line" x1={pad.left} y1={yForScore(95)} x2={pad.left + innerW} y2={yForScore(95)} />
-        <line className="fp-kpi-threshold-line" x1={pad.left} y1={yForScore(80)} x2={pad.left + innerW} y2={yForScore(80)} />
-        {areaD && <path className="fp-kpi-area" d={areaD} fill={`url(#${gradientId})`} />}
-        {points.length > 1 && <path className="fp-kpi-line" d={pathD} />}
-        {coords.map((c, index) => (
-          <circle
-            key={index}
-            className={`fp-kpi-line-dot is-${chapterTone(c.score)}${c.isLatest ? ' is-latest' : ''}`}
-            cx={c.x}
-            cy={c.y}
-            r={c.isLatest ? 5 : 3.5}
-          />
-        ))}
-      </svg>
-      {indexDelta !== null && (
-        <p className={`fp-kpi-delta-chip ${trendClass}`}>
-          {indexDelta > 0 ? (
-            <TrendingUp size={14} aria-hidden />
-          ) : indexDelta < 0 ? (
-            <TrendingDown size={14} aria-hidden />
-          ) : (
-            <Minus size={14} aria-hidden />
-          )}
-          {indexDelta === 0 ? 'Sin cambio vs. visita anterior' : `Variación ${formatDelta(indexDelta)} vs. anterior`}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function StatusDonut({counts, total}: {counts: Record<Exclude<MetricStatus, 'pending'>, number>; total: number}) {
-  const size = 100;
+  const size = 112;
   const stroke = 14;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -304,8 +289,7 @@ function StatusDonut({counts, total}: {counts: Record<Exclude<MetricStatus, 'pen
     .map(status => {
       const value = counts[status];
       if (!value) return null;
-      const pct = value / total;
-      const length = pct * circumference;
+      const length = (value / total) * circumference;
       const seg = {
         status,
         dasharray: `${length} ${circumference - length}`,
@@ -322,30 +306,27 @@ function StatusDonut({counts, total}: {counts: Record<Exclude<MetricStatus, 'pen
 
   return (
     <div className="fp-kpi-donut-wrap">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Distribución de estados en aseguramientos revisados">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="rgba(15,33,40,0.08)"
-          strokeWidth={stroke}
-        />
-        {segments.map(seg => (
-          <circle
-            key={seg.status}
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={STATUS_COLORS[seg.status]}
-            strokeWidth={stroke}
-            strokeDasharray={seg.dasharray}
-            strokeDashoffset={seg.dashoffset}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        ))}
-      </svg>
+      <div className="fp-kpi-donut-figure">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label="Distribución de estados en aseguramientos revisados">
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(15,33,40,0.08)" strokeWidth={stroke} />
+          {segments.map(seg => (
+            <circle
+              key={seg.status}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={STATUS_COLORS[seg.status]}
+              strokeWidth={stroke}
+              strokeDasharray={seg.dasharray}
+              strokeDashoffset={seg.dashoffset}
+              strokeLinecap="butt"
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          ))}
+        </svg>
+        <strong className="fp-kpi-donut-total">{total}</strong>
+      </div>
       <ul className="fp-kpi-donut-legend">
         {order.map(status => {
           const n = counts[status];
@@ -367,20 +348,78 @@ function StatusDonut({counts, total}: {counts: Record<Exclude<MetricStatus, 'pen
 
 function ChapterHorizontalBars({chapters}: {chapters: ChapterTrendKpi[]}) {
   return (
-    <div className="fp-kpi-hbars" role="list" aria-label="Porcentaje por capítulo en el último aseguramiento">
+    <ul className="fp-kpi-hbars" aria-label="Porcentaje por capítulo en el último aseguramiento">
       {chapters.map(chapter => {
         const tone = chapterTone(chapter.score);
         const width = chapter.score === null ? 0 : Math.min(100, Math.max(0, chapter.score));
         return (
-          <div key={chapter.id} className={`fp-kpi-hbar-row is-${tone}`} role="listitem">
-            <label>Cap.{chapter.id}</label>
+          <li key={chapter.id} className={`fp-kpi-hbar-row is-${tone}`} title={chapter.title}>
+            <label title={chapter.title}>Cap.{chapter.id}</label>
             <div className="fp-kpi-hbar-track" aria-hidden>
               <span className="fp-kpi-hbar-fill" style={{width: `${width}%`}} />
             </div>
-            <span>{chapter.score === null ? '—' : `${chapter.score}%`}</span>
-          </div>
+            <span>{chapter.score === null ? '—' : `${formatPoints(chapter.score)}%`}</span>
+          </li>
         );
       })}
+    </ul>
+  );
+}
+
+function SeriesFacts({
+  records,
+  indexDelta,
+  baselineDate
+}: {
+  records: MetricRecord[];
+  indexDelta: number | null;
+  baselineDate?: string;
+}) {
+  const stats = seriesStats(records);
+  const baselineInView = Boolean(baselineDate && records.some(record => record.date === baselineDate));
+  const officialDetail =
+    indexDelta === null
+      ? 'Sin visita anterior con el mismo alcance'
+      : baselineDate
+        ? `Visita ${baselineDate}${baselineInView ? '' : ' · fuera de este rango'}`
+        : undefined;
+  const closureDetail = stats.closures
+    ? stats.closures.cancelled
+      ? `${stats.closures.cancelled} cancelado${stats.closures.cancelled === 1 ? '' : 's'}`
+      : 'En la última lectura del rango'
+    : undefined;
+
+  return (
+    <div className="fp-kpi-facts" aria-label="Resumen del rango visible">
+      <Fact label="Lecturas" value={String(stats.count)} detail={stats.count === 1 ? 'Una sola visita' : 'Aseguramientos revisados'} />
+      <Fact label="Promedio" value={stats.average === null ? '—' : `${formatPoints(stats.average)}%`} detail="Media del rango visible" />
+      <Fact
+        label="Mínimo / máximo"
+        value={stats.min === null || stats.max === null ? '—' : `${formatPoints(stats.min)}–${formatPoints(stats.max)}%`}
+        detail="Índice oficial del rango"
+      />
+      <Fact
+        label="Vs. visita anterior"
+        value={formatSignedPoints(indexDelta)}
+        detail={officialDetail}
+        tone={deltaTone(indexDelta)}
+      />
+      <Fact
+        label="En el rango"
+        value={formatSignedPoints(stats.spanDelta)}
+        detail={stats.count > 1 ? 'Primera a última lectura visible' : 'Hace falta otra lectura'}
+        tone={deltaTone(stats.spanDelta)}
+      />
+      <Fact
+        label="Incumplimientos abiertos"
+        value={stats.closures ? String(stats.closures.open) : '—'}
+        detail={closureDetail}
+      />
+      <Fact
+        label="Incumplimientos cerrados"
+        value={stats.closures ? String(stats.closures.closed) : '—'}
+        detail="Estado Completado en la última lectura"
+      />
     </div>
   );
 }
@@ -399,20 +438,7 @@ export default function FarmPortalKpiBoard({
     () => (variant === 'trend' ? filterRecordsByRange(records, trendRange) : records),
     [records, trendRange, variant]
   );
-
-  const chartRecords = useMemo(
-    () => rangedRecords.slice(-MAX_VISITS_CHART),
-    [rangedRecords]
-  );
-
-  const barPoints = useMemo(
-    () =>
-      chartRecords.map((record, index) => ({
-        score: record.score,
-        isLatest: index === chartRecords.length - 1
-      })),
-    [chartRecords]
-  );
+  const points = useMemo(() => toTrendPoints(rangedRecords), [rangedRecords]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<Exclude<MetricStatus, 'pending'>, number> = {
@@ -429,15 +455,47 @@ export default function FarmPortalKpiBoard({
 
   const statusTotal = statusCounts.healthy + statusCounts.acceptable + statusCounts.critical;
   const visitLabel = records.length === 1 ? '1 visita revisada' : `${records.length} visitas revisadas`;
+  const rangeHint = variant === 'trend' ? TREND_RANGE_HINTS[trendRange] : 'Historial completo de aseguramientos revisados';
+
+  const chartBlock = points.length ? (
+    <>
+      <IndexTrendChart points={points} />
+      {points.length === 1 && (
+        <p className="fp-kpi-sparse">
+          Hay una sola lectura
+          {points[0].fullDate ? ` (${points[0].fullDate})` : ''}. La línea entre visitas aparece cuando el rango
+          incluye otra lectura revisada.
+        </p>
+      )}
+      <ReadingsTable points={points} />
+    </>
+  ) : (
+    <div className="fp-kpi-empty">
+      <div>
+        <FarmPixel kind="sprout" />
+        <strong>No hay lecturas en este rango.</strong>
+        <p>
+          {latestDate
+            ? `La última lectura publicada es del ${latestDate}. Prueba 12m o Año.`
+            : 'Cuando exista un aseguramiento revisado, cada visita se verá como un punto.'}
+        </p>
+      </div>
+    </div>
+  );
+
+  const exportButton = (
+    <button
+      type="button"
+      className="fp-kpi-export"
+      disabled={!rangedRecords.length}
+      onClick={() => downloadTrendCsv(rangedRecords)}
+    >
+      <Download size={14} aria-hidden />
+      CSV
+    </button>
+  );
 
   if (variant === 'trend') {
-    const trendDelta =
-      chartRecords.length >= 2
-        ? Math.round(
-            (chartRecords[chartRecords.length - 1].score - chartRecords[chartRecords.length - 2].score) * 10
-          ) / 10
-        : indexDelta;
-
     return (
       <section className="fp-kpi-board is-trend-panel" id="fp-kpi-trend" aria-labelledby="fp-kpi-trend-title">
         <header className="fp-kpi-trend-head">
@@ -445,31 +503,45 @@ export default function FarmPortalKpiBoard({
             <h3 id="fp-kpi-trend-title">Tendencia del indicador</h3>
             <p className="fp-kpi-board-note">
               Índice oficial en aseguramientos revisados
-              {latestDate ? ` · última lectura ${latestDate}` : ''}.
+              {latestDate ? ` · última lectura ${latestDate}` : ''}. {rangeHint}.
             </p>
           </div>
-          <div className="fp-kpi-range-tabs" role="tablist" aria-label="Rango de tiempo">
-            {(Object.keys(TREND_RANGE_LABELS) as TrendRange[]).map(key => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={trendRange === key}
-                className={trendRange === key ? 'is-active' : ''}
-                onClick={() => setTrendRange(key)}
-              >
-                {TREND_RANGE_LABELS[key]}
-              </button>
-            ))}
+          <div className="fp-kpi-trend-tools">
+            <div className="fp-kpi-range-tabs" role="tablist" aria-label="Rango de tiempo">
+              {(Object.keys(TREND_RANGE_LABELS) as TrendRange[]).map(key => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  title={TREND_RANGE_HINTS[key]}
+                  aria-selected={trendRange === key}
+                  className={trendRange === key ? 'is-active' : ''}
+                  onClick={() => setTrendRange(key)}
+                >
+                  {TREND_RANGE_LABELS[key]}
+                </button>
+              ))}
+            </div>
+            {exportButton}
           </div>
         </header>
-        <div className="fp-kpi-trend-chart-wrap">
-          {barPoints.length ? (
-            <IndexTrendLine points={barPoints} indexDelta={trendDelta} />
-          ) : (
-            <p className="fp-kpi-tile-caption">Aún no hay serie para comparar en este rango.</p>
-          )}
-        </div>
+        <SeriesFacts records={rangedRecords} indexDelta={indexDelta} baselineDate={baselineDate} />
+        <div className="fp-kpi-trend-chart-wrap">{chartBlock}</div>
+        {indexDelta !== null && (
+          <p className={`fp-kpi-delta-chip is-${deltaTone(indexDelta) || 'flat'}`}>
+            {indexDelta > 0 ? (
+              <TrendingUp size={14} aria-hidden />
+            ) : indexDelta < 0 ? (
+              <TrendingDown size={14} aria-hidden />
+            ) : (
+              <Minus size={14} aria-hidden />
+            )}
+            {indexDelta === 0
+              ? 'Sin cambio vs. visita anterior'
+              : `Variación ${formatSignedPoints(indexDelta)} vs. anterior`}
+            {baselineDate ? ` · ${baselineDate}` : ''}
+          </p>
+        )}
         <IndexThresholdLegend compact />
       </section>
     );
@@ -479,47 +551,32 @@ export default function FarmPortalKpiBoard({
     <section className="fp-kpi-board" aria-labelledby="fp-kpi-board-title">
       <header className="fp-kpi-board-head">
         <div className="metrics-section-kicker">Lectura visual</div>
-        <h3 id="fp-kpi-board-title">Indicadores del aseguramiento</h3>
+        <div className="fp-kpi-board-title-row">
+          <h3 id="fp-kpi-board-title">Indicadores del aseguramiento</h3>
+          {exportButton}
+        </div>
         <p className="fp-kpi-board-note">
-          Evolución del índice oficial, tendencia frente a la visita anterior y reparto de estados en el historial
-          de {visitLabel}. Los capítulos reflejan el último informe consultado
-          {latestDate ? ` (${latestDate})` : ''}.
+          Cada punto es el índice oficial de una visita revisada ({visitLabel}
+          {latestDate ? `, última el ${latestDate}` : ''}). La variación frente a la visita anterior solo compara
+          el mismo alcance de capítulos.
         </p>
       </header>
 
+      <SeriesFacts records={records} indexDelta={indexDelta} baselineDate={baselineDate} />
       <IndexThresholdLegend />
 
+      <article className="fp-kpi-tile is-wide">
+        <h4 className="fp-kpi-tile-title">Evolución del índice oficial</h4>
+        <div className="fp-kpi-chart is-series">{chartBlock}</div>
+        <p className="fp-kpi-tile-caption">
+          Eje vertical 0–100. Bandas: Vulnerable por debajo de 80, Alerta entre 80 y 95, Saludable desde 95.
+          {baselineDate && indexDelta !== null
+            ? ` Comparado con la visita del ${baselineDate}.`
+            : ' La comparación oficial aparece cuando hay una visita anterior con el mismo alcance.'}
+        </p>
+      </article>
+
       <div className="fp-kpi-grid">
-        <article className="fp-kpi-tile">
-          <h4 className="fp-kpi-tile-title">Evolución del índice oficial</h4>
-          <div className="fp-kpi-chart">
-            {barPoints.length ? (
-              <IndexEvolutionBars points={barPoints} />
-            ) : (
-              <p className="fp-kpi-tile-caption">Sin visitas con índice publicado.</p>
-            )}
-          </div>
-          <p className="fp-kpi-tile-caption">
-            Últimas {Math.min(MAX_VISITS_CHART, records.length)} visitas · escala 0–100%
-          </p>
-        </article>
-
-        <article className="fp-kpi-tile">
-          <h4 className="fp-kpi-tile-title">Tendencia del índice</h4>
-          <div className="fp-kpi-chart">
-            {barPoints.length ? (
-              <IndexTrendLine points={barPoints} indexDelta={indexDelta} />
-            ) : (
-              <p className="fp-kpi-tile-caption">Aún no hay serie para comparar.</p>
-            )}
-          </div>
-          <p className="fp-kpi-tile-caption">
-            {baselineDate && indexDelta !== null
-              ? `Comparado con la visita del ${baselineDate}.`
-              : 'La variación aparece cuando hay una visita anterior con el mismo alcance.'}
-          </p>
-        </article>
-
         <article className="fp-kpi-tile">
           <h4 className="fp-kpi-tile-title">Distribución de estados</h4>
           <div className="fp-kpi-chart">
@@ -529,7 +586,7 @@ export default function FarmPortalKpiBoard({
               <p className="fp-kpi-tile-caption">Sin clasificación en el historial.</p>
             )}
           </div>
-          <p className="fp-kpi-tile-caption">Saludable ≥95% · Alerta 80–94% · Vulnerable &lt;80%</p>
+          <p className="fp-kpi-tile-caption">Saludable ≥95% · Alerta 80–94% · Vulnerable &lt;80%. El centro es el número de visitas.</p>
         </article>
 
         <article className="fp-kpi-tile">

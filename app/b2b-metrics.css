@@ -393,21 +393,21 @@
 }
 
 .b2b-kpi-badge.healthy, .metric-status.healthy {
-  background: rgba(120, 190, 32, 0.12);
-  color: #15803d;
-  border: 1px solid rgba(120, 190, 32, 0.35);
+  background: #e7f6d4;
+  color: #24520c;
+  border: 1px solid #8bc34a;
 }
 
 .b2b-kpi-badge.acceptable, .metric-status.acceptable {
-  background: rgba(242, 169, 0, 0.12);
-  color: #92400e;
-  border: 1px solid rgba(242, 169, 0, 0.35);
+  background: #fff3c4;
+  color: #7a4b00;
+  border: 1px solid #e0a800;
 }
 
 .b2b-kpi-badge.critical, .metric-status.critical {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: #fde8e8;
+  color: #9f1239;
+  border: 1px solid #f0a8a8;
 }
 
 .b2b-kpi-badge.pending, .metric-status.pending {
@@ -1001,10 +1001,10 @@ html.dark .b2b-alert-card p {
 .metrics-chapter-trend-name span { overflow: hidden; color: #344d55; font-size:13px; text-overflow: ellipsis; }
 .metrics-chapter-trend-name small { flex: 0 0 auto; color: #88979c; font-size:13px; }
 .metrics-chapter-trend-track { height: 6px; overflow: hidden; border-radius: 99px; background: #edf2f3; }
-.metrics-chapter-trend-track span { display: block; height: 100%; border-radius: inherit; background: #00a6c7; }
-.metrics-chapter-trend-track span.healthy { background: #78be20; }
-.metrics-chapter-trend-track span.acceptable { background: #e9aa1d; }
-.metrics-chapter-trend-track span.critical { background: #d85b61; }
+.metrics-chapter-trend-track span { display: block; height: 100%; border-radius: inherit; background: #4f9a16; }
+.metrics-chapter-trend-track span.healthy { background: #4f9a16; }
+.metrics-chapter-trend-track span.acceptable { background: #e0a800; }
+.metrics-chapter-trend-track span.critical { background: #d12424; }
 .metrics-chapter-trend-track span.empty { background: transparent; }
 .metrics-chapter-trend-score { color: #1b333b; font-size:14px; font-variant-numeric: tabular-nums; text-align: right; }
 .metrics-chapter-trend-change { display: grid; justify-items: end; gap: 1px; }
@@ -1024,6 +1024,9 @@ html.dark .b2b-alert-card p {
 .metrics-podium-list article > div > small { color: #64748b; font-size:13px; }
 .metrics-podium-list .b2b-kpi-badge { width: fit-content; }
 .metrics-podium-score { color: #0f2932; font-size: 22px; font-variant-numeric: tabular-nums; }
+.metrics-podium-score.is-healthy { color: #2f7a16; }
+.metrics-podium-score.is-acceptable { color: #8a5a00; }
+.metrics-podium-score.is-critical { color: #b42318; }
 .metrics-podium-delta { grid-column: 2 / -1; font-size:14px; font-weight: 800; }
 .metrics-podium-delta.neutral { color: #64748b; }
 .metrics-fleet-status-counts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }

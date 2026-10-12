@@ -138,10 +138,15 @@ Firebase no vende dominios: **Kevin** (o la organización) compra y controla el 
 npm install
 npx firebase login
 npx firebase use gen-lang-client-0175464290
-npm run build:firebase          # vinext build + stage dist/firebase-hosting
-npm run deploy:firebase         # hosting + firestore rules/indexes
-# o solo hosting:
+npm run build                   # vinext build + stage dist/firebase-hosting
+npm run build:firebase          # el mismo pipeline (alias)
+npm run deploy:firebase         # hosting + firestore rules/indexes (producción)
+# o solo hosting en producción:
 npx firebase deploy --only hosting
+
+# Vista previa, sin tocar el sitio en vivo. Requiere firebase login.
+# La carpeta pública ya está en firebase.json: dist/firebase-hosting
+npx firebase hosting:channel:deploy preview --only hosting
 ```
 
 ## Avanzado — GitHub Actions + `login:ci`

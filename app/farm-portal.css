@@ -914,8 +914,20 @@ body:has(.farm-portal) {
 }
 
 .fp-status-chip.critical::before {
-  background: var(--fp-critical);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.24);
+  background: #d12424;
+  box-shadow: 0 0 0 3px rgba(209, 36, 36, 0.28);
+}
+
+.fp-status-chip.healthy > strong {
+  color: #c6ef8a;
+}
+
+.fp-status-chip.acceptable > strong {
+  color: #ffe08a;
+}
+
+.fp-status-chip.critical > strong {
+  color: #ffb4ae;
 }
 
 .fp-status-chip > span:first-child {
@@ -935,7 +947,11 @@ body:has(.farm-portal) {
 }
 
 .fp-status-chip .b2b-kpi-badge {
-  display: none;
+  display: inline-flex;
+  padding: 3px 8px;
+  border: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0;
 }
 
 .fp-topbar-scroll-ctas {
@@ -1182,7 +1198,19 @@ body:has(.farm-portal) {
 }
 
 .fp-hero-index.critical .fp-hero-index-track > span {
-  background: var(--fp-critical);
+  background: #d12424;
+}
+
+.fp-hero-index.healthy .fp-hero-index-value {
+  color: #c6ef8a;
+}
+
+.fp-hero-index.acceptable .fp-hero-index-value {
+  color: #ffe08a;
+}
+
+.fp-hero-index.critical .fp-hero-index-value {
+  color: #ffb4ae;
 }
 
 .fp-hero-index .b2b-kpi-badge {
@@ -1446,18 +1474,30 @@ body:has(.farm-portal) {
 
 .fp-status-kpi-pill.is-healthy,
 .fp-status-kpi-pill.is-excellent {
-  background: rgba(120, 190, 32, 0.14);
-  color: #3f6212;
+  background: #e7f6d4;
+  color: #24520c;
 }
 
 .fp-status-kpi-pill.is-acceptable {
-  background: rgba(242, 169, 0, 0.18);
-  color: #92400e;
+  background: #fff3c4;
+  color: #7a4b00;
 }
 
 .fp-status-kpi-pill.is-critical,
 .fp-status-kpi-pill.is-risk {
-  background: rgba(220, 38, 38, 0.12);
+  background: #fde8e8;
+  color: #9f1239;
+}
+
+.fp-status-kpi-value.is-healthy strong {
+  color: #2f7a16;
+}
+
+.fp-status-kpi-value.is-acceptable strong {
+  color: #8a5a00;
+}
+
+.fp-status-kpi-value.is-critical strong {
   color: #b42318;
 }
 
@@ -2083,7 +2123,19 @@ body:has(.farm-portal) {
 }
 
 .farm-portal .fp-chapter-tile.is-critical {
-  box-shadow: inset 4px 0 0 var(--fp-critical);
+  box-shadow: inset 4px 0 0 #d12424;
+}
+
+.farm-portal .fp-chapter-tile.is-healthy .fp-chapter-tile-score {
+  color: #2f7a16;
+}
+
+.farm-portal .fp-chapter-tile.is-acceptable .fp-chapter-tile-score {
+  color: #8a5a00;
+}
+
+.farm-portal .fp-chapter-tile.is-critical .fp-chapter-tile-score {
+  color: #b42318;
 }
 
 .farm-portal .fp-chapter-tile.is-empty {
@@ -2925,6 +2977,18 @@ body:has(.farm-portal) {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--fp-ink);
+}
+
+.fp-report-score.is-healthy strong {
+  color: #2f7a16;
+}
+
+.fp-report-score.is-acceptable strong {
+  color: #8a5a00;
+}
+
+.fp-report-score.is-critical strong {
+  color: #b42318;
 }
 
 .fp-report-row-meta {

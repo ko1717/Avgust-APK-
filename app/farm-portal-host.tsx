@@ -3,6 +3,7 @@
 import {lazy, Suspense, useEffect, useState} from 'react';
 import {consultaAvgustClientEnabled} from '@/lib/consulta-avgust';
 import {ensurePortalQueryOnHosting} from '@/lib/hosting-portal';
+import FarmPixel from './farm-pixel';
 
 const FarmPortalView = lazy(() =>
   import('./farm-portal-view').then(module => ({default: module.FarmPortalView}))
@@ -18,13 +19,12 @@ function PortalBoot() {
       className="fp-loading"
       style={{
         minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
         background: '#005f7a',
         color: '#fff',
         fontFamily: 'Manrope, Segoe UI, sans-serif'
       }}
     >
+      <FarmPixel kind="sprout" />
       <p>Cargando Portal de Finca…</p>
     </div>
   );
@@ -40,6 +40,9 @@ export default function FarmPortalHost() {
   const [onlineReportId, setOnlineReportId] = useState<string | null>(null);
 
   useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
     ensurePortalQueryOnHosting();
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === 'online-report' && params.get('id')) {
