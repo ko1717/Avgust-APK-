@@ -71,6 +71,7 @@ import {
 } from '@/lib/firebase';
 import {portalActionPresentation, stripMarkdownLite} from '@/lib/portal-format';
 import {type ChapterTrendKpi} from './metrics-kpi-strip';
+import FarmPixel from './farm-pixel';
 import './b2b-metrics.css';
 import './farm-portal.css';
 
@@ -101,13 +102,15 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Pro
   }
 }
 
-function StatusBadge({value}: {value: MetricStatus}) {
-  const labels: Record<MetricStatus, string> = {
-    healthy: 'Saludable (≥95%)',
-    acceptable: 'Alerta (80-94%)',
-    critical: 'Vulnerable (< 80%)',
-    pending: 'Sin medición'
-  };
+function StatusBadge({value, compact = false}: {value: MetricStatus; compact?: boolean}) {
+  const labels: Record<MetricStatus, string> = compact
+    ? {healthy: 'Saludable', acceptable: 'Alerta', critical: 'Vulnerable', pending: 'Sin medición'}
+    : {
+        healthy: 'Saludable (≥95%)',
+        acceptable: 'Alerta (80-94%)',
+        critical: 'Vulnerable (< 80%)',
+        pending: 'Sin medición'
+      };
   return <span className={`b2b-kpi-badge ${value}`}>{labels[value] || metricStatusLabels[value]}</span>;
 }
 
@@ -301,6 +304,7 @@ function AssuranceScheduleForm({
       </form>
       {requestMsg && (
         <div className={`fp-schedule-msg ${requestMsg.error ? 'error' : 'ok'}`} role="status">
+          {!requestMsg.error && <FarmPixel kind="flower" />}
           {requestMsg.text}
         </div>
       )}
@@ -362,7 +366,7 @@ function FarmPortalReportsList({
                   <StatusBadge value={status} />
                 </div>
                 <div className="fp-report-row-meta">
-                  <span>
+                  <span className={`fp-report-score is-${status}`}>
                     Resultado: <strong>{score === null ? '—' : `${score}%`}</strong>
                   </span>
                   <span>
@@ -417,7 +421,7 @@ function PortalStatusKpiCard({
       <div className="fp-status-kpi-icon" aria-hidden>{icon}</div>
       <div className="fp-status-kpi-body">
         <h4>{title}</h4>
-        <p className="fp-status-kpi-value">
+        <p className={`fp-status-kpi-value ${statusClass}`}>
           <strong>{value}</strong>
           {valueSuffix ? <span>{valueSuffix}</span> : null}
         </p>
@@ -819,7 +823,7 @@ export function FarmPortalView({
 
   if (viewingReportId) {
     return (
-      <Suspense fallback={<div className="fp-loading"><div className="fp-spinner" aria-hidden /><h2>Cargando informe…</h2><p>Preparando el aseguramiento en línea.</p></div>}>
+      <Suspense fallback={<div className="fp-loading"><FarmPixel kind="sprout" /><div className="fp-spinner" aria-hidden /><h2>Cargando informe…</h2><p>Preparando el aseguramiento en línea.</p></div>}>
         <StandaloneOnlineReport
           reportId={viewingReportId}
           onClose={() => setViewingReportId(null)}
@@ -831,6 +835,7 @@ export function FarmPortalView({
   if (loading) {
     return (
       <div className="fp-loading">
+        <FarmPixel kind="sprout" />
         <div className="fp-spinner" aria-hidden />
         <h2>Conectando con AVGUST Cloud</h2>
         <p>Verificando invitación del Portal de Finca…</p>
@@ -851,7 +856,7 @@ export function FarmPortalView({
 
         <div className="fp-gate-frame">
           <section className="fp-gate-brand" aria-label="Identidad AVGUST CARE 360">
-            <p className="fp-kicker">Aseguramiento AVGUST · Fincas de flores</p>
+            <p className="fp-kicker"><FarmPixel kind="sun" />Aseguramiento AVGUST · Fincas de flores</p>
             <h1 className="fp-wordmark">
               <span className="fp-wordmark-pre">AVGUST</span>
               <span className="fp-wordmark-main">
@@ -1025,7 +1030,7 @@ export function FarmPortalView({
                   {indexDelta === 0 ? '0' : formatDelta(indexDelta).replace(' pts', '')}
                 </em>
               )}
-              <StatusBadge value={latestStatus} />
+              <StatusBadge value={latestStatus} compact />
             </div>
           )}
           <div className="fp-topbar-scroll-ctas" aria-hidden={!scrollCompact}>
@@ -1230,7 +1235,7 @@ export function FarmPortalView({
           <section className="fp-portal-section" id="fp-portal-informes" aria-labelledby="fp-informes-title">
             <header className="fp-portal-section-head">
               <div>
-                <p className="fp-portal-section-kicker">Documentos de la finca</p>
+                <p className="fp-portal-section-kicker"><FarmPixel kind="flower" />Documentos de la finca</p>
                 <h2 id="fp-informes-title">
                   <FileStack size={22} aria-hidden />
                   Informes revisados
@@ -1254,7 +1259,7 @@ export function FarmPortalView({
           <section className="fp-portal-section" id="fp-portal-solicitudes" aria-labelledby="fp-solicitudes-title">
             <header className="fp-portal-section-head">
               <div>
-                <p className="fp-portal-section-kicker">Aseguramiento AVGUST</p>
+                <p className="fp-portal-section-kicker"><FarmPixel kind="drop" />Aseguramiento AVGUST</p>
                 <h2 id="fp-solicitudes-title">
                   <ClipboardList size={22} aria-hidden />
                   Solicitudes de visita
@@ -1278,7 +1283,7 @@ export function FarmPortalView({
           <section className="fp-portal-section" id="fp-portal-metricas" aria-labelledby="fp-metricas-title">
             <header className="fp-portal-section-head">
               <div>
-                <p className="fp-portal-section-kicker">Lectura oficial</p>
+                <p className="fp-portal-section-kicker"><FarmPixel kind="sprout" />Lectura oficial</p>
                 <h2 id="fp-metricas-title">
                   <LineChart size={22} aria-hidden />
                   Métricas del aseguramiento
@@ -1316,6 +1321,7 @@ export function FarmPortalView({
             <div className="fp-metrics-loading">Cargando indicadores de aseguramiento…</div>
           ) : !current ? (
             <div className="fp-metrics-empty" aria-live="polite">
+              <FarmPixel kind="sprout" />
               <span className="fp-empty-kicker">Estado de la finca</span>
               <strong>
                 {cloudLoading
@@ -1349,6 +1355,7 @@ export function FarmPortalView({
                     <p>Resumen del desempeño actual del cultivo.</p>
                   </div>
                   <div className="fp-dashboard-date" aria-label="Fecha del aseguramiento consultado">
+                    <FarmPixel kind="bee" />
                     <CalendarDays size={16} aria-hidden />
                     {formatVisitDateLabel(current.date)}
                   </div>
@@ -1528,6 +1535,7 @@ export function FarmPortalView({
       </main>
 
       <footer className="fp-footer fp-footer-compact">
+        <FarmPixel kind="tractor" />
         <span>Juntos Crecemos Bien · AVGUST CARE 360</span>
       </footer>
       </div>

@@ -27,6 +27,7 @@ import {
   type TrendRange
 } from '@/lib/trend-series';
 import type {ChapterTrendKpi} from './metrics-kpi-strip';
+import FarmPixel from './farm-pixel';
 import './farm-portal-kpi.css';
 
 const STATUS_LABELS: Record<Exclude<MetricStatus, 'pending'>, string> = {
@@ -42,15 +43,15 @@ const STATUS_RANGES: Record<Exclude<MetricStatus, 'pending'>, string> = {
 };
 
 const STATUS_COLORS: Record<Exclude<MetricStatus, 'pending'>, string> = {
-  healthy: 'var(--fp-kpi-green)',
-  acceptable: 'var(--fp-kpi-gold)',
-  critical: 'var(--fp-kpi-cyan-deep, #005f7a)'
+  healthy: '#4f9a16',
+  acceptable: '#e0a800',
+  critical: '#d12424'
 };
 
 const DOT_COLORS: Record<MetricStatus, string> = {
-  healthy: '#3f7d12',
-  acceptable: '#c4840a',
-  critical: '#b42318',
+  healthy: '#4f9a16',
+  acceptable: '#e0a800',
+  critical: '#d12424',
   pending: '#5b6b75'
 };
 
@@ -109,7 +110,7 @@ function ScoreTick({
 }) {
   const value = payload?.value;
   const marked = value === 80 || value === 95 || value === 100;
-  const fill = value === 95 ? '#3f6212' : value === 80 ? '#92400e' : '#5b6b75';
+  const fill = value === 95 ? '#2f7a16' : value === 80 ? '#8a5a00' : '#5b6b75';
   return (
     <text x={Number(x) || 0} y={Number(y) || 0} dy={4} textAnchor="end" fill={fill} fontSize={11} fontWeight={marked ? 700 : 500}>
       {value}
@@ -164,12 +165,12 @@ function IndexTrendChart({points}: {points: TrendPoint[]}) {
     <figure className="fp-kpi-chart-frame" aria-label={summary}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{top: 16, right: 12, left: 0, bottom: 4}}>
-          <ReferenceArea y1={95} y2={100} fill="rgba(120, 190, 32, 0.2)" strokeOpacity={0} ifOverflow="hidden" />
-          <ReferenceArea y1={80} y2={95} fill="rgba(242, 169, 0, 0.18)" strokeOpacity={0} ifOverflow="hidden" />
-          <ReferenceArea y1={0} y2={80} fill="rgba(0, 95, 122, 0.07)" strokeOpacity={0} ifOverflow="hidden" />
+          <ReferenceArea y1={95} y2={100} fill="rgba(79, 154, 22, 0.2)" strokeOpacity={0} ifOverflow="hidden" />
+          <ReferenceArea y1={80} y2={95} fill="rgba(224, 168, 0, 0.22)" strokeOpacity={0} ifOverflow="hidden" />
+          <ReferenceArea y1={0} y2={80} fill="rgba(209, 36, 36, 0.1)" strokeOpacity={0} ifOverflow="hidden" />
           <CartesianGrid stroke="rgba(15, 33, 40, 0.08)" vertical={false} />
-          <ReferenceLine y={95} stroke="#78be20" strokeDasharray="4 4" strokeOpacity={0.9} />
-          <ReferenceLine y={80} stroke="#f2a900" strokeDasharray="4 4" strokeOpacity={0.95} />
+          <ReferenceLine y={95} stroke="#4f9a16" strokeDasharray="4 4" strokeOpacity={0.9} />
+          <ReferenceLine y={80} stroke="#e0a800" strokeDasharray="4 4" strokeOpacity={0.95} />
           <XAxis
             dataKey="chartKey"
             tickFormatter={value => formatTrendAxisDate(String(value).split('|')[0] || '')}
@@ -226,8 +227,10 @@ function ReadingsTable({points}: {points: TrendPoint[]}) {
           {rows.map(point => (
             <tr key={point.chartKey}>
               <td>{point.fullDate}</td>
-              <td>{formatPoints(point.score)}%</td>
-              <td>{point.statusLabel}</td>
+              <td className={`is-${point.status}`}>{formatPoints(point.score)}%</td>
+              <td>
+                <span className={`fp-sema-chip is-${point.status}`}>{point.statusLabel}</span>
+              </td>
               <td>{point.findings}</td>
             </tr>
           ))}
@@ -469,6 +472,7 @@ export default function FarmPortalKpiBoard({
   ) : (
     <div className="fp-kpi-empty">
       <div>
+        <FarmPixel kind="sprout" />
         <strong>No hay lecturas en este rango.</strong>
         <p>
           {latestDate

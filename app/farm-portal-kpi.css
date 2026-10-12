@@ -529,15 +529,15 @@
 }
 
 .fp-kpi-donut-legend i.is-healthy {
-  background: var(--fp-kpi-green);
+  background: #4f9a16;
 }
 
 .fp-kpi-donut-legend i.is-acceptable {
-  background: var(--fp-kpi-gold);
+  background: #e0a800;
 }
 
 .fp-kpi-donut-legend i.is-critical {
-  background: #dc2626;
+  background: #d12424;
 }
 
 .fp-kpi-donut-legend strong {
@@ -583,15 +583,19 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--fp-kpi-cyan) 0%, var(--fp-kpi-green) 100%);
+  background: #4f9a16;
+}
+
+.fp-kpi-hbar-row.is-healthy .fp-kpi-hbar-fill {
+  background: #4f9a16;
 }
 
 .fp-kpi-hbar-row.is-acceptable .fp-kpi-hbar-fill {
-  background: linear-gradient(90deg, var(--fp-kpi-gold) 0%, #e8c04a 100%);
+  background: #e0a800;
 }
 
 .fp-kpi-hbar-row.is-critical .fp-kpi-hbar-fill {
-  background: linear-gradient(90deg, var(--fp-kpi-cyan-deep, #005f7a) 0%, var(--fp-kpi-cyan) 100%);
+  background: #d12424;
 }
 
 .fp-kpi-hbar-row.is-empty .fp-kpi-hbar-fill {
@@ -602,8 +606,20 @@
 .fp-kpi-hbar-row span:last-child {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--fp-kpi-ink);
+}
+
+.fp-kpi-hbar-row.is-healthy span:last-child {
+  color: #2f7a16;
+}
+
+.fp-kpi-hbar-row.is-acceptable span:last-child {
+  color: #8a5a00;
+}
+
+.fp-kpi-hbar-row.is-critical span:last-child {
+  color: #b42318;
 }
 
 .fp-kpi-delta-chip {
@@ -649,12 +665,59 @@
   min-width: 0;
 }
 
+.fp-kpi-threshold-legend li.healthy,
+.fp-kpi-threshold-legend li {
+  border-top-color: #4f9a16;
+}
+
 .fp-kpi-threshold-legend li.acceptable {
-  border-top-color: var(--fp-kpi-gold);
+  border-top-color: #e0a800;
 }
 
 .fp-kpi-threshold-legend li.critical {
-  border-top-color: var(--fp-kpi-cyan-deep, #005f7a);
+  border-top-color: #d12424;
+}
+
+.fp-sema-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.fp-sema-chip.is-healthy {
+  background: #e7f6d4;
+  color: #24520c;
+}
+
+.fp-sema-chip.is-acceptable {
+  background: #fff3c4;
+  color: #7a4b00;
+}
+
+.fp-sema-chip.is-critical {
+  background: #fde8e8;
+  color: #9f1239;
+}
+
+.fp-sema-chip.is-pending {
+  background: #eef2f4;
+  color: #3d4c55;
+}
+
+.fp-kpi-readings td.is-healthy {
+  color: #2f7a16;
+}
+
+.fp-kpi-readings td.is-acceptable {
+  color: #8a5a00;
+}
+
+.fp-kpi-readings td.is-critical {
+  color: #b42318;
 }
 
 .fp-kpi-threshold-legend strong {

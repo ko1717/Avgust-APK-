@@ -270,7 +270,7 @@ function FarmMetrics({visits,loading,onOpen}:{visits:Visit[];loading:boolean;onO
                     <article key={point.record.visit.id} className={point.record.visit.id===current.visit.id?'current':''}>
                       <span className="metrics-podium-rank">0{index+1}</span>
                       <div><small>{point.label} · {point.record.date}</small><StatusBadge value={point.record.status}/></div>
-                      <strong className="metrics-podium-score">{point.record.score}%</strong>
+                      <strong className={`metrics-podium-score is-${point.record.status}`}>{point.record.score}%</strong>
                       <span className={`metrics-podium-delta ${point.delta===null?'neutral':point.delta>0?'positive':point.delta<0?'negative':'neutral'}`}>{point.delta===null?(point.hasPrevious?'Sin comparación':'Línea base'):point.delta>0?`+${point.delta} pts`:point.delta<0?`${point.delta} pts`:'Sin cambio'}</span>
                     </article>
                   ))}
