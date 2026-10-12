@@ -40,6 +40,9 @@ export default function FarmPortalHost() {
   const [onlineReportId, setOnlineReportId] = useState<string | null>(null);
 
   useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
     ensurePortalQueryOnHosting();
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === 'online-report' && params.get('id')) {

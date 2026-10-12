@@ -17,7 +17,7 @@ Las pruebas locales crean y modifican datos de prueba. Nunca apuntarlas a la bas
 | Tipos | `npx tsc --noEmit` | Contratos TypeScript. |
 | Modelo | `node tests/model.mjs` | Visitas, criterios, lecturas estrictas, puntos porcentuales, tendencia neutral, gráfica lineal, compromisos, importación, exportaciones y el puente de archivos de Android con su reserva de descarga en el navegador. |
 | Permisos, expediente y trazabilidad | `node tests/team.mjs` | Migraciones, cursor del expediente y métricas, comparación de visitas, otra finca bloqueada, invitaciones, roles, bitácora solo para coordinación, fotos privadas y conflictos. |
-| Web compilada | `npm run build` | Build de cliente, RSC y rutas. |
+| Web compilada | `npm run build` | Build de cliente, RSC y carpeta `dist/firebase-hosting` que sirve `firebase.json`. |
 | Escritorio | `npm run desktop:test` | SQLite local, solicitudes, visitas y respaldo/restauración. |
 | Arranque de Windows | `npm run desktop:smoke` | Abre la aplicación sin mostrar la ventana y comprueba las funciones de la navegación, el logotipo, los datos locales, el puente de respaldo y que no aparezca inicio de sesión. |
 | Recuperación central aislada | `npm run test:backup` | D1 local: exportación, eliminación y recuperación; R2 local: respaldo, eliminación y restauración comprobada por SHA-256. |
